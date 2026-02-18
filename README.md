@@ -119,6 +119,7 @@ biblioanalytics-360/
 - [ ] Documentación técnica completa
 
 ---
+https://analitica360.vercel.app/
 
 **Autor:** Daniel C. Bautista  
 **Proyecto:** Maestría en Bibliotecología / Ciencias de la Información  
