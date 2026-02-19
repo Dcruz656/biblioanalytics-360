@@ -35,6 +35,9 @@ const themes = {
   },
 };
 
+// ===== API CONFIG =====
+const API_URL = "https://biblioanalytics-360.onrender.com";
+
 // ===== RAW DATA GENERATORS =====
 function genCirculacion(seed, campus, periodo) {
   const base = campus === "todos" ? 1 : campus === "central" ? 1.2 : campus === "norte" ? 0.7 : 0.5;
@@ -293,34 +296,33 @@ function genServiciosTurno(seed) {
   ];
 }
 
-// Build flat table rows for search
 function buildTableRows(mesSvc, carreraSvc, tipoSvc, turnoSvc) {
   const rows = [];
   let id = 1;
   mesesFull.forEach(m => {
     const d = mesSvc.find(x => x.mes === m);
     if (!d) return;
-    rows.push({ id: id++, periodo: m, dimension: "Préstamos", servicio: "Domicilio", valor: d.domicilio, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Préstamos", servicio: "En Sala", valor: d.sala, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Préstamos", servicio: "Interbibliotecario", valor: d.interbibliotecario, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Cómputo", servicio: "Computadoras", valor: d.computadoras, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Cómputo", servicio: "Internet WiFi", valor: d.internet, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Cómputo", servicio: "Impresiones", valor: d.impresiones, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Formación", servicio: "Talleres", valor: d.talleres, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Formación", servicio: "Capacitaciones", valor: d.capacitaciones, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Formación", servicio: "Asesorías", valor: d.asesorias, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Espacios", servicio: "Cubículos", valor: d.cubiculos, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Espacios", servicio: "Salas de Estudio", valor: d.salasEstudio, tipo: "—", turno: "—" });
-    rows.push({ id: id++, periodo: m, dimension: "Espacios", servicio: "Coworking", valor: d.coworking, tipo: "—", turno: "—" });
+    rows.push({ id: id++, periodo: m, dimension: "Préstamos", servicio: "Domicilio", valor: d.domicilio });
+    rows.push({ id: id++, periodo: m, dimension: "Préstamos", servicio: "En Sala", valor: d.sala });
+    rows.push({ id: id++, periodo: m, dimension: "Préstamos", servicio: "Interbibliotecario", valor: d.interbibliotecario });
+    rows.push({ id: id++, periodo: m, dimension: "Cómputo", servicio: "Computadoras", valor: d.computadoras });
+    rows.push({ id: id++, periodo: m, dimension: "Cómputo", servicio: "Internet WiFi", valor: d.internet });
+    rows.push({ id: id++, periodo: m, dimension: "Cómputo", servicio: "Impresiones", valor: d.impresiones });
+    rows.push({ id: id++, periodo: m, dimension: "Formación", servicio: "Talleres", valor: d.talleres });
+    rows.push({ id: id++, periodo: m, dimension: "Formación", servicio: "Capacitaciones", valor: d.capacitaciones });
+    rows.push({ id: id++, periodo: m, dimension: "Formación", servicio: "Asesorías", valor: d.asesorias });
+    rows.push({ id: id++, periodo: m, dimension: "Espacios", servicio: "Cubículos", valor: d.cubiculos });
+    rows.push({ id: id++, periodo: m, dimension: "Espacios", servicio: "Salas de Estudio", valor: d.salasEstudio });
+    rows.push({ id: id++, periodo: m, dimension: "Espacios", servicio: "Coworking", valor: d.coworking });
   });
   carreraSvc.forEach(c => {
-    rows.push({ id: id++, periodo: "Acum.", dimension: "Por Carrera", servicio: c.carrera, valor: c.total, tipo: "—", turno: "—" });
+    rows.push({ id: id++, periodo: "Acum.", dimension: "Por Carrera", servicio: c.carrera, valor: c.total });
   });
   tipoSvc.forEach(u => {
-    rows.push({ id: id++, periodo: "Acum.", dimension: "Por Tipo Usuario", servicio: u.tipo, valor: u.prestamos + u.computo + u.talleres + u.espacios, tipo: u.tipo, turno: "—" });
+    rows.push({ id: id++, periodo: "Acum.", dimension: "Por Tipo Usuario", servicio: u.tipo, valor: u.prestamos + u.computo + u.talleres + u.espacios });
   });
   turnoSvc.forEach(tr => {
-    rows.push({ id: id++, periodo: "Acum.", dimension: "Por Turno", servicio: tr.turno, valor: tr.prestamos + tr.computo + tr.talleres + tr.espacios, tipo: "—", turno: tr.turno });
+    rows.push({ id: id++, periodo: "Acum.", dimension: "Por Turno", servicio: tr.turno, valor: tr.prestamos + tr.computo + tr.talleres + tr.espacios });
   });
   return rows;
 }
@@ -347,18 +349,55 @@ export default function BiblioAnalytics360() {
     { id: 3, text: "3 nuevos comentarios analizados por NLP", type: "success", time: "Hace 8h" },
   ]);
 
+  // ===== DATOS REALES DEL BACKEND =====
+  const [realStats, setRealStats] = useState(null);
+  const [realData, setRealData] = useState([]);
+  const [realLoading, setRealLoading] = useState(true);
+  const [realError, setRealError] = useState(null);
+
+  useEffect(() => {
+    setRealLoading(true);
+    Promise.all([
+      fetch(`${API_URL}/api/v1/uso-computadoras/stats`).then(r => r.json()),
+      fetch(`${API_URL}/api/v1/uso-computadoras`).then(r => r.json()),
+    ])
+      .then(([stats, data]) => {
+        setRealStats(stats);
+        setRealData(data.data || []);
+        setRealLoading(false);
+      })
+      .catch(() => {
+        setRealError("No se pudo conectar al backend");
+        setRealLoading(false);
+      });
+  }, []);
+
+  // Gráfico de barras con datos reales agrupados por propósito
+  const realPorProposito = useMemo(() => {
+    if (!realStats?.por_proposito) return [];
+    return Object.entries(realStats.por_proposito).map(([name, value]) => ({ name, value }));
+  }, [realStats]);
+
+  const realPorTipo = useMemo(() => {
+    if (!realStats?.por_tipo_usuario) return [];
+    return Object.entries(realStats.por_tipo_usuario).map(([name, value]) => ({ name, value }));
+  }, [realStats]);
+
+  const realPorBiblioteca = useMemo(() => {
+    if (!realStats?.por_biblioteca) return [];
+    return Object.entries(realStats.por_biblioteca).map(([name, value]) => ({ name, value }));
+  }, [realStats]);
+
   const seed = campus === "todos" ? 0 : campus === "central" ? 1 : campus === "norte" ? 2 : 3;
   const circulacion = useMemo(() => genCirculacion(seed, campus, periodo), [seed, campus, periodo]);
   const sentTendencia = useMemo(() => genSentimiento(seed), [seed]);
 
-  // Servicios state
-  const [svcView, setSvcView] = useState("temporal"); // temporal | carrera | usuario | turno
-  const [svcCategory, setSvcCategory] = useState("todos"); // todos | prestamos | computo | formacion | espacios
+  const [svcView, setSvcView] = useState("temporal");
+  const [svcCategory, setSvcCategory] = useState("todos");
   const [svcSearch, setSvcSearch] = useState("");
   const [svcPage, setSvcPage] = useState(0);
   const SVC_PAGE_SIZE = 15;
 
-  // Servicios data
   const svcMes = useMemo(() => genServiciosMes(seed), [seed]);
   const svcCarrera = useMemo(() => genServiciosCarrera(seed), [seed]);
   const svcTipoUsr = useMemo(() => genServiciosTipoUsuario(seed), [seed]);
@@ -382,12 +421,6 @@ export default function BiblioAnalytics360() {
     return rows;
   }, [svcTableAll, svcCategory, svcSearch]);
 
-  const svcTotalUsos = useMemo(() => {
-    const d = svcMes[svcMes.length - 1];
-    if (!d) return 0;
-    return d.domicilio + d.sala + d.interbibliotecario + d.computadoras + d.internet + d.impresiones + d.talleres + d.capacitaciones + d.asesorias + d.cubiculos + d.salasEstudio + d.coworking;
-  }, [svcMes]);
-
   const totalPrestamos = useMemo(() => {
     const s = circulacion.reduce((a, c) => a + (c.prestamos || 0), 0);
     return s.toLocaleString();
@@ -395,7 +428,6 @@ export default function BiblioAnalytics360() {
 
   const lastPrestamos = circulacion.filter(c => c.prestamos).slice(-1)[0]?.prestamos || 0;
 
-  // Handle comment submission
   const submitComment = useCallback(() => {
     if (!newComment.trim()) return;
     setAnalyzing(true);
@@ -419,7 +451,6 @@ export default function BiblioAnalytics360() {
     }, 1200);
   }, [newComment]);
 
-  // Export CSV
   const exportCSV = useCallback(() => {
     const header = "Mes,Prestamos,Devoluciones,Prediccion\n";
     const rows = circulacion.map(c => `${c.mes},${c.prestamos||""},${c.devoluciones||""},${c.prediccion||""}`).join("\n");
@@ -575,11 +606,6 @@ export default function BiblioAnalytics360() {
                       <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Circulación de Colecciones</div>
                       <div style={{ fontSize: 10, color: t.textDim }}>Datos filtrados por: {campus === "todos" ? "Todos" : campus.charAt(0).toUpperCase() + campus.slice(1)} · {periodo}</div>
                     </div>
-                    <div style={{ display: "flex", gap: 14, fontSize: 10, alignItems: "center" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 4, borderRadius: 2, background: t.teal, display: "inline-block" }} /> Préstamos</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 4, borderRadius: 2, background: t.blue, display: "inline-block" }} /> Devoluciones</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 4, borderRadius: 2, background: t.amber, display: "inline-block", borderStyle: "dashed", borderWidth: 1 }} /> Predicción</span>
-                    </div>
                   </div>
                   <ResponsiveContainer width="100%" height={240}>
                     <AreaChart data={circulacion}>
@@ -627,15 +653,14 @@ export default function BiblioAnalytics360() {
           {/* ===== SERVICIOS ===== */}
           {nav === "servicios" && (
             <div>
-              {/* Stats */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
                 <StatCard icon={BookOpen} label="Préstamos (mes actual)" value={(svcMes[svcMes.length-1]?.domicilio + svcMes[svcMes.length-1]?.sala + svcMes[svcMes.length-1]?.interbibliotecario).toLocaleString()} change="+18.4%" changeType="up" color={t.teal} t={t} />
-                <StatCard icon={Activity} label="Usos de Cómputo" value={(svcMes[svcMes.length-1]?.computadoras + svcMes[svcMes.length-1]?.internet + svcMes[svcMes.length-1]?.impresiones).toLocaleString()} change="+12.1%" changeType="up" color={t.blue} t={t} />
+                <StatCard icon={Activity} label="Usos de Cómputo (real)" value={realLoading ? "..." : realError ? "—" : realStats?.total_sesiones?.toString() ?? "0"} color={t.blue} t={t} />
                 <StatCard icon={Users} label="Formación (personas)" value={(svcMes[svcMes.length-1]?.talleres + svcMes[svcMes.length-1]?.capacitaciones + svcMes[svcMes.length-1]?.asesorias).toLocaleString()} change="+7.5%" changeType="up" color={t.purple} t={t} />
                 <StatCard icon={Layers} label="Uso de Espacios" value={(svcMes[svcMes.length-1]?.cubiculos + svcMes[svcMes.length-1]?.salasEstudio + svcMes[svcMes.length-1]?.coworking).toLocaleString()} change="+22.3%" changeType="up" color={t.amber} t={t} />
               </div>
 
-              {/* View Toggle + Category Filter */}
+              {/* View Toggle */}
               <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
                 <div style={{ display: "flex", gap: 0, borderRadius: 10, overflow: "hidden", border: `1px solid ${t.cardBorder}` }}>
                   {[{v:"temporal",l:"Por Mes",ic:Calendar},{v:"carrera",l:"Por Carrera",ic:GraduationCap},{v:"usuario",l:"Por Tipo Usuario",ic:Users},{v:"turno",l:"Por Turno",ic:Clock}].map(tab => (
@@ -662,7 +687,7 @@ export default function BiblioAnalytics360() {
               {/* ---- TEMPORAL VIEW ---- */}
               {svcView === "temporal" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                  {/* Préstamos por tipo */}
+
                   {(svcCategory === "todos" || svcCategory === "prestamos") && (
                     <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Préstamos por Tipo</div>
@@ -684,26 +709,90 @@ export default function BiblioAnalytics360() {
                     </div>
                   )}
 
-                  {/* Cómputo */}
+                  {/* ===== CÓMPUTO — DATOS REALES ===== */}
                   {(svcCategory === "todos" || svcCategory === "computo") && (
-                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Servicios de Cómputo</div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Computadoras · Internet WiFi · Impresiones</div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={svcMes}>
-                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <Tooltip content={<CTooltip />} />
-                          <Bar dataKey="computadoras" name="Computadoras" fill={t.blue} radius={[4,4,0,0]} />
-                          <Bar dataKey="internet" name="Internet WiFi" fill={t.teal} radius={[4,4,0,0]} />
-                          <Bar dataKey="impresiones" name="Impresiones" fill={t.amber} radius={[4,4,0,0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `2px solid ${t.teal}50` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: realStats ? t.green : realLoading ? t.amber : t.rose, flexShrink: 0 }} />
+                        <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Uso de Computadoras</div>
+                        <span style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 20, fontSize: 9, fontWeight: 700, background: `${t.teal}15`, color: t.teal }}>DATOS REALES</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>
+                        {realLoading ? "Conectando con Google Sheets..." : realError ? realError : `${realStats?.total_sesiones} sesiones registradas · Google Forms en tiempo real`}
+                      </div>
+
+                      {realLoading && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 180, color: t.textDim, fontSize: 12 }}>
+                          <RefreshCw size={16} style={{ animation: "spin 1s linear infinite", marginRight: 8 }} /> Cargando datos...
+                        </div>
+                      )}
+
+                      {realError && !realLoading && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 180, color: t.rose, fontSize: 12, flexDirection: "column", gap: 8 }}>
+                          <AlertTriangle size={24} />
+                          <span>{realError}</span>
+                        </div>
+                      )}
+
+                      {realStats && !realLoading && (
+                        <>
+                          {/* KPIs reales */}
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+                            <div style={{ padding: 12, borderRadius: 10, background: `${t.teal}08`, border: `1px solid ${t.teal}20`, textAlign: "center" }}>
+                              <div style={{ fontSize: 24, fontWeight: 700, color: t.teal }}>{realStats.total_sesiones}</div>
+                              <div style={{ fontSize: 9, color: t.textDim, marginTop: 2 }}>Total Sesiones</div>
+                            </div>
+                            <div style={{ padding: 12, borderRadius: 10, background: `${t.blue}08`, border: `1px solid ${t.blue}20`, textAlign: "center" }}>
+                              <div style={{ fontSize: 24, fontWeight: 700, color: t.blue }}>{Object.keys(realStats.por_biblioteca || {}).length}</div>
+                              <div style={{ fontSize: 9, color: t.textDim, marginTop: 2 }}>Bibliotecas</div>
+                            </div>
+                            <div style={{ padding: 12, borderRadius: 10, background: `${t.purple}08`, border: `1px solid ${t.purple}20`, textAlign: "center" }}>
+                              <div style={{ fontSize: 24, fontWeight: 700, color: t.purple }}>{realStats.duracion_promedio_minutos ?? "—"}</div>
+                              <div style={{ fontSize: 9, color: t.textDim, marginTop: 2 }}>Min. promedio</div>
+                            </div>
+                          </div>
+
+                          {/* Gráfico por propósito */}
+                          {realPorProposito.length > 0 && (
+                            <>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: t.text, marginBottom: 8 }}>Por Propósito de Uso</div>
+                              <ResponsiveContainer width="100%" height={140}>
+                                <BarChart data={realPorProposito} layout="vertical" margin={{ left: 10 }}>
+                                  <XAxis type="number" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
+                                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} width={120} />
+                                  <Tooltip content={<CTooltip />} />
+                                  <Bar dataKey="value" name="Sesiones" fill={t.teal} radius={[0,4,4,0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </>
+                          )}
+
+                          {/* Por tipo de usuario y biblioteca */}
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                            <div style={{ padding: 10, borderRadius: 10, background: `${t.text}04` }}>
+                              <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 6 }}>Por Tipo de Usuario</div>
+                              {Object.entries(realStats.por_tipo_usuario || {}).map(([tipo, count], i) => (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 11 }}>
+                                  <span style={{ color: t.text }}>{tipo}</span>
+                                  <span style={{ fontWeight: 700, color: t.blue }}>{count}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ padding: 10, borderRadius: 10, background: `${t.text}04` }}>
+                              <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 6 }}>Por Biblioteca</div>
+                              {Object.entries(realStats.por_biblioteca || {}).map(([bib, count], i) => (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 11 }}>
+                                  <span style={{ color: t.text }}>{bib}</span>
+                                  <span style={{ fontWeight: 700, color: t.purple }}>{count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
-                  {/* Formación */}
                   {(svcCategory === "todos" || svcCategory === "formacion") && (
                     <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Formación y Asesorías</div>
@@ -722,7 +811,6 @@ export default function BiblioAnalytics360() {
                     </div>
                   )}
 
-                  {/* Espacios */}
                   {(svcCategory === "todos" || svcCategory === "espacios") && (
                     <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Uso de Espacios</div>
@@ -763,13 +851,6 @@ export default function BiblioAnalytics360() {
                       <Bar dataKey="espacios" name="Espacios" fill={t.amber} stackId="a" radius={[0,4,4,0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                  <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 12 }}>
-                    {[{l:"Préstamos",c:t.teal},{l:"Cómputo",c:t.blue},{l:"Formación",c:t.purple},{l:"Espacios",c:t.amber}].map((x,i) => (
-                      <span key={i} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: t.textDim }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 3, background: x.c, display: "inline-block" }} /> {x.l}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               )}
 
@@ -778,7 +859,6 @@ export default function BiblioAnalytics360() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                   <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Distribución por Tipo de Usuario</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Proporción del uso total</div>
                     <ResponsiveContainer width="100%" height={240}>
                       <PieChart>
                         <Pie data={svcTipoUsr} dataKey="pct" nameKey="tipo" cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} cornerRadius={3}>
@@ -787,20 +867,9 @@ export default function BiblioAnalytics360() {
                         <Tooltip content={<CTooltip />} />
                       </PieChart>
                     </ResponsiveContainer>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-                      {svcTipoUsr.map((u, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: [t.teal, t.blue, t.purple, t.amber, t.rose][i], flexShrink: 0 }} />
-                          <span style={{ color: t.text, flex: 1 }}>{u.tipo}</span>
-                          <span style={{ fontWeight: 700, color: t.text, fontFamily: "'Space Mono', monospace" }}>{u.pct}%</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
-
                   <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Servicios por Tipo de Usuario</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Desglose de usos por categoría</div>
                     <ResponsiveContainer width="100%" height={240}>
                       <BarChart data={svcTipoUsr}>
                         <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
@@ -813,13 +882,6 @@ export default function BiblioAnalytics360() {
                         <Bar dataKey="espacios" name="Espacios" fill={t.amber} radius={[4,4,0,0]} />
                       </BarChart>
                     </ResponsiveContainer>
-                    <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 10 }}>
-                      {[{l:"Préstamos",c:t.teal},{l:"Cómputo",c:t.blue},{l:"Formación",c:t.purple},{l:"Espacios",c:t.amber}].map((x,i) => (
-                        <span key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: t.textDim }}>
-                          <span style={{ width: 8, height: 4, borderRadius: 2, background: x.c, display: "inline-block" }} /> {x.l}
-                        </span>
-                      ))}
-                    </div>
                   </div>
                 </div>
               )}
@@ -829,7 +891,6 @@ export default function BiblioAnalytics360() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                   <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Uso por Turno</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Distribución de servicios: matutino, vespertino, nocturno</div>
                     <ResponsiveContainer width="100%" height={240}>
                       <BarChart data={svcTurno}>
                         <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
@@ -843,10 +904,8 @@ export default function BiblioAnalytics360() {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-
                   <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Proporción por Turno</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Porcentaje del total de usos</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 20 }}>
                       {svcTurno.map((tr, i) => {
                         const colors = [t.teal, t.blue, t.purple];
@@ -855,16 +914,10 @@ export default function BiblioAnalytics360() {
                           <div key={i}>
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                               <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{tr.turno}</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: colors[i], fontFamily: "'Space Mono', monospace" }}>{tr.pct}% — {total.toLocaleString()} usos</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: colors[i] }}>{tr.pct}% — {total.toLocaleString()} usos</span>
                             </div>
                             <div style={{ width: "100%", height: 12, borderRadius: 6, background: `${t.text}06`, overflow: "hidden" }}>
-                              <div style={{ width: `${tr.pct}%`, height: "100%", borderRadius: 6, background: `linear-gradient(90deg, ${colors[i]}, ${colors[i]}88)`, transition: "width 0.8s" }} />
-                            </div>
-                            <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 10, color: t.textDim }}>
-                              <span>Prést: {tr.prestamos.toLocaleString()}</span>
-                              <span>Cómp: {tr.computo.toLocaleString()}</span>
-                              <span>Form: {tr.talleres}</span>
-                              <span>Esp: {tr.espacios.toLocaleString()}</span>
+                              <div style={{ width: `${tr.pct}%`, height: "100%", borderRadius: 6, background: colors[i], transition: "width 0.8s" }} />
                             </div>
                           </div>
                         );
@@ -874,18 +927,18 @@ export default function BiblioAnalytics360() {
                 </div>
               )}
 
-              {/* ---- INTERACTIVE DATA TABLE ---- */}
+              {/* ---- TABLE ---- */}
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Tabla de Datos Detallada</div>
-                    <div style={{ fontSize: 10, color: t.textDim }}>{svcTableFiltered.length} registros · Filtro: {svcCategory === "todos" ? "Todos" : svcCategory}</div>
+                    <div style={{ fontSize: 10, color: t.textDim }}>{svcTableFiltered.length} registros</div>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: t.inputBg, border: `1px solid ${t.cardBorder}` }}>
                       <Search size={12} color={t.textDim} />
                       <input value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(0); }}
-                        placeholder="Buscar servicio, dimensión..."
+                        placeholder="Buscar..."
                         style={{ border: "none", outline: "none", background: "transparent", fontSize: 11, color: t.text, width: 160 }} />
                       {svcSearch && <X size={11} color={t.textDim} style={{ cursor: "pointer" }} onClick={() => setSvcSearch("")} />}
                     </div>
@@ -895,16 +948,12 @@ export default function BiblioAnalytics360() {
                     </button>
                   </div>
                 </div>
-
-                {/* Table */}
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                     <thead>
                       <tr>
                         {["#","Periodo","Dimensión","Servicio","Valor"].map((h, i) => (
-                          <th key={i} style={{ textAlign: i === 4 ? "right" : "left", padding: "10px 12px", borderBottom: `2px solid ${t.cardBorder}`, fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                            {h}
-                          </th>
+                          <th key={i} style={{ textAlign: i === 4 ? "right" : "left", padding: "10px 12px", borderBottom: `2px solid ${t.cardBorder}`, fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -913,21 +962,19 @@ export default function BiblioAnalytics360() {
                         const dimColor = { "Préstamos": t.teal, "Cómputo": t.blue, "Formación": t.purple, "Espacios": t.amber, "Por Carrera": t.green, "Por Tipo Usuario": t.rose, "Por Turno": t.amber }[row.dimension] || t.textDim;
                         return (
                           <tr key={row.id} style={{ borderBottom: `1px solid ${t.cardBorder}`, background: i % 2 === 0 ? "transparent" : `${t.text}03` }}>
-                            <td style={{ padding: "8px 12px", color: t.textDim, fontFamily: "'Space Mono', monospace", fontSize: 10 }}>{row.id}</td>
+                            <td style={{ padding: "8px 12px", color: t.textDim, fontSize: 10 }}>{row.id}</td>
                             <td style={{ padding: "8px 12px", color: t.text }}>{row.periodo}</td>
                             <td style={{ padding: "8px 12px" }}>
                               <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: `${dimColor}12`, color: dimColor }}>{row.dimension}</span>
                             </td>
                             <td style={{ padding: "8px 12px", color: t.text, fontWeight: 500 }}>{row.servicio}</td>
-                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: t.text, fontFamily: "'Space Mono', monospace" }}>{row.valor.toLocaleString()}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: t.text }}>{row.valor.toLocaleString()}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
-
-                {/* Pagination */}
                 {svcTableFiltered.length > SVC_PAGE_SIZE && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
                     <span style={{ fontSize: 10, color: t.textDim }}>
@@ -944,8 +991,8 @@ export default function BiblioAnalytics360() {
                           {i + 1}
                         </button>
                       ))}
-                      <button onClick={() => setSvcPage(p => Math.min(Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1, p + 1))} disabled={svcPage >= Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1}
-                        style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, color: svcPage >= Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1 ? t.textMuted : t.text, cursor: svcPage >= Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1 ? "default" : "pointer" }}>
+                      <button onClick={() => setSvcPage(p => Math.min(Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1, p + 1))}
+                        style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, color: t.text, cursor: "pointer" }}>
                         <ChevronRight size={12} />
                       </button>
                     </div>
@@ -964,8 +1011,6 @@ export default function BiblioAnalytics360() {
                 <StatCard icon={Zap} label={`Predicción +${predHorizon} meses`} value={predHorizon <= 2 ? "1,950" : predHorizon <= 4 ? "2,100" : "1,680"} color={t.purple} t={t} />
                 <StatCard icon={Activity} label="RMSE (Error)" value={predModel === "rf" ? "48.3" : predModel === "prophet" ? "52.1" : "67.4"} change="-12.7%" changeType="up" color={t.amber} t={t} />
               </div>
-
-              {/* Controls panel */}
               <div style={{ background: t.card, borderRadius: 16, padding: 20, border: `1px solid ${t.cardBorder}`, marginBottom: 20, display: "flex", gap: 28, alignItems: "center", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Sliders size={14} color={t.teal} />
@@ -983,29 +1028,23 @@ export default function BiblioAnalytics360() {
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 10, color: t.textDim }}>Horizonte de predicción: {predHorizon} meses</label>
-                  <input type="range" min={1} max={6} value={predHorizon} onChange={e => setPredHorizon(+e.target.value)}
-                    style={{ width: 180, accentColor: t.teal }} />
+                  <label style={{ fontSize: 10, color: t.textDim }}>Horizonte: {predHorizon} meses</label>
+                  <input type="range" min={1} max={6} value={predHorizon} onChange={e => setPredHorizon(+e.target.value)} style={{ width: 180, accentColor: t.teal }} />
                 </div>
               </div>
-
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Pronóstico de Circulación</div>
-                <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>
-                  Modelo: {predModel === "rf" ? "Random Forest" : predModel === "prophet" ? "Prophet (Meta)" : "Regresión Lineal"} · Horizonte: {predHorizon} meses · Campus: {campus === "todos" ? "Todos" : campus}
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 16 }}>Pronóstico de Circulación</div>
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={circulacion}>
                     <defs>
                       <linearGradient id="pG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.teal} stopOpacity={0.2} /><stop offset="100%" stopColor={t.teal} stopOpacity={0} /></linearGradient>
-                      <linearGradient id="pG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.amber} stopOpacity={0.15} /><stop offset="100%" stopColor={t.amber} stopOpacity={0} /></linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
                     <XAxis dataKey="mes" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
                     <Tooltip content={<CTooltip />} />
                     <Area type="monotone" dataKey="prestamos" name="Real" stroke={t.teal} fill="url(#pG1)" strokeWidth={2.5} dot={{ r: 3 }} />
-                    <Area type="monotone" dataKey="prediccion" name="Predicción" stroke={t.amber} fill="url(#pG2)" strokeWidth={2.5} strokeDasharray="8 4" dot={{ r: 4, fill: t.amber, stroke: "#fff", strokeWidth: 2 }} />
+                    <Area type="monotone" dataKey="prediccion" name="Predicción" stroke={t.amber} fill="none" strokeWidth={2.5} strokeDasharray="8 4" dot={{ r: 4, fill: t.amber, stroke: "#fff", strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -1021,8 +1060,6 @@ export default function BiblioAnalytics360() {
                 <StatCard icon={ThumbsUp} label="Positivos" value={posCount.toString()} color={t.green} t={t} />
                 <StatCard icon={AlertTriangle} label="Negativos" value={negCount.toString()} color={t.rose} t={t} />
               </div>
-
-              {/* INPUT NLP */}
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                   <Brain size={16} color={t.purple} />
@@ -1031,45 +1068,34 @@ export default function BiblioAnalytics360() {
                 <div style={{ display: "flex", gap: 10 }}>
                   <input value={newComment} onChange={e => setNewComment(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && submitComment()}
-                    placeholder='Escribe un comentario, ej: "El servicio de préstamo fue excelente y rápido"'
+                    placeholder='Escribe un comentario...'
                     style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.inputBg, fontSize: 12, color: t.text, outline: "none" }} />
                   <button onClick={submitComment} disabled={analyzing || !newComment.trim()}
                     style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", borderRadius: 10, border: "none", background: analyzing ? t.textDim : `linear-gradient(135deg, ${t.purple}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 600, cursor: analyzing ? "wait" : "pointer", opacity: !newComment.trim() ? 0.5 : 1 }}>
                     {analyzing ? <><RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /> Analizando...</> : <><Send size={14} /> Analizar</>}
                   </button>
                 </div>
-                <div style={{ fontSize: 10, color: t.textDim, marginTop: 6 }}>
-                  El motor NLP clasifica automáticamente el sentimiento como positivo, negativo o neutral con un puntaje de confianza.
-                </div>
               </div>
-
               <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                {/* Tendencia */}
                 <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Tendencia del Sentimiento</div>
-                  <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Evolución mensual</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 16 }}>Tendencia del Sentimiento</div>
                   <ResponsiveContainer width="100%" height={220}>
                     <AreaChart data={sentTendencia}>
                       <defs>
                         <linearGradient id="sG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.green} stopOpacity={0.25} /><stop offset="100%" stopColor={t.green} stopOpacity={0} /></linearGradient>
-                        <linearGradient id="sG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.rose} stopOpacity={0.15} /><stop offset="100%" stopColor={t.rose} stopOpacity={0} /></linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
                       <XAxis dataKey="mes" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
                       <Tooltip content={<CTooltip />} />
                       <Area type="monotone" dataKey="positivo" name="% Positivo" stroke={t.green} fill="url(#sG1)" strokeWidth={2.5} dot={{ r: 3 }} />
-                      <Area type="monotone" dataKey="negativo" name="% Negativo" stroke={t.rose} fill="url(#sG2)" strokeWidth={2} dot={{ r: 3 }} />
+                      <Area type="monotone" dataKey="negativo" name="% Negativo" stroke={t.rose} fill="none" strokeWidth={2} dot={{ r: 3 }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-
-                {/* Radar */}
                 <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Radar de Percepción</div>
-                  <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Por dimensión del servicio</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 16 }}>Radar de Percepción</div>
                   <ResponsiveContainer width="100%" height={220}>
                     <RadarChart data={radarBase}>
                       <PolarGrid stroke={`${t.text}12`} />
@@ -1080,16 +1106,10 @@ export default function BiblioAnalytics360() {
                   </ResponsiveContainer>
                 </div>
               </div>
-
-              {/* Comments feed */}
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Feed de Comentarios Analizados</div>
-                    <div style={{ fontSize: 10, color: t.textDim }}>{comments.length} comentarios procesados por NLP</div>
-                  </div>
-                  <button onClick={exportSentCSV}
-                    style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, fontWeight: 600, color: t.text, cursor: "pointer" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Feed de Comentarios</div>
+                  <button onClick={exportSentCSV} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, fontWeight: 600, color: t.text, cursor: "pointer" }}>
                     <Download size={11} /> Exportar CSV
                   </button>
                 </div>
@@ -1099,13 +1119,9 @@ export default function BiblioAnalytics360() {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <Badge tipo={c.sentimiento} t={t} />
-                          <span style={{ fontSize: 10, fontWeight: 600, color: t.purple, fontFamily: "'Space Mono', monospace" }}>
-                            {(c.score * 100).toFixed(0)}% confianza
-                          </span>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: t.purple }}>{(c.score * 100).toFixed(0)}% confianza</span>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: t.textDim }}>
-                          <span>{c.fuente}</span><span>·</span><span>{timeAgo(c.fecha)}</span>
-                        </div>
+                        <div style={{ fontSize: 10, color: t.textDim }}>{c.fuente} · {timeAgo(c.fecha)}</div>
                       </div>
                       <p style={{ fontSize: 11, lineHeight: 1.5, color: t.text, margin: 0 }}>{c.texto}</p>
                     </div>
@@ -1124,30 +1140,23 @@ export default function BiblioAnalytics360() {
                 <StatCard icon={Users} label="Retención usuarios biblio." value="81%" change="+3.2pp" changeType="up" color={t.purple} t={t} />
                 <StatCard icon={Activity} label="Estudiantes analizados" value="2,110" color={t.amber} t={t} />
               </div>
-
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                 <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Uso vs. Promedio Académico</div>
-                  <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Correlación por rango de préstamos</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 16 }}>Uso vs. Promedio Académico</div>
                   <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={impactoBase}>
                       <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
                       <XAxis dataKey="rango" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
                       <YAxis domain={[6, 10]} tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
                       <Tooltip content={<CTooltip />} />
-                      <Bar dataKey="promedio" name="Promedio" radius={[8, 8, 0, 0]}>
+                      <Bar dataKey="promedio" name="Promedio" radius={[8,8,0,0]}>
                         {impactoBase.map((_, i) => <Cell key={i} fill={[t.blue, t.teal, "#2dd4bf", t.purple, t.amber][i]} />)}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                  <div style={{ marginTop: 10, padding: 10, borderRadius: 10, background: `${t.teal}08`, fontSize: 11, color: t.teal }}>
-                    <strong>Hallazgo:</strong> +1.9 puntos de promedio entre el rango más bajo y el más alto de uso bibliotecario.
-                  </div>
                 </div>
-
                 <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Retención por Semestre</div>
-                  <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Usuarios de biblioteca vs. no usuarios</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 16 }}>Retención por Semestre</div>
                   <ResponsiveContainer width="100%" height={260}>
                     <LineChart data={retencionBase}>
                       <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
@@ -1158,13 +1167,8 @@ export default function BiblioAnalytics360() {
                       <Line type="monotone" dataKey="noUsr" name="No Usuarios" stroke={t.rose} strokeWidth={3} strokeDasharray="6 4" dot={{ r: 4, fill: t.rose, stroke: "#fff", strokeWidth: 2 }} />
                     </LineChart>
                   </ResponsiveContainer>
-                  <div style={{ marginTop: 10, padding: 10, borderRadius: 10, background: `${t.purple}08`, fontSize: 11, color: t.purple }}>
-                    <strong>Insight:</strong> Al 8vo semestre, los usuarios muestran +34pp de retención (74% vs 40%).
-                  </div>
                 </div>
               </div>
-
-              {/* Executive summary */}
               <div style={{ borderRadius: 16, padding: 22, background: `linear-gradient(135deg, ${t.navy}, ${dark ? "#1a2744" : "#1e2d4a"})` }}>
                 <div style={{ display: "flex", gap: 14 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 14, background: `${t.teal}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1173,7 +1177,7 @@ export default function BiblioAnalytics360() {
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 6 }}>Resumen Ejecutivo de Impacto</div>
                     <p style={{ fontSize: 11, lineHeight: 1.6, color: "rgba(255,255,255,0.7)", margin: 0 }}>
-                      Correlación estadísticamente significativa (<span style={{ color: t.tealLight, fontFamily: "'Space Mono', monospace" }}>r = 0.73, p &lt; 0.001</span>) entre uso de servicios bibliotecarios y rendimiento académico. Los usuarios activos obtienen promedios más altos y su permanencia escolar es considerablemente superior.
+                      Correlación estadísticamente significativa (<span style={{ color: t.tealLight }}>r = 0.73, p &lt; 0.001</span>) entre uso de servicios bibliotecarios y rendimiento académico.
                     </p>
                     <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
                       {[{ l: "+1.9 pts promedio", c: t.teal }, { l: "+34pp retención", c: t.purple }, { l: "2,110 estudiantes", c: t.amber }].map((b, i) => (
@@ -1195,8 +1199,6 @@ export default function BiblioAnalytics360() {
                 <StatCard icon={CheckCircle} label="Calidad de datos" value="96.8%" color={t.green} t={t} />
                 <StatCard icon={Clock} label="Última actualización" value="Hace 2h" color={t.amber} t={t} />
               </div>
-
-              {/* Upload area */}
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                   <Upload size={16} color={t.blue} />
@@ -1208,45 +1210,31 @@ export default function BiblioAnalytics360() {
                   onDrop={e => {
                     e.preventDefault();
                     const file = e.dataTransfer.files[0];
-                    if (file) {
-                      setUploadedFile(file.name);
-                      setDataRows(prev => prev + Math.floor(Math.random() * 500 + 100));
-                      setNotifications(prev => [{ id: Date.now(), text: `Archivo "${file.name}" procesado exitosamente`, type: "success", time: "Ahora" }, ...prev]);
-                    }
+                    if (file) { setUploadedFile(file.name); setDataRows(prev => prev + Math.floor(Math.random() * 500 + 100)); }
                   }}
-                  style={{ border: `2px dashed ${t.cardBorder}`, borderRadius: 12, padding: 40, textAlign: "center", transition: "border-color 0.2s", cursor: "pointer" }}
+                  style={{ border: `2px dashed ${t.cardBorder}`, borderRadius: 12, padding: 40, textAlign: "center", cursor: "pointer" }}
                   onClick={() => {
                     const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = ".csv,.xlsx,.xls";
-                    input.onchange = (e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        setUploadedFile(file.name);
-                        setDataRows(prev => prev + Math.floor(Math.random() * 500 + 100));
-                        setNotifications(prev => [{ id: Date.now(), text: `Archivo "${file.name}" procesado exitosamente`, type: "success", time: "Ahora" }, ...prev]);
-                      }
-                    };
+                    input.type = "file"; input.accept = ".csv,.xlsx,.xls";
+                    input.onchange = (e) => { const file = e.target.files[0]; if (file) { setUploadedFile(file.name); setDataRows(prev => prev + Math.floor(Math.random() * 500 + 100)); } };
                     input.click();
-                  }}
-                >
+                  }}>
                   <Upload size={32} color={t.textDim} style={{ marginBottom: 10 }} />
                   <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 4 }}>Arrastra un archivo CSV o Excel aquí</div>
-                  <div style={{ fontSize: 10, color: t.textDim }}>o haz clic para seleccionar un archivo</div>
+                  <div style={{ fontSize: 10, color: t.textDim }}>o haz clic para seleccionar</div>
                   {uploadedFile && (
                     <div style={{ marginTop: 12, padding: "8px 14px", borderRadius: 8, background: `${t.green}10`, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: t.green }}>
-                      <CheckCircle size={14} /> {uploadedFile} cargado exitosamente
+                      <CheckCircle size={14} /> {uploadedFile} cargado
                     </div>
                   )}
                 </div>
               </div>
-
-              {/* Connected sources */}
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Fuentes de Datos Conectadas</div>
                 {[
                   { name: "SIAB (Sistema Bibliotecario)", status: "activo", records: "12,450", lastSync: "Hace 2h", icon: BookOpen, color: t.teal },
                   { name: "Sistema Escolar UACJ", status: "activo", records: "2,110", lastSync: "Hace 24h", icon: GraduationCap, color: t.blue },
+                  { name: "Google Forms — Uso de Computadoras", status: "activo", records: realLoading ? "..." : `${realStats?.total_sesiones ?? 0}`, lastSync: "Tiempo real", icon: Database, color: t.teal },
                   { name: "Buzón Digital + Encuestas", status: "activo", records: `${comments.length}`, lastSync: "Tiempo real", icon: MessageSquare, color: t.purple },
                 ].map((src, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, borderRadius: 12, marginBottom: 8, background: `${t.text}03` }}>
@@ -1255,17 +1243,12 @@ export default function BiblioAnalytics360() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{src.name}</div>
-                      <div style={{ fontSize: 10, color: t.textDim }}>{src.records} registros · Última sync: {src.lastSync}</div>
+                      <div style={{ fontSize: 10, color: t.textDim }}>{src.records} registros · {src.lastSync}</div>
                     </div>
-                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: `${t.green}12`, color: t.green }}>
-                      <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: t.green, marginRight: 4 }} />
-                      Activo
-                    </span>
+                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: `${t.green}12`, color: t.green }}>● Activo</span>
                   </div>
                 ))}
               </div>
-
-              {/* Data quality */}
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Auditoría de Calidad de Datos</div>
                 {[
@@ -1278,14 +1261,15 @@ export default function BiblioAnalytics360() {
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 4 ? `1px solid ${t.cardBorder}` : "none" }}>
                     <span style={{ fontSize: 11, fontWeight: 500, color: t.text, flex: 1 }}>{q.metric}</span>
                     <div style={{ width: 200, height: 6, borderRadius: 3, background: `${t.text}08`, overflow: "hidden" }}>
-                      <div style={{ width: `${q.value}%`, height: "100%", borderRadius: 3, background: q.color, transition: "width 0.8s" }} />
+                      <div style={{ width: `${q.value}%`, height: "100%", borderRadius: 3, background: q.color }} />
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: q.color, fontFamily: "'Space Mono', monospace", width: 50, textAlign: "right" }}>{q.value}%</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: q.color, width: 50, textAlign: "right" }}>{q.value}%</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
         </div>
       </main>
     </div>
