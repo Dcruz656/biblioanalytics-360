@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart,
-  Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ScatterChart, Scatter
+  Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
 import {
   BookOpen, Users, TrendingUp, MessageSquare, GraduationCap, Settings,
@@ -10,7 +10,8 @@ import {
   Download, Activity, AlertTriangle, CheckCircle, Clock, Heart, ThumbsUp,
   ThumbsDown, Minus, Home, FileText, Zap, Target, Award, Brain, BarChart3,
   Filter, Plus, X, Upload, Play, Pause, RefreshCw, Send, Eye, Layers,
-  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe
+  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Table,
+  AlertCircle, Info,
 } from "lucide-react";
 
 // ===== THEME =====
@@ -35,10 +36,9 @@ const themes = {
   },
 };
 
-// ===== API CONFIG =====
 const API_URL = "https://biblioanalytics-360.onrender.com";
 
-// ===== RAW DATA GENERATORS =====
+// ===== SIMULACIÓN =====
 function genCirculacion(seed, campus, periodo) {
   const base = campus === "todos" ? 1 : campus === "central" ? 1.2 : campus === "norte" ? 0.7 : 0.5;
   const pMult = periodo === "2024-2" ? 1 : periodo === "2025-1" ? 1.15 : 0.9;
@@ -109,7 +109,6 @@ const defaultComments = [
   { id: 5, texto: "Buen acervo en ciencias sociales, faltan títulos en economía.", sentimiento: "neutral", score: 0.65, fecha: new Date(Date.now() - 90000000), fuente: "Encuesta" },
 ];
 
-// ===== SIMPLE NLP SIMULATION =====
 function analyzeSentiment(text) {
   const lower = text.toLowerCase();
   const pos = ["excelente","bueno","genial","increíble","perfecto","bien","gran","mejor","gracias","ayuda","rápido","cómodo","limpio","amable","recomiendo","útil","eficiente","fantástico","agradable","satisfecho"];
@@ -130,115 +129,6 @@ function timeAgo(d) {
   if (s < 86400) return `Hace ${Math.floor(s / 3600)}h`;
   return `Hace ${Math.floor(s / 86400)}d`;
 }
-
-// ===== COMPONENTS =====
-const CTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: "#0e1629", color: "#fff", padding: 10, borderRadius: 10, fontSize: 11, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
-      {payload.map((p, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 4, background: p.color, flexShrink: 0 }} />
-          <span style={{ color: "#94a3b8" }}>{p.name}:</span>
-          <span style={{ fontWeight: 700 }}>{typeof p.value === "number" ? p.value.toLocaleString() : p.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-function StatCard({ icon: Icon, label, value, change, changeType, color, t, onClick }) {
-  return (
-    <div onClick={onClick} className="transition-all duration-200"
-      style={{ background: t.card, borderRadius: 16, padding: 18, border: `1px solid ${t.cardBorder}`, cursor: onClick ? "pointer" : "default", boxShadow: t.shadow }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-        <div style={{ width: 38, height: 38, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: `${color}15` }}>
-          <Icon size={18} color={color} />
-        </div>
-        {change && (
-          <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: changeType === "up" ? `${t.green}15` : `${t.rose}15`, color: changeType === "up" ? t.green : t.rose }}>
-            {changeType === "up" ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}{change}
-          </div>
-        )}
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: t.text, fontFamily: "'DM Sans', sans-serif" }}>{value}</div>
-      <div style={{ fontSize: 11, color: t.textDim, marginTop: 2 }}>{label}</div>
-    </div>
-  );
-}
-
-function Badge({ tipo, t }) {
-  const cfg = {
-    positivo: { color: t.green, icon: <ThumbsUp size={10} />, label: "Positivo" },
-    negativo: { color: t.rose, icon: <ThumbsDown size={10} />, label: "Negativo" },
-    neutral: { color: t.amber, icon: <Minus size={10} />, label: "Neutral" },
-  };
-  const c = cfg[tipo] || cfg.neutral;
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: `${c.color}15`, color: c.color }}>
-      {c.icon} {c.label}
-    </span>
-  );
-}
-
-function ProgressRow({ item, t }) {
-  const color = item.estado === "bien" ? t.green : item.estado === "riesgo" ? t.rose : t.blue;
-  return (
-    <div style={{ padding: "12px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{item.nombre}</span>
-        <span style={{ fontSize: 10, color: t.textDim }}>Meta: {item.meta}</span>
-      </div>
-      <div style={{ width: "100%", height: 6, borderRadius: 3, background: `${t.text}08`, overflow: "hidden" }}>
-        <div style={{ width: `${item.progreso}%`, height: "100%", borderRadius: 3, background: color, transition: "width 0.8s ease" }} />
-      </div>
-      <div style={{ textAlign: "right", marginTop: 3, fontSize: 10, fontWeight: 700, color }}>{item.progreso}%</div>
-    </div>
-  );
-}
-
-// ===== DROPDOWN =====
-function Dropdown({ label, value, options, onChange, t, icon: Icon }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-  const selected = options.find(o => o.value === value);
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button onClick={() => setOpen(!open)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.card, fontSize: 11, fontWeight: 600, color: t.text, cursor: "pointer" }}>
-        {Icon && <Icon size={12} color={t.teal} />}
-        <span style={{ color: t.textDim }}>{label}:</span>
-        <span>{selected?.label}</span>
-        <ChevronDown size={12} color={t.textDim} style={{ transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
-      </button>
-      {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: t.card, border: `1px solid ${t.cardBorder}`, borderRadius: 10, padding: 4, zIndex: 100, minWidth: 160, boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }}>
-          {options.map(o => (
-            <button key={o.value} onClick={() => { onChange(o.value); setOpen(false); }}
-              style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", borderRadius: 8, border: "none", background: o.value === value ? `${t.teal}12` : "transparent", color: o.value === value ? t.teal : t.text, fontSize: 11, fontWeight: o.value === value ? 600 : 400, cursor: "pointer" }}>
-              {o.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ===== NAV =====
-const navMain = [
-  { id: "overview", icon: Home, label: "Vista General" },
-  { id: "servicios", icon: BarChart3, label: "Servicios" },
-  { id: "predictivo", icon: TrendingUp, label: "Mod. Predictivo" },
-  { id: "sentimiento", icon: Heart, label: "Mod. Sentimiento" },
-  { id: "impacto", icon: GraduationCap, label: "Mod. Impacto" },
-  { id: "datos", icon: Database, label: "Datos & Upload" },
-];
 
 // ===== SERVICIOS DATA =====
 const mesesFull = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep"];
@@ -296,38 +186,119 @@ function genServiciosTurno(seed) {
   ];
 }
 
-function buildTableRows(mesSvc, carreraSvc, tipoSvc, turnoSvc) {
-  const rows = [];
-  let id = 1;
-  mesesFull.forEach(m => {
-    const d = mesSvc.find(x => x.mes === m);
-    if (!d) return;
-    rows.push({ id: id++, periodo: m, dimension: "Préstamos", servicio: "Domicilio", valor: d.domicilio });
-    rows.push({ id: id++, periodo: m, dimension: "Préstamos", servicio: "En Sala", valor: d.sala });
-    rows.push({ id: id++, periodo: m, dimension: "Préstamos", servicio: "Interbibliotecario", valor: d.interbibliotecario });
-    rows.push({ id: id++, periodo: m, dimension: "Cómputo", servicio: "Computadoras", valor: d.computadoras });
-    rows.push({ id: id++, periodo: m, dimension: "Cómputo", servicio: "Internet WiFi", valor: d.internet });
-    rows.push({ id: id++, periodo: m, dimension: "Cómputo", servicio: "Impresiones", valor: d.impresiones });
-    rows.push({ id: id++, periodo: m, dimension: "Formación", servicio: "Talleres", valor: d.talleres });
-    rows.push({ id: id++, periodo: m, dimension: "Formación", servicio: "Capacitaciones", valor: d.capacitaciones });
-    rows.push({ id: id++, periodo: m, dimension: "Formación", servicio: "Asesorías", valor: d.asesorias });
-    rows.push({ id: id++, periodo: m, dimension: "Espacios", servicio: "Cubículos", valor: d.cubiculos });
-    rows.push({ id: id++, periodo: m, dimension: "Espacios", servicio: "Salas de Estudio", valor: d.salasEstudio });
-    rows.push({ id: id++, periodo: m, dimension: "Espacios", servicio: "Coworking", valor: d.coworking });
-  });
-  carreraSvc.forEach(c => {
-    rows.push({ id: id++, periodo: "Acum.", dimension: "Por Carrera", servicio: c.carrera, valor: c.total });
-  });
-  tipoSvc.forEach(u => {
-    rows.push({ id: id++, periodo: "Acum.", dimension: "Por Tipo Usuario", servicio: u.tipo, valor: u.prestamos + u.computo + u.talleres + u.espacios });
-  });
-  turnoSvc.forEach(tr => {
-    rows.push({ id: id++, periodo: "Acum.", dimension: "Por Turno", servicio: tr.turno, valor: tr.prestamos + tr.computo + tr.talleres + tr.espacios });
-  });
-  return rows;
+// ===== COMPONENTS =====
+const CTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: "#0e1629", color: "#fff", padding: 10, borderRadius: 10, fontSize: 11, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 4, background: p.color, flexShrink: 0 }} />
+          <span style={{ color: "#94a3b8" }}>{p.name}:</span>
+          <span style={{ fontWeight: 700 }}>{typeof p.value === "number" ? p.value.toLocaleString() : p.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+function StatCard({ icon: Icon, label, value, change, changeType, color, t, onClick, badge }) {
+  return (
+    <div onClick={onClick} className="transition-all duration-200"
+      style={{ background: t.card, borderRadius: 16, padding: 18, border: `1px solid ${t.cardBorder}`, cursor: onClick ? "pointer" : "default", boxShadow: t.shadow }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: `${color}15` }}>
+          <Icon size={18} color={color} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          {badge && <span style={{ padding: "1px 6px", borderRadius: 6, fontSize: 8, fontWeight: 700, background: `${color}20`, color }}>{badge}</span>}
+          {change && (
+            <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: changeType === "up" ? `${t.green}15` : `${t.rose}15`, color: changeType === "up" ? t.green : t.rose }}>
+              {changeType === "up" ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}{change}
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: t.text, fontFamily: "'DM Sans', sans-serif" }}>{value}</div>
+      <div style={{ fontSize: 11, color: t.textDim, marginTop: 2 }}>{label}</div>
+    </div>
+  );
 }
 
-// ===== MAIN APP =====
+function Badge({ tipo, t }) {
+  const cfg = {
+    positivo: { color: t.green, icon: <ThumbsUp size={10} />, label: "Positivo" },
+    negativo: { color: t.rose, icon: <ThumbsDown size={10} />, label: "Negativo" },
+    neutral: { color: t.amber, icon: <Minus size={10} />, label: "Neutral" },
+  };
+  const c = cfg[tipo] || cfg.neutral;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: `${c.color}15`, color: c.color }}>
+      {c.icon} {c.label}
+    </span>
+  );
+}
+
+function ProgressRow({ item, t }) {
+  const color = item.estado === "bien" ? t.green : item.estado === "riesgo" ? t.rose : t.blue;
+  return (
+    <div style={{ padding: "12px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{item.nombre}</span>
+        <span style={{ fontSize: 10, color: t.textDim }}>Meta: {item.meta}</span>
+      </div>
+      <div style={{ width: "100%", height: 6, borderRadius: 3, background: `${t.text}08`, overflow: "hidden" }}>
+        <div style={{ width: `${item.progreso}%`, height: "100%", borderRadius: 3, background: color, transition: "width 0.8s ease" }} />
+      </div>
+      <div style={{ textAlign: "right", marginTop: 3, fontSize: 10, fontWeight: 700, color }}>{item.progreso}%</div>
+    </div>
+  );
+}
+
+function Dropdown({ label, value, options, onChange, t, icon: Icon }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  const selected = options.find(o => o.value === value);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button onClick={() => setOpen(!open)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.card, fontSize: 11, fontWeight: 600, color: t.text, cursor: "pointer" }}>
+        {Icon && <Icon size={12} color={t.teal} />}
+        <span style={{ color: t.textDim }}>{label}:</span>
+        <span>{selected?.label}</span>
+        <ChevronDown size={12} color={t.textDim} style={{ transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
+      </button>
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: t.card, border: `1px solid ${t.cardBorder}`, borderRadius: 10, padding: 4, zIndex: 100, minWidth: 160, boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }}>
+          {options.map(o => (
+            <button key={o.value} onClick={() => { onChange(o.value); setOpen(false); }}
+              style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", borderRadius: 8, border: "none", background: o.value === value ? `${t.teal}12` : "transparent", color: o.value === value ? t.teal : t.text, fontSize: 11, fontWeight: o.value === value ? 600 : 400, cursor: "pointer" }}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const navMain = [
+  { id: "overview", icon: Home, label: "Vista General" },
+  { id: "servicios", icon: BarChart3, label: "Servicios" },
+  { id: "predictivo", icon: TrendingUp, label: "Mod. Predictivo" },
+  { id: "sentimiento", icon: Heart, label: "Mod. Sentimiento" },
+  { id: "impacto", icon: GraduationCap, label: "Mod. Impacto" },
+  { id: "datos", icon: Database, label: "Datos & Upload" },
+];
+
+// ===== KOHA UPLOAD STATES =====
+// idle | uploading | report | confirming | done | error
+
 export default function BiblioAnalytics360() {
   const [dark, setDark] = useState(false);
   const t = dark ? themes.dark : themes.light;
@@ -341,7 +312,6 @@ export default function BiblioAnalytics360() {
   const [analyzing, setAnalyzing] = useState(false);
   const [predHorizon, setPredHorizon] = useState(3);
   const [predModel, setPredModel] = useState("rf");
-  const [uploadedFile, setUploadedFile] = useState(null);
   const [dataRows, setDataRows] = useState(15247);
   const [notifications, setNotifications] = useState([
     { id: 1, text: "Predicción Oct actualizada: 1,950 préstamos esperados", type: "info", time: "Hace 2h" },
@@ -349,48 +319,136 @@ export default function BiblioAnalytics360() {
     { id: 3, text: "3 nuevos comentarios analizados por NLP", type: "success", time: "Hace 8h" },
   ]);
 
-  // ===== DATOS REALES DEL BACKEND =====
+  // ===== DATOS REALES: USO COMPUTADORAS =====
   const [realStats, setRealStats] = useState(null);
-  const [realData, setRealData] = useState([]);
   const [realLoading, setRealLoading] = useState(true);
   const [realError, setRealError] = useState(null);
 
-  useEffect(() => {
-    setRealLoading(true);
-    Promise.all([
-      fetch(`${API_URL}/api/v1/uso-computadoras/stats`).then(r => r.json()),
-      fetch(`${API_URL}/api/v1/uso-computadoras`).then(r => r.json()),
-    ])
-      .then(([stats, data]) => {
-        setRealStats(stats);
-        setRealData(data.data || []);
-        setRealLoading(false);
-      })
-      .catch(() => {
-        setRealError("No se pudo conectar al backend");
-        setRealLoading(false);
-      });
+  // ===== DATOS REALES: KOHA PRÉSTAMOS =====
+  const [kohaStats, setKohaStats] = useState(null);
+  const [kohaLoading, setKohaLoading] = useState(true);
+  const [kohaError, setKohaError] = useState(null);
+
+  // ===== KOHA UPLOAD STATE MACHINE =====
+  // idle → uploading → report → confirming → done | error
+  const [kohaUploadState, setKohaUploadState] = useState("idle");
+  const [kohaReport, setKohaReport] = useState(null);
+  const [kohaPreview, setKohaPreview] = useState([]);
+  const [kohaRecords, setKohaRecords] = useState([]); // frontend retiene los registros limpios
+  const [kohaInsertResult, setKohaInsertResult] = useState(null);
+  const [kohaUploadError, setKohaUploadError] = useState(null);
+  const [kohaFileName, setKohaFileName] = useState("");
+
+  const fetchKohaStats = useCallback(() => {
+    setKohaLoading(true);
+    fetch(`${API_URL}/api/v1/koha/stats`)
+      .then(r => r.json())
+      .then(data => { setKohaStats(data); setKohaLoading(false); })
+      .catch(() => { setKohaError("No se pudo conectar al backend"); setKohaLoading(false); });
   }, []);
 
-  // Gráfico de barras con datos reales agrupados por propósito
+  useEffect(() => {
+    setRealLoading(true);
+    fetch(`${API_URL}/api/v1/uso-computadoras/stats`)
+      .then(r => r.json())
+      .then(data => { setRealStats(data); setRealLoading(false); })
+      .catch(() => { setRealError("No se pudo conectar al backend"); setRealLoading(false); });
+
+    fetchKohaStats();
+  }, [fetchKohaStats]);
+
+  // ===== UPLOAD KOHA (real) =====
+  const handleKohaUpload = useCallback(async (file) => {
+    if (!file || !file.name.toLowerCase().endsWith(".csv")) {
+      setKohaUploadError("Solo se aceptan archivos .CSV");
+      setKohaUploadState("error");
+      return;
+    }
+    setKohaFileName(file.name);
+    setKohaUploadState("uploading");
+    setKohaUploadError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${API_URL}/api/v1/koha/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Error en el servidor");
+      }
+
+      const data = await res.json();
+      setKohaReport(data.reporte);
+      setKohaPreview(data.preview || []);
+      setKohaRecords(data.registros_limpios || []); // frontend retiene
+      setKohaUploadState("report");
+    } catch (e) {
+      setKohaUploadError(e.message);
+      setKohaUploadState("error");
+    }
+  }, []);
+
+  // ===== CONFIRMAR INGESTA (stateless: envía records desde frontend) =====
+  const handleKohaConfirm = useCallback(async () => {
+    if (!kohaRecords.length) return;
+    setKohaUploadState("confirming");
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/koha/confirmar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registros: kohaRecords }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Error al insertar");
+      }
+
+      const result = await res.json();
+      setKohaInsertResult(result);
+      setKohaUploadState("done");
+      setDataRows(prev => prev + result.registros_insertados);
+
+      // Refrescar stats de Koha
+      fetchKohaStats();
+
+      setNotifications(prev => [{
+        id: Date.now(),
+        text: `Koha: ${result.registros_insertados} registros insertados en BD`,
+        type: "success",
+        time: "Ahora",
+      }, ...prev]);
+    } catch (e) {
+      setKohaUploadError(e.message);
+      setKohaUploadState("error");
+    }
+  }, [kohaRecords, fetchKohaStats]);
+
+  const resetKohaUpload = () => {
+    setKohaUploadState("idle");
+    setKohaReport(null);
+    setKohaPreview([]);
+    setKohaRecords([]);
+    setKohaInsertResult(null);
+    setKohaUploadError(null);
+    setKohaFileName("");
+  };
+
+  // Gráficos desde datos reales
   const realPorProposito = useMemo(() => {
     if (!realStats?.por_proposito) return [];
     return Object.entries(realStats.por_proposito).map(([name, value]) => ({ name, value }));
   }, [realStats]);
 
-  const realPorTipo = useMemo(() => {
-    if (!realStats?.por_tipo_usuario) return [];
-    return Object.entries(realStats.por_tipo_usuario).map(([name, value]) => ({ name, value }));
-  }, [realStats]);
-
-  const realPorBiblioteca = useMemo(() => {
-    if (!realStats?.por_biblioteca) return [];
-    return Object.entries(realStats.por_biblioteca).map(([name, value]) => ({ name, value }));
-  }, [realStats]);
-
   const seed = campus === "todos" ? 0 : campus === "central" ? 1 : campus === "norte" ? 2 : 3;
   const circulacion = useMemo(() => genCirculacion(seed, campus, periodo), [seed, campus, periodo]);
-  const sentTendencia = useMemo(() => genSentimiento(seed), [seed]);
+  const sentTendencia = useMemo(() => genSentimiento(seed));
 
   const [svcView, setSvcView] = useState("temporal");
   const [svcCategory, setSvcCategory] = useState("todos");
@@ -402,29 +460,20 @@ export default function BiblioAnalytics360() {
   const svcCarrera = useMemo(() => genServiciosCarrera(seed), [seed]);
   const svcTipoUsr = useMemo(() => genServiciosTipoUsuario(seed), [seed]);
   const svcTurno = useMemo(() => genServiciosTurno(seed), [seed]);
-  const svcTableAll = useMemo(() => buildTableRows(svcMes, svcCarrera, svcTipoUsr, svcTurno), [svcMes, svcCarrera, svcTipoUsr, svcTurno]);
 
-  const svcTableFiltered = useMemo(() => {
-    let rows = svcTableAll;
-    if (svcCategory !== "todos") {
-      const map = { prestamos: "Préstamos", computo: "Cómputo", formacion: "Formación", espacios: "Espacios" };
-      rows = rows.filter(r => r.dimension === map[svcCategory]);
-    }
-    if (svcSearch.trim()) {
-      const q = svcSearch.toLowerCase();
-      rows = rows.filter(r =>
-        r.servicio.toLowerCase().includes(q) ||
-        r.dimension.toLowerCase().includes(q) ||
-        r.periodo.toLowerCase().includes(q)
-      );
-    }
-    return rows;
-  }, [svcTableAll, svcCategory, svcSearch]);
+  // Koha por mes para gráfico
+  const kohaPorMes = useMemo(() => {
+    if (!kohaStats?.por_mes) return [];
+    const orden = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    return orden
+      .filter(m => kohaStats.por_mes[m] !== undefined)
+      .map(m => ({ mes: m, prestamos: kohaStats.por_mes[m] }));
+  }, [kohaStats]);
 
-  const totalPrestamos = useMemo(() => {
-    const s = circulacion.reduce((a, c) => a + (c.prestamos || 0), 0);
-    return s.toLocaleString();
-  }, [circulacion]);
+  const kohaTopBibliotecas = useMemo(() => {
+    if (!kohaStats?.por_biblioteca) return [];
+    return Object.entries(kohaStats.por_biblioteca).map(([name, value]) => ({ name, value }));
+  }, [kohaStats]);
 
   const lastPrestamos = circulacion.filter(c => c.prestamos).slice(-1)[0]?.prestamos || 0;
 
@@ -433,21 +482,11 @@ export default function BiblioAnalytics360() {
     setAnalyzing(true);
     setTimeout(() => {
       const analysis = analyzeSentiment(newComment);
-      const c = {
-        id: Date.now(),
-        texto: newComment,
-        sentimiento: analysis.sentimiento,
-        score: analysis.score,
-        fecha: new Date(),
-        fuente: "Entrada Manual",
-      };
+      const c = { id: Date.now(), texto: newComment, sentimiento: analysis.sentimiento, score: analysis.score, fecha: new Date(), fuente: "Entrada Manual" };
       setComments(prev => [c, ...prev]);
       setNewComment("");
       setAnalyzing(false);
-      setNotifications(prev => [
-        { id: Date.now(), text: `Comentario analizado: ${analysis.sentimiento} (${(analysis.score * 100).toFixed(0)}% confianza)`, type: analysis.sentimiento === "positivo" ? "success" : analysis.sentimiento === "negativo" ? "warn" : "info", time: "Ahora" },
-        ...prev,
-      ]);
+      setNotifications(prev => [{ id: Date.now(), text: `Comentario analizado: ${analysis.sentimiento} (${(analysis.score * 100).toFixed(0)}% confianza)`, type: analysis.sentimiento === "positivo" ? "success" : analysis.sentimiento === "negativo" ? "warn" : "info", time: "Ahora" }, ...prev]);
     }, 1200);
   }, [newComment]);
 
@@ -456,37 +495,230 @@ export default function BiblioAnalytics360() {
     const rows = circulacion.map(c => `${c.mes},${c.prestamos||""},${c.devoluciones||""},${c.prediccion||""}`).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `biblioanalytics_${campus}_${periodo}.csv`; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = `biblioanalytics_${campus}_${periodo}.csv`; a.click();
     URL.revokeObjectURL(url);
   }, [circulacion, campus, periodo]);
 
   const exportSentCSV = useCallback(() => {
     const header = "ID,Texto,Sentimiento,Confianza,Fecha,Fuente\n";
     const rows = comments.map(c => `${c.id},"${c.texto}",${c.sentimiento},${(c.score*100).toFixed(1)}%,${c.fecha.toISOString()},${c.fuente}`).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "sentimiento_analisis.csv"; a.click();
-    URL.revokeObjectURL(url);
+    const blob = new Blob([header + rows], { type: "text/csv" }); const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "sentimiento_analisis.csv"; a.click(); URL.revokeObjectURL(url);
   }, [comments]);
-
-  const exportSvcCSV = useCallback(() => {
-    const header = "ID,Periodo,Dimension,Servicio,Valor\n";
-    const rows = svcTableFiltered.map(r => `${r.id},${r.periodo},${r.dimension},${r.servicio},${r.valor}`).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `servicios_${svcCategory}_${campus}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  }, [svcTableFiltered, svcCategory, campus]);
 
   const posCount = comments.filter(c => c.sentimiento === "positivo").length;
   const negCount = comments.filter(c => c.sentimiento === "negativo").length;
   const satPct = comments.length ? Math.round((posCount / comments.length) * 100) : 0;
 
+  // ===== KOHA UPLOAD UI COMPONENTS =====
+  const KohaDropZone = () => (
+    <div
+      onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = t.teal; e.currentTarget.style.background = `${t.teal}06`; }}
+      onDragLeave={e => { e.currentTarget.style.borderColor = t.cardBorder; e.currentTarget.style.background = "transparent"; }}
+      onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = t.cardBorder; e.currentTarget.style.background = "transparent"; const file = e.dataTransfer.files[0]; if (file) handleKohaUpload(file); }}
+      onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = ".csv"; input.onchange = e => { if (e.target.files[0]) handleKohaUpload(e.target.files[0]); }; input.click(); }}
+      style={{ border: `2px dashed ${t.cardBorder}`, borderRadius: 14, padding: 48, textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
+      <div style={{ width: 56, height: 56, borderRadius: 16, background: `${t.blue}12`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+        <Upload size={24} color={t.blue} />
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 6 }}>Sube el CSV de Koha</div>
+      <div style={{ fontSize: 11, color: t.textDim, marginBottom: 12 }}>Arrastra o haz clic · Solo archivos .CSV</div>
+      <div style={{ padding: "6px 14px", borderRadius: 8, background: `${t.blue}10`, border: `1px solid ${t.blue}25`, fontSize: 10, color: t.blue, display: "inline-block", fontWeight: 600 }}>
+        El sistema limpia el archivo automáticamente — no necesitas preprocesarlo
+      </div>
+    </div>
+  );
+
+  const KohaUploading = () => (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: 48, gap: 16 }}>
+      <div style={{ width: 56, height: 56, borderRadius: 16, background: `${t.teal}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <RefreshCw size={24} color={t.teal} style={{ animation: "spin 1s linear infinite" }} />
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Procesando {kohaFileName}</div>
+      <div style={{ fontSize: 11, color: t.textDim }}>Validando campos · Normalizando carreras · Corrigiendo encoding…</div>
+    </div>
+  );
+
+  const KohaReportView = () => {
+    if (!kohaReport) return null;
+    const pctColor = kohaReport.pct_calidad >= 90 ? t.green : kohaReport.pct_calidad >= 70 ? t.amber : t.rose;
+    return (
+      <div>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Reporte de Calidad — {kohaFileName}</div>
+            <div style={{ fontSize: 11, color: t.textDim, marginTop: 2 }}>Revisa el resultado antes de insertar en la base de datos</div>
+          </div>
+          <button onClick={resetKohaUpload} style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 11, color: t.textDim, cursor: "pointer" }}>
+            <X size={12} style={{ marginRight: 4 }} /> Cancelar
+          </button>
+        </div>
+
+        {/* KPIs del reporte */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+          {[
+            { label: "Total filas", value: kohaReport.total_filas, color: t.blue },
+            { label: "Filas válidas", value: kohaReport.filas_validas, color: t.green },
+            { label: "Descartadas", value: kohaReport.filas_descartadas, color: t.rose },
+            { label: "Calidad", value: `${kohaReport.pct_calidad}%`, color: pctColor },
+          ].map((kpi, i) => (
+            <div key={i} style={{ padding: 14, borderRadius: 12, background: `${kpi.color}08`, border: `1px solid ${kpi.color}20`, textAlign: "center" }}>
+              <div style={{ fontSize: 26, fontWeight: 700, color: kpi.color }}>{typeof kpi.value === "number" ? kpi.value.toLocaleString() : kpi.value}</div>
+              <div style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>{kpi.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Barra de calidad */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: t.text }}>Índice de calidad del dataset</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: pctColor }}>{kohaReport.pct_calidad}%</span>
+          </div>
+          <div style={{ width: "100%", height: 10, borderRadius: 5, background: `${t.text}08`, overflow: "hidden" }}>
+            <div style={{ width: `${kohaReport.pct_calidad}%`, height: "100%", borderRadius: 5, background: `linear-gradient(90deg, ${pctColor}, ${pctColor}bb)`, transition: "width 1s ease" }} />
+          </div>
+        </div>
+
+        {/* Inconsistencias */}
+        {kohaReport.filas_descartadas > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+              <AlertTriangle size={13} color={t.amber} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>
+                {kohaReport.filas_descartadas} filas descartadas — detalle de errores
+              </span>
+            </div>
+            <div style={{ maxHeight: 180, overflowY: "auto", border: `1px solid ${t.cardBorder}`, borderRadius: 10 }}>
+              {kohaReport.inconsistencias.slice(0, 20).map((inc, i) => (
+                <div key={i} style={{ padding: "10px 14px", borderBottom: `1px solid ${t.cardBorder}`, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 10, color: t.textDim, minWidth: 50 }}>Fila {inc.fila}</span>
+                  <div>
+                    {inc.errores.map((e, j) => (
+                      <span key={j} style={{ display: "inline-block", marginRight: 6, marginBottom: 2, padding: "1px 7px", borderRadius: 5, fontSize: 10, background: `${t.rose}10`, color: t.rose }}>{e}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {kohaReport.inconsistencias.length > 20 && (
+                <div style={{ padding: "10px 14px", fontSize: 10, color: t.textDim }}>
+                  … y {kohaReport.inconsistencias.length - 20} más
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Preview tabla */}
+        {kohaPreview.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+              <Table size={13} color={t.teal} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>Vista previa — primeros {kohaPreview.length} registros válidos</span>
+            </div>
+            <div style={{ overflowX: "auto", border: `1px solid ${t.cardBorder}`, borderRadius: 10 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                <thead>
+                  <tr>
+                    {["Año","Mes","Biblioteca","Carrera","Título","Transacciones"].map((h, i) => (
+                      <th key={i} style={{ padding: "8px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: t.textDim, borderBottom: `2px solid ${t.cardBorder}`, background: `${t.text}03`, textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {kohaPreview.map((row, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${t.cardBorder}` }}>
+                      <td style={{ padding: "7px 12px", color: t.text }}>{row.anio}</td>
+                      <td style={{ padding: "7px 12px", color: t.text }}>{row.mes}</td>
+                      <td style={{ padding: "7px 12px" }}>
+                        <span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 10, fontWeight: 600, background: `${t.teal}12`, color: t.teal }}>{row.biblioteca}</span>
+                      </td>
+                      <td style={{ padding: "7px 12px", color: t.textDim, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.carrera}</td>
+                      <td style={{ padding: "7px 12px", color: t.text, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.titulo}</td>
+                      <td style={{ padding: "7px 12px", fontWeight: 700, color: t.text, textAlign: "right" }}>{row.total_transacciones}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Botón confirmar */}
+        {kohaReport.filas_validas > 0 ? (
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button onClick={resetKohaUpload} style={{ padding: "10px 20px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 12, fontWeight: 600, color: t.textDim, cursor: "pointer" }}>
+              Cancelar
+            </button>
+            <button onClick={handleKohaConfirm}
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 24px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${t.teal}, #0a7a71)`, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              <CheckCircle size={15} />
+              Insertar {kohaReport.filas_validas.toLocaleString()} registros en BD
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: 14, borderRadius: 10, background: `${t.rose}10`, border: `1px solid ${t.rose}25`, display: "flex", alignItems: "center", gap: 8 }}>
+            <AlertCircle size={16} color={t.rose} />
+            <span style={{ fontSize: 12, color: t.rose, fontWeight: 600 }}>No hay registros válidos para insertar. Revisa el formato del CSV.</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const KohaConfirming = () => (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: 48, gap: 16 }}>
+      <div style={{ width: 56, height: 56, borderRadius: 16, background: `${t.green}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <RefreshCw size={24} color={t.green} style={{ animation: "spin 1s linear infinite" }} />
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Insertando {kohaRecords.length.toLocaleString()} registros…</div>
+      <div style={{ fontSize: 11, color: t.textDim }}>Escribiendo en Neon PostgreSQL</div>
+    </div>
+  );
+
+  const KohaDone = () => (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: 48, gap: 16 }}>
+      <div style={{ width: 64, height: 64, borderRadius: 20, background: `${t.green}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <CheckCircle size={32} color={t.green} />
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>¡Ingesta completada!</div>
+      {kohaInsertResult && (
+        <div style={{ display: "flex", gap: 16 }}>
+          <div style={{ textAlign: "center", padding: "10px 20px", borderRadius: 10, background: `${t.green}10`, border: `1px solid ${t.green}20` }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: t.green }}>{kohaInsertResult.registros_insertados.toLocaleString()}</div>
+            <div style={{ fontSize: 10, color: t.textDim }}>registros insertados</div>
+          </div>
+          {kohaInsertResult.errores > 0 && (
+            <div style={{ textAlign: "center", padding: "10px 20px", borderRadius: 10, background: `${t.amber}10`, border: `1px solid ${t.amber}20` }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: t.amber }}>{kohaInsertResult.errores}</div>
+              <div style={{ fontSize: 10, color: t.textDim }}>errores de inserción</div>
+            </div>
+          )}
+        </div>
+      )}
+      <button onClick={resetKohaUpload} style={{ padding: "10px 24px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.card, fontSize: 12, fontWeight: 600, color: t.text, cursor: "pointer" }}>
+        Subir otro archivo
+      </button>
+    </div>
+  );
+
+  const KohaErrorView = () => (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: 48, gap: 16 }}>
+      <div style={{ width: 56, height: 56, borderRadius: 16, background: `${t.rose}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <AlertCircle size={24} color={t.rose} />
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Error al procesar</div>
+      <div style={{ fontSize: 11, color: t.rose, maxWidth: 400, textAlign: "center" }}>{kohaUploadError}</div>
+      <button onClick={resetKohaUpload} style={{ padding: "10px 20px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.card, fontSize: 12, fontWeight: 600, color: t.text, cursor: "pointer" }}>
+        Intentar de nuevo
+      </button>
+    </div>
+  );
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: t.bg, fontFamily: "'DM Sans', sans-serif", color: t.text }}>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       {/* SIDEBAR */}
       <aside style={{ width: 240, flexShrink: 0, background: t.sidebarBg, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, height: "100%", zIndex: 50 }}>
@@ -495,37 +727,30 @@ export default function BiblioAnalytics360() {
             <BookOpen size={16} color="#fff" />
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: t.sidebarText }}>BiblioAnalytics</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#ffffff" }}>BiblioAnalytics</div>
             <div style={{ fontSize: 10, fontWeight: 600, color: t.teal }}>360 — Prototipo</div>
           </div>
         </div>
-
         <div style={{ padding: "16px 10px", flex: 1 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, padding: "0 10px", marginBottom: 8, color: t.sidebarDim }}>Analítica</div>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, padding: "0 10px", marginBottom: 8, color: "rgba(255,255,255,0.4)" }}>Analítica</div>
           {navMain.map(item => (
             <button key={item.id} onClick={() => setNav(item.id)}
-              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 10, border: "none", marginBottom: 2, cursor: "pointer",
-                background: nav === item.id ? `${t.teal}20` : "transparent",
-                color: nav === item.id ? t.tealLight : t.sidebarDim,
-                fontSize: 12, fontWeight: nav === item.id ? 600 : 400, textAlign: "left", transition: "all 0.15s" }}>
+              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 10, border: "none", marginBottom: 2, cursor: "pointer", background: nav === item.id ? `${t.teal}20` : "transparent", color: nav === item.id ? t.tealLight : "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: nav === item.id ? 600 : 400, textAlign: "left", transition: "all 0.15s" }}>
               <item.icon size={16} />
               <span>{item.label}</span>
               {nav === item.id && <ChevronRight size={12} style={{ marginLeft: "auto" }} />}
             </button>
           ))}
         </div>
-
         <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <button onClick={() => setDark(!dark)}
-            style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", borderRadius: 8, border: "none", background: "rgba(255,255,255,0.05)", color: t.sidebarDim, fontSize: 11, cursor: "pointer" }}>
-            {dark ? <Sun size={14} /> : <Moon size={14} />}
-            {dark ? "Modo Claro" : "Modo Oscuro"}
+          <button onClick={() => setDark(!dark)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", borderRadius: 8, border: "none", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" }}>
+            {dark ? <Sun size={14} /> : <Moon size={14} />} {dark ? "Modo Claro" : "Modo Oscuro"}
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.04)" }}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: `linear-gradient(135deg, ${t.purple}, ${t.blue})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>DB</div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>Daniel B.</div>
-              <div style={{ fontSize: 9, color: t.sidebarDim }}>Administrador</div>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Administrador</div>
             </div>
           </div>
         </div>
@@ -537,9 +762,11 @@ export default function BiblioAnalytics360() {
         <header style={{ position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 28px", background: `${t.bg}ee`, backdropFilter: "blur(12px)" }}>
           <div>
             <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: t.text }}>
-              {nav === "overview" && "Vista General"}{nav === "servicios" && "Estadísticas de Servicios"}
+              {nav === "overview" && "Vista General"}
+              {nav === "servicios" && "Estadísticas de Servicios"}
               {nav === "predictivo" && "Módulo Predictivo"}
-              {nav === "sentimiento" && "Módulo de Sentimiento"}{nav === "impacto" && "Módulo de Impacto"}
+              {nav === "sentimiento" && "Módulo de Sentimiento"}
+              {nav === "impacto" && "Módulo de Impacto"}
               {nav === "datos" && "Datos & Upload"}
             </h1>
             <p style={{ fontSize: 11, color: t.textDim, margin: 0 }}>Biblioteca Central UACJ · Prototipo Funcional</p>
@@ -547,13 +774,11 @@ export default function BiblioAnalytics360() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, background: t.card, border: `1px solid ${t.cardBorder}`, fontSize: 11 }}>
               <Search size={13} color={t.textDim} />
-              <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar métricas..."
-                style={{ border: "none", outline: "none", background: "transparent", fontSize: 11, color: t.text, width: 120 }} />
+              <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar métricas..." style={{ border: "none", outline: "none", background: "transparent", fontSize: 11, color: t.text, width: 120 }} />
               {searchQ && <X size={12} color={t.textDim} style={{ cursor: "pointer" }} onClick={() => setSearchQ("")} />}
             </div>
             <div style={{ position: "relative" }}>
-              <button onClick={() => setShowNotif(!showNotif)}
-                style={{ width: 34, height: 34, borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.card, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
+              <button onClick={() => setShowNotif(!showNotif)} style={{ width: 34, height: 34, borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.card, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
                 <Bell size={15} color={t.text} />
                 <div style={{ position: "absolute", top: 5, right: 5, width: 7, height: 7, borderRadius: "50%", background: t.rose }} />
               </button>
@@ -572,8 +797,7 @@ export default function BiblioAnalytics360() {
                 </div>
               )}
             </div>
-            <button onClick={exportCSV}
-              style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${t.teal}, #0d9488)`, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+            <button onClick={exportCSV} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${t.teal}, #0d9488)`, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
               <Download size={13} /> Exportar
             </button>
           </div>
@@ -581,10 +805,8 @@ export default function BiblioAnalytics360() {
 
         {/* GLOBAL FILTERS */}
         <div style={{ padding: "0 28px 12px", display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Dropdown label="Campus" value={campus} onChange={setCampus} t={t} icon={Globe}
-            options={[{ value: "todos", label: "Todos los Campus" }, { value: "central", label: "Campus Central" }, { value: "norte", label: "Campus Norte" }, { value: "sur", label: "Campus Sur" }]} />
-          <Dropdown label="Periodo" value={periodo} onChange={setPeriodo} t={t} icon={Calendar}
-            options={[{ value: "2024-1", label: "Ene – Jul 2024" }, { value: "2024-2", label: "Ago 2024 – Ene 2025" }, { value: "2025-1", label: "Feb – Jul 2025" }]} />
+          <Dropdown label="Campus" value={campus} onChange={setCampus} t={t} icon={Globe} options={[{ value: "todos", label: "Todos los Campus" }, { value: "central", label: "Campus Central" }, { value: "norte", label: "Campus Norte" }, { value: "sur", label: "Campus Sur" }]} />
+          <Dropdown label="Periodo" value={periodo} onChange={setPeriodo} t={t} icon={Calendar} options={[{ value: "2024-1", label: "Ene – Jul 2024" }, { value: "2024-2", label: "Ago 2024 – Ene 2025" }, { value: "2025-1", label: "Feb – Jul 2025" }]} />
         </div>
 
         <div style={{ padding: "0 28px 28px" }}>
@@ -593,52 +815,78 @@ export default function BiblioAnalytics360() {
           {nav === "overview" && (
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
-                <StatCard icon={BookOpen} label="Préstamos (último mes)" value={lastPrestamos.toLocaleString()} change="+25.5%" changeType="up" color={t.teal} t={t} />
+                <StatCard icon={BookOpen} label="Transacciones Koha (total)"
+                  value={kohaLoading ? "..." : kohaError ? "—" : (kohaStats?.total_transacciones ?? 0).toLocaleString()}
+                  change="+25.5%" changeType="up" color={t.teal} t={t}
+                  badge={kohaStats ? "REAL" : undefined} />
                 <StatCard icon={Users} label="Visitas este periodo" value="3,942" change="+21.8%" changeType="up" color={t.blue} t={t} />
                 <StatCard icon={Heart} label="Satisfacción NLP" value={`${satPct}%`} change="+3.8pp" changeType="up" color={t.purple} t={t} onClick={() => setNav("sentimiento")} />
                 <StatCard icon={GraduationCap} label="Correlación r=" value="0.73" color={t.amber} t={t} onClick={() => setNav("impacto")} />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 20 }}>
-                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                {/* Gráfico Koha real o simulado */}
+                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${kohaStats ? t.teal + "40" : t.cardBorder}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Circulación de Colecciones</div>
-                      <div style={{ fontSize: 10, color: t.textDim }}>Datos filtrados por: {campus === "todos" ? "Todos" : campus.charAt(0).toUpperCase() + campus.slice(1)} · {periodo}</div>
+                      <div style={{ fontSize: 10, color: t.textDim }}>
+                        {kohaStats ? "Datos reales Koha · Neon DB" : `Simulado · ${campus} · ${periodo}`}
+                      </div>
                     </div>
+                    {kohaStats && <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 9, fontWeight: 700, background: `${t.teal}15`, color: t.teal }}>DATOS REALES</span>}
                   </div>
                   <ResponsiveContainer width="100%" height={240}>
-                    <AreaChart data={circulacion}>
+                    <AreaChart data={kohaStats && kohaPorMes.length > 0 ? kohaPorMes : circulacion}>
                       <defs>
-                        <linearGradient id="gT" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.teal} stopOpacity={0.2} /><stop offset="100%" stopColor={t.teal} stopOpacity={0} /></linearGradient>
+                        <linearGradient id="gT" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={t.teal} stopOpacity={0.2} />
+                          <stop offset="100%" stopColor={t.teal} stopOpacity={0} />
+                        </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
                       <XAxis dataKey="mes" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
                       <Tooltip content={<CTooltip />} />
-                      <Area type="monotone" dataKey="prestamos" name="Préstamos" stroke={t.teal} fill="url(#gT)" strokeWidth={2.5} dot={{ r: 3 }} />
-                      <Area type="monotone" dataKey="devoluciones" name="Devoluciones" stroke={t.blue} fill="none" strokeWidth={2} dot={{ r: 2 }} />
-                      <Area type="monotone" dataKey="prediccion" name="Predicción ML" stroke={t.amber} fill="none" strokeWidth={2.5} strokeDasharray="8 4" dot={{ r: 4, fill: t.amber, stroke: "#fff", strokeWidth: 2 }} />
+                      <Area type="monotone" dataKey="prestamos" name="Transacciones" stroke={t.teal} fill="url(#gT)" strokeWidth={2.5} dot={{ r: 3 }} />
+                      {!kohaStats && <Area type="monotone" dataKey="devoluciones" name="Devoluciones" stroke={t.blue} fill="none" strokeWidth={2} dot={{ r: 2 }} />}
+                      {!kohaStats && <Area type="monotone" dataKey="prediccion" name="Predicción ML" stroke={t.amber} fill="none" strokeWidth={2.5} strokeDasharray="8 4" dot={{ r: 4, fill: t.amber, stroke: "#fff", strokeWidth: 2 }} />}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Distribución por Área</div>
-                  <div style={{ fontSize: 10, color: t.textDim, marginBottom: 12 }}>Préstamos por campo</div>
-                  <ResponsiveContainer width="100%" height={150}>
-                    <PieChart><Pie data={colAreas} dataKey="v" nameKey="area" cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} cornerRadius={3}>
-                      {colAreas.map((_, i) => <Cell key={i} fill={pieColors[i]} />)}
-                    </Pie><Tooltip content={<CTooltip />} /></PieChart>
-                  </ResponsiveContainer>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 10px", marginTop: 8 }}>
-                    {colAreas.map((c, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10 }}>
-                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: pieColors[i], flexShrink: 0 }} />
-                        <span style={{ color: t.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.area}</span>
-                        <span style={{ fontWeight: 700, marginLeft: "auto", color: t.text }}>{c.pct}%</span>
-                      </div>
-                    ))}
-                  </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {/* Koha por biblioteca */}
+                  {kohaStats && kohaTopBibliotecas.length > 0 ? (
+                    <div style={{ background: t.card, borderRadius: 16, padding: 18, border: `1px solid ${t.teal}30`, flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: t.text, marginBottom: 4 }}>Por Biblioteca (Koha)</div>
+                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 12 }}>Transacciones reales</div>
+                      {kohaTopBibliotecas.slice(0, 6).map((b, i) => {
+                        const max = kohaTopBibliotecas[0]?.value || 1;
+                        return (
+                          <div key={i} style={{ marginBottom: 8 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3, fontSize: 10 }}>
+                              <span style={{ color: t.text, fontWeight: 500 }}>{b.name}</span>
+                              <span style={{ fontWeight: 700, color: t.teal }}>{b.value.toLocaleString()}</span>
+                            </div>
+                            <div style={{ height: 5, borderRadius: 3, background: `${t.text}08`, overflow: "hidden" }}>
+                              <div style={{ width: `${(b.value / max) * 100}%`, height: "100%", borderRadius: 3, background: pieColors[i % pieColors.length] }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ background: t.card, borderRadius: 16, padding: 18, border: `1px solid ${t.cardBorder}`, flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: t.text, marginBottom: 4 }}>Distribución por Área</div>
+                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 12 }}>Préstamos por campo</div>
+                      <ResponsiveContainer width="100%" height={120}>
+                        <PieChart><Pie data={colAreas} dataKey="v" nameKey="area" cx="50%" cy="50%" innerRadius={30} outerRadius={52} paddingAngle={3} cornerRadius={3}>
+                          {colAreas.map((_, i) => <Cell key={i} fill={pieColors[i]} />)}
+                        </Pie><Tooltip content={<CTooltip />} /></PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -654,351 +902,124 @@ export default function BiblioAnalytics360() {
           {nav === "servicios" && (
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
-                <StatCard icon={BookOpen} label="Préstamos (mes actual)" value={(svcMes[svcMes.length-1]?.domicilio + svcMes[svcMes.length-1]?.sala + svcMes[svcMes.length-1]?.interbibliotecario).toLocaleString()} change="+18.4%" changeType="up" color={t.teal} t={t} />
-                <StatCard icon={Activity} label="Usos de Cómputo (real)" value={realLoading ? "..." : realError ? "—" : realStats?.total_sesiones?.toString() ?? "0"} color={t.blue} t={t} />
-                <StatCard icon={Users} label="Formación (personas)" value={(svcMes[svcMes.length-1]?.talleres + svcMes[svcMes.length-1]?.capacitaciones + svcMes[svcMes.length-1]?.asesorias).toLocaleString()} change="+7.5%" changeType="up" color={t.purple} t={t} />
-                <StatCard icon={Layers} label="Uso de Espacios" value={(svcMes[svcMes.length-1]?.cubiculos + svcMes[svcMes.length-1]?.salasEstudio + svcMes[svcMes.length-1]?.coworking).toLocaleString()} change="+22.3%" changeType="up" color={t.amber} t={t} />
+                <StatCard icon={BookOpen} label="Transacciones Koha"
+                  value={kohaLoading ? "..." : kohaError ? "—" : (kohaStats?.total_transacciones ?? 0).toLocaleString()}
+                  change="+18.4%" changeType="up" color={t.teal} t={t}
+                  badge={kohaStats ? "REAL" : undefined} />
+                <StatCard icon={Activity} label="Usos de Cómputo (real)"
+                  value={realLoading ? "..." : realError ? "—" : realStats?.total_sesiones?.toString() ?? "0"}
+                  color={t.blue} t={t} badge={realStats ? "REAL" : undefined} />
+                <StatCard icon={Users} label="Formación (personas)"
+                  value={(svcMes[svcMes.length-1]?.talleres + svcMes[svcMes.length-1]?.capacitaciones + svcMes[svcMes.length-1]?.asesorias).toLocaleString()}
+                  change="+7.5%" changeType="up" color={t.purple} t={t} />
+                <StatCard icon={Layers} label="Uso de Espacios"
+                  value={(svcMes[svcMes.length-1]?.cubiculos + svcMes[svcMes.length-1]?.salasEstudio + svcMes[svcMes.length-1]?.coworking).toLocaleString()}
+                  change="+22.3%" changeType="up" color={t.amber} t={t} />
               </div>
 
-              {/* View Toggle */}
-              <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
-                <div style={{ display: "flex", gap: 0, borderRadius: 10, overflow: "hidden", border: `1px solid ${t.cardBorder}` }}>
-                  {[{v:"temporal",l:"Por Mes",ic:Calendar},{v:"carrera",l:"Por Carrera",ic:GraduationCap},{v:"usuario",l:"Por Tipo Usuario",ic:Users},{v:"turno",l:"Por Turno",ic:Clock}].map(tab => (
-                    <button key={tab.v} onClick={() => { setSvcView(tab.v); setSvcPage(0); }}
-                      style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", border: "none", fontSize: 11, fontWeight: svcView === tab.v ? 600 : 400, cursor: "pointer",
-                        background: svcView === tab.v ? `${t.teal}15` : t.card,
-                        color: svcView === tab.v ? t.teal : t.textDim }}>
-                      <tab.ic size={12} /> {tab.l}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
-                  {[{v:"todos",l:"Todos"},{v:"prestamos",l:"Préstamos"},{v:"computo",l:"Cómputo"},{v:"formacion",l:"Formación"},{v:"espacios",l:"Espacios"}].map(cat => (
-                    <button key={cat.v} onClick={() => { setSvcCategory(cat.v); setSvcPage(0); }}
-                      style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${svcCategory === cat.v ? t.teal : t.cardBorder}`, fontSize: 10, fontWeight: svcCategory === cat.v ? 600 : 400, cursor: "pointer",
-                        background: svcCategory === cat.v ? `${t.teal}12` : "transparent",
-                        color: svcCategory === cat.v ? t.teal : t.textDim }}>
-                      {cat.l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* ---- TEMPORAL VIEW ---- */}
-              {svcView === "temporal" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-
-                  {(svcCategory === "todos" || svcCategory === "prestamos") && (
-                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Préstamos por Tipo</div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Domicilio · En sala · Interbibliotecario</div>
+              {/* Préstamos: Koha real */}
+              {(svcCategory === "todos" || svcCategory === "prestamos") && (
+                <div style={{ display: "grid", gridTemplateColumns: kohaStats ? "1fr 1fr" : "1fr", gap: 16, marginBottom: 20 }}>
+                  {/* Koha por mes */}
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `2px solid ${t.teal}40` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: kohaStats ? t.green : kohaLoading ? t.amber : t.rose }} />
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Préstamos Koha — Evolución</div>
+                      {kohaStats && <span style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 20, fontSize: 9, fontWeight: 700, background: `${t.teal}15`, color: t.teal }}>DATOS REALES</span>}
+                    </div>
+                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>
+                      {kohaLoading ? "Cargando..." : kohaError ? kohaError : kohaStats ? `${kohaStats.total_registros.toLocaleString()} registros · ${kohaStats.total_transacciones.toLocaleString()} transacciones` : "Sin datos"}
+                    </div>
+                    {kohaLoading && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: t.textDim, fontSize: 12 }}>
+                        <RefreshCw size={16} style={{ animation: "spin 1s linear infinite", marginRight: 8 }} /> Cargando datos Koha…
+                      </div>
+                    )}
+                    {!kohaLoading && kohaPorMes.length > 0 && (
                       <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={svcMes}>
+                        <AreaChart data={kohaPorMes}>
                           <defs>
-                            <linearGradient id="svG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.teal} stopOpacity={0.2}/><stop offset="100%" stopColor={t.teal} stopOpacity={0}/></linearGradient>
+                            <linearGradient id="kohaG" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={t.teal} stopOpacity={0.2} />
+                              <stop offset="100%" stopColor={t.teal} stopOpacity={0} />
+                            </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
+                          <XAxis dataKey="mes" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
                           <Tooltip content={<CTooltip />} />
-                          <Area type="monotone" dataKey="domicilio" name="Domicilio" stroke={t.teal} fill="url(#svG1)" strokeWidth={2} dot={{ r: 2 }} />
-                          <Area type="monotone" dataKey="sala" name="En Sala" stroke={t.blue} fill="none" strokeWidth={2} dot={{ r: 2 }} />
-                          <Area type="monotone" dataKey="interbibliotecario" name="Interbiblio." stroke={t.purple} fill="none" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 2 }} />
+                          <Area type="monotone" dataKey="prestamos" name="Transacciones" stroke={t.teal} fill="url(#kohaG)" strokeWidth={2.5} dot={{ r: 4, fill: t.teal, stroke: "#fff", strokeWidth: 2 }} />
                         </AreaChart>
                       </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* ===== CÓMPUTO — DATOS REALES ===== */}
-                  {(svcCategory === "todos" || svcCategory === "computo") && (
-                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `2px solid ${t.teal}50` }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: realStats ? t.green : realLoading ? t.amber : t.rose, flexShrink: 0 }} />
-                        <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Uso de Computadoras</div>
-                        <span style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 20, fontSize: 9, fontWeight: 700, background: `${t.teal}15`, color: t.teal }}>DATOS REALES</span>
+                    )}
+                    {!kohaLoading && !kohaError && kohaPorMes.length === 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 200, gap: 10 }}>
+                        <Info size={28} color={t.textDim} />
+                        <span style={{ fontSize: 12, color: t.textDim }}>Sin datos de Koha aún. Sube un CSV en "Datos & Upload".</span>
+                        <button onClick={() => setNav("datos")} style={{ padding: "7px 16px", borderRadius: 8, border: "none", background: t.teal, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Ir a Upload</button>
                       </div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>
-                        {realLoading ? "Conectando con Google Sheets..." : realError ? realError : `${realStats?.total_sesiones} sesiones registradas · Google Forms en tiempo real`}
-                      </div>
+                    )}
+                  </div>
 
-                      {realLoading && (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 180, color: t.textDim, fontSize: 12 }}>
-                          <RefreshCw size={16} style={{ animation: "spin 1s linear infinite", marginRight: 8 }} /> Cargando datos...
-                        </div>
-                      )}
-
-                      {realError && !realLoading && (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 180, color: t.rose, fontSize: 12, flexDirection: "column", gap: 8 }}>
-                          <AlertTriangle size={24} />
-                          <span>{realError}</span>
-                        </div>
-                      )}
-
-                      {realStats && !realLoading && (
-                        <>
-                          {/* KPIs reales */}
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
-                            <div style={{ padding: 12, borderRadius: 10, background: `${t.teal}08`, border: `1px solid ${t.teal}20`, textAlign: "center" }}>
-                              <div style={{ fontSize: 24, fontWeight: 700, color: t.teal }}>{realStats.total_sesiones}</div>
-                              <div style={{ fontSize: 9, color: t.textDim, marginTop: 2 }}>Total Sesiones</div>
-                            </div>
-                            <div style={{ padding: 12, borderRadius: 10, background: `${t.blue}08`, border: `1px solid ${t.blue}20`, textAlign: "center" }}>
-                              <div style={{ fontSize: 24, fontWeight: 700, color: t.blue }}>{Object.keys(realStats.por_biblioteca || {}).length}</div>
-                              <div style={{ fontSize: 9, color: t.textDim, marginTop: 2 }}>Bibliotecas</div>
-                            </div>
-                            <div style={{ padding: 12, borderRadius: 10, background: `${t.purple}08`, border: `1px solid ${t.purple}20`, textAlign: "center" }}>
-                              <div style={{ fontSize: 24, fontWeight: 700, color: t.purple }}>{realStats.duracion_promedio_minutos ?? "—"}</div>
-                              <div style={{ fontSize: 9, color: t.textDim, marginTop: 2 }}>Min. promedio</div>
-                            </div>
-                          </div>
-
-                          {/* Gráfico por propósito */}
-                          {realPorProposito.length > 0 && (
-                            <>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: t.text, marginBottom: 8 }}>Por Propósito de Uso</div>
-                              <ResponsiveContainer width="100%" height={140}>
-                                <BarChart data={realPorProposito} layout="vertical" margin={{ left: 10 }}>
-                                  <XAxis type="number" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} width={120} />
-                                  <Tooltip content={<CTooltip />} />
-                                  <Bar dataKey="value" name="Sesiones" fill={t.teal} radius={[0,4,4,0]} />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </>
-                          )}
-
-                          {/* Por tipo de usuario y biblioteca */}
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-                            <div style={{ padding: 10, borderRadius: 10, background: `${t.text}04` }}>
-                              <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 6 }}>Por Tipo de Usuario</div>
-                              {Object.entries(realStats.por_tipo_usuario || {}).map(([tipo, count], i) => (
-                                <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 11 }}>
-                                  <span style={{ color: t.text }}>{tipo}</span>
-                                  <span style={{ fontWeight: 700, color: t.blue }}>{count}</span>
-                                </div>
-                              ))}
-                            </div>
-                            <div style={{ padding: 10, borderRadius: 10, background: `${t.text}04` }}>
-                              <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 6 }}>Por Biblioteca</div>
-                              {Object.entries(realStats.por_biblioteca || {}).map(([bib, count], i) => (
-                                <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 11 }}>
-                                  <span style={{ color: t.text }}>{bib}</span>
-                                  <span style={{ fontWeight: 700, color: t.purple }}>{count}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {(svcCategory === "todos" || svcCategory === "formacion") && (
+                  {/* Top Títulos Koha */}
+                  {kohaStats && kohaStats.top_titulos?.length > 0 && (
                     <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Formación y Asesorías</div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Talleres · Capacitaciones · Asesorías individuales</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Top Títulos Más Prestados</div>
+                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Koha · acumulado total</div>
                       <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={svcMes}>
-                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
+                        <BarChart data={kohaStats.top_titulos.slice(0, 8)} layout="vertical" margin={{ left: 0 }}>
+                          <XAxis type="number" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
+                          <YAxis type="category" dataKey="titulo" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} width={130}
+                            tickFormatter={v => v.length > 20 ? v.slice(0, 20) + "…" : v} />
                           <Tooltip content={<CTooltip />} />
-                          <Line type="monotone" dataKey="talleres" name="Talleres" stroke={t.purple} strokeWidth={2.5} dot={{ r: 3, fill: t.purple, stroke: "#fff", strokeWidth: 2 }} />
-                          <Line type="monotone" dataKey="capacitaciones" name="Capacitaciones" stroke={t.rose} strokeWidth={2} dot={{ r: 3 }} />
-                          <Line type="monotone" dataKey="asesorias" name="Asesorías" stroke={t.amber} strokeWidth={2} dot={{ r: 3 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {(svcCategory === "todos" || svcCategory === "espacios") && (
-                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Uso de Espacios</div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Cubículos · Salas de estudio · Coworking</div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={svcMes}>
-                          <defs>
-                            <linearGradient id="svG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.amber} stopOpacity={0.2}/><stop offset="100%" stopColor={t.amber} stopOpacity={0}/></linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <Tooltip content={<CTooltip />} />
-                          <Area type="monotone" dataKey="cubiculos" name="Cubículos" stroke={t.amber} fill="url(#svG2)" strokeWidth={2} dot={{ r: 2 }} />
-                          <Area type="monotone" dataKey="salasEstudio" name="Salas de Estudio" stroke={t.green} fill="none" strokeWidth={2} dot={{ r: 2 }} />
-                          <Area type="monotone" dataKey="coworking" name="Coworking" stroke={t.rose} fill="none" strokeWidth={2} dot={{ r: 2 }} />
-                        </AreaChart>
+                          <Bar dataKey="total" name="Transacciones" fill={t.blue} radius={[0,4,4,0]} />
+                        </BarChart>
                       </ResponsiveContainer>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* ---- CARRERA VIEW ---- */}
-              {svcView === "carrera" && (
-                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Uso de Servicios por Carrera</div>
-                  <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Total acumulado del periodo · Top 10 carreras</div>
-                  <ResponsiveContainer width="100%" height={340}>
-                    <BarChart data={svcCarrera} layout="vertical" margin={{ left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                      <YAxis type="category" dataKey="carrera" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} width={110} />
-                      <Tooltip content={<CTooltip />} />
-                      <Bar dataKey="prestamos" name="Préstamos" fill={t.teal} stackId="a" radius={0} />
-                      <Bar dataKey="computadoras" name="Cómputo" fill={t.blue} stackId="a" radius={0} />
-                      <Bar dataKey="talleres" name="Formación" fill={t.purple} stackId="a" radius={0} />
-                      <Bar dataKey="espacios" name="Espacios" fill={t.amber} stackId="a" radius={[0,4,4,0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-              {/* ---- TIPO USUARIO VIEW ---- */}
-              {svcView === "usuario" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Distribución por Tipo de Usuario</div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <PieChart>
-                        <Pie data={svcTipoUsr} dataKey="pct" nameKey="tipo" cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} cornerRadius={3}>
-                          {svcTipoUsr.map((_,i) => <Cell key={i} fill={[t.teal, t.blue, t.purple, t.amber, t.rose][i]} />)}
-                        </Pie>
-                        <Tooltip content={<CTooltip />} />
-                      </PieChart>
-                    </ResponsiveContainer>
+              {/* Cómputo real */}
+              {(svcCategory === "todos" || svcCategory === "computo") && (
+                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `2px solid ${t.blue}30`, marginBottom: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: realStats ? t.green : realLoading ? t.amber : t.rose }} />
+                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Uso de Computadoras</div>
+                    {realStats && <span style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 20, fontSize: 9, fontWeight: 700, background: `${t.teal}15`, color: t.teal }}>DATOS REALES</span>}
                   </div>
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Servicios por Tipo de Usuario</div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={svcTipoUsr}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                        <XAxis dataKey="tipo" tick={{ fontSize: 8, fill: t.textDim }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                        <Tooltip content={<CTooltip />} />
-                        <Bar dataKey="prestamos" name="Préstamos" fill={t.teal} radius={[4,4,0,0]} />
-                        <Bar dataKey="computo" name="Cómputo" fill={t.blue} radius={[4,4,0,0]} />
-                        <Bar dataKey="talleres" name="Formación" fill={t.purple} radius={[4,4,0,0]} />
-                        <Bar dataKey="espacios" name="Espacios" fill={t.amber} radius={[4,4,0,0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>
+                    {realLoading ? "Conectando con Google Sheets..." : realError ? realError : `${realStats?.total_sesiones} sesiones · Google Forms en tiempo real`}
                   </div>
-                </div>
-              )}
-
-              {/* ---- TURNO VIEW ---- */}
-              {svcView === "turno" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Uso por Turno</div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={svcTurno}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                        <XAxis dataKey="turno" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                        <Tooltip content={<CTooltip />} />
-                        <Bar dataKey="prestamos" name="Préstamos" fill={t.teal} radius={[4,4,0,0]} />
-                        <Bar dataKey="computo" name="Cómputo" fill={t.blue} radius={[4,4,0,0]} />
-                        <Bar dataKey="talleres" name="Formación" fill={t.purple} radius={[4,4,0,0]} />
-                        <Bar dataKey="espacios" name="Espacios" fill={t.amber} radius={[4,4,0,0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Proporción por Turno</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 20 }}>
-                      {svcTurno.map((tr, i) => {
-                        const colors = [t.teal, t.blue, t.purple];
-                        const total = tr.prestamos + tr.computo + tr.talleres + tr.espacios;
-                        return (
-                          <div key={i}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{tr.turno}</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: colors[i] }}>{tr.pct}% — {total.toLocaleString()} usos</span>
-                            </div>
-                            <div style={{ width: "100%", height: 12, borderRadius: 6, background: `${t.text}06`, overflow: "hidden" }}>
-                              <div style={{ width: `${tr.pct}%`, height: "100%", borderRadius: 6, background: colors[i], transition: "width 0.8s" }} />
-                            </div>
+                  {realLoading && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 140, color: t.textDim, fontSize: 12 }}><RefreshCw size={16} style={{ animation: "spin 1s linear infinite", marginRight: 8 }} /> Cargando…</div>}
+                  {realStats && !realLoading && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+                      <div style={{ padding: 14, borderRadius: 12, background: `${t.teal}08`, border: `1px solid ${t.teal}20`, textAlign: "center" }}>
+                        <div style={{ fontSize: 28, fontWeight: 700, color: t.teal }}>{realStats.total_sesiones}</div>
+                        <div style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>Total Sesiones</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: t.textDim, marginBottom: 8 }}>Por Tipo de Usuario</div>
+                        {Object.entries(realStats.por_tipo_usuario || {}).map(([tipo, count], i) => (
+                          <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 11 }}>
+                            <span style={{ color: t.text }}>{tipo}</span>
+                            <span style={{ fontWeight: 700, color: t.blue }}>{count}</span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ---- TABLE ---- */}
-              <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Tabla de Datos Detallada</div>
-                    <div style={{ fontSize: 10, color: t.textDim }}>{svcTableFiltered.length} registros</div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: t.inputBg, border: `1px solid ${t.cardBorder}` }}>
-                      <Search size={12} color={t.textDim} />
-                      <input value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(0); }}
-                        placeholder="Buscar..."
-                        style={{ border: "none", outline: "none", background: "transparent", fontSize: 11, color: t.text, width: 160 }} />
-                      {svcSearch && <X size={11} color={t.textDim} style={{ cursor: "pointer" }} onClick={() => setSvcSearch("")} />}
-                    </div>
-                    <button onClick={exportSvcCSV}
-                      style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, fontWeight: 600, color: t.text, cursor: "pointer" }}>
-                      <Download size={11} /> CSV
-                    </button>
-                  </div>
-                </div>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                    <thead>
-                      <tr>
-                        {["#","Periodo","Dimensión","Servicio","Valor"].map((h, i) => (
-                          <th key={i} style={{ textAlign: i === 4 ? "right" : "left", padding: "10px 12px", borderBottom: `2px solid ${t.cardBorder}`, fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase" }}>{h}</th>
                         ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {svcTableFiltered.slice(svcPage * SVC_PAGE_SIZE, (svcPage + 1) * SVC_PAGE_SIZE).map((row, i) => {
-                        const dimColor = { "Préstamos": t.teal, "Cómputo": t.blue, "Formación": t.purple, "Espacios": t.amber, "Por Carrera": t.green, "Por Tipo Usuario": t.rose, "Por Turno": t.amber }[row.dimension] || t.textDim;
-                        return (
-                          <tr key={row.id} style={{ borderBottom: `1px solid ${t.cardBorder}`, background: i % 2 === 0 ? "transparent" : `${t.text}03` }}>
-                            <td style={{ padding: "8px 12px", color: t.textDim, fontSize: 10 }}>{row.id}</td>
-                            <td style={{ padding: "8px 12px", color: t.text }}>{row.periodo}</td>
-                            <td style={{ padding: "8px 12px" }}>
-                              <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: `${dimColor}12`, color: dimColor }}>{row.dimension}</span>
-                            </td>
-                            <td style={{ padding: "8px 12px", color: t.text, fontWeight: 500 }}>{row.servicio}</td>
-                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: t.text }}>{row.valor.toLocaleString()}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                {svcTableFiltered.length > SVC_PAGE_SIZE && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
-                    <span style={{ fontSize: 10, color: t.textDim }}>
-                      Mostrando {svcPage * SVC_PAGE_SIZE + 1}–{Math.min((svcPage + 1) * SVC_PAGE_SIZE, svcTableFiltered.length)} de {svcTableFiltered.length}
-                    </span>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => setSvcPage(p => Math.max(0, p - 1))} disabled={svcPage === 0}
-                        style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, color: svcPage === 0 ? t.textMuted : t.text, cursor: svcPage === 0 ? "default" : "pointer" }}>
-                        <ChevronLeft size={12} />
-                      </button>
-                      {Array.from({ length: Math.min(5, Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE)) }, (_, i) => (
-                        <button key={i} onClick={() => setSvcPage(i)}
-                          style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${svcPage === i ? t.teal : t.cardBorder}`, background: svcPage === i ? `${t.teal}15` : "transparent", fontSize: 10, fontWeight: svcPage === i ? 700 : 400, color: svcPage === i ? t.teal : t.textDim, cursor: "pointer" }}>
-                          {i + 1}
-                        </button>
-                      ))}
-                      <button onClick={() => setSvcPage(p => Math.min(Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1, p + 1))}
-                        style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, color: t.text, cursor: "pointer" }}>
-                        <ChevronRight size={12} />
-                      </button>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: t.textDim, marginBottom: 8 }}>Por Biblioteca</div>
+                        {Object.entries(realStats.por_biblioteca || {}).map(([bib, count], i) => (
+                          <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 11 }}>
+                            <span style={{ color: t.text }}>{bib}</span>
+                            <span style={{ fontWeight: 700, color: t.purple }}>{count}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1020,10 +1041,7 @@ export default function BiblioAnalytics360() {
                   <label style={{ fontSize: 10, color: t.textDim }}>Algoritmo</label>
                   <div style={{ display: "flex", gap: 4 }}>
                     {[{ v: "rf", l: "Random Forest" }, { v: "prophet", l: "Prophet" }, { v: "reg", l: "Regresión" }].map(m => (
-                      <button key={m.v} onClick={() => setPredModel(m.v)}
-                        style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${predModel === m.v ? t.teal : t.cardBorder}`, background: predModel === m.v ? `${t.teal}15` : "transparent", color: predModel === m.v ? t.teal : t.textDim, fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
-                        {m.l}
-                      </button>
+                      <button key={m.v} onClick={() => setPredModel(m.v)} style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${predModel === m.v ? t.teal : t.cardBorder}`, background: predModel === m.v ? `${t.teal}15` : "transparent", color: predModel === m.v ? t.teal : t.textDim, fontSize: 10, fontWeight: 600, cursor: "pointer" }}>{m.l}</button>
                     ))}
                   </div>
                 </div>
@@ -1066,25 +1084,18 @@ export default function BiblioAnalytics360() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Analizar Comentario (NLP en tiempo real)</span>
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <input value={newComment} onChange={e => setNewComment(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && submitComment()}
-                    placeholder='Escribe un comentario...'
-                    style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.inputBg, fontSize: 12, color: t.text, outline: "none" }} />
-                  <button onClick={submitComment} disabled={analyzing || !newComment.trim()}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", borderRadius: 10, border: "none", background: analyzing ? t.textDim : `linear-gradient(135deg, ${t.purple}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 600, cursor: analyzing ? "wait" : "pointer", opacity: !newComment.trim() ? 0.5 : 1 }}>
+                  <input value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => e.key === "Enter" && submitComment()} placeholder='Escribe un comentario...' style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.inputBg, fontSize: 12, color: t.text, outline: "none" }} />
+                  <button onClick={submitComment} disabled={analyzing || !newComment.trim()} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", borderRadius: 10, border: "none", background: analyzing ? t.textDim : `linear-gradient(135deg, ${t.purple}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 600, cursor: analyzing ? "wait" : "pointer", opacity: !newComment.trim() ? 0.5 : 1 }}>
                     {analyzing ? <><RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /> Analizando...</> : <><Send size={14} /> Analizar</>}
                   </button>
                 </div>
               </div>
-              <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                 <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 16 }}>Tendencia del Sentimiento</div>
                   <ResponsiveContainer width="100%" height={220}>
                     <AreaChart data={sentTendencia}>
-                      <defs>
-                        <linearGradient id="sG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.green} stopOpacity={0.25} /><stop offset="100%" stopColor={t.green} stopOpacity={0} /></linearGradient>
-                      </defs>
+                      <defs><linearGradient id="sG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.green} stopOpacity={0.25}/><stop offset="100%" stopColor={t.green} stopOpacity={0}/></linearGradient></defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
                       <XAxis dataKey="mes" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
@@ -1195,47 +1206,94 @@ export default function BiblioAnalytics360() {
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
                 <StatCard icon={Database} label="Registros en BD" value={dataRows.toLocaleString()} color={t.teal} t={t} />
-                <StatCard icon={FileText} label="Fuentes conectadas" value="3" color={t.blue} t={t} />
+                <StatCard icon={BookOpen} label="Transacciones Koha"
+                  value={kohaLoading ? "..." : (kohaStats?.total_transacciones ?? 0).toLocaleString()}
+                  color={t.blue} t={t} badge={kohaStats ? "REAL" : undefined} />
                 <StatCard icon={CheckCircle} label="Calidad de datos" value="96.8%" color={t.green} t={t} />
                 <StatCard icon={Clock} label="Última actualización" value="Hace 2h" color={t.amber} t={t} />
               </div>
-              <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                  <Upload size={16} color={t.blue} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Cargar Datos (CSV / Excel)</span>
-                </div>
-                <div
-                  onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = t.teal; }}
-                  onDragLeave={e => { e.currentTarget.style.borderColor = t.cardBorder; }}
-                  onDrop={e => {
-                    e.preventDefault();
-                    const file = e.dataTransfer.files[0];
-                    if (file) { setUploadedFile(file.name); setDataRows(prev => prev + Math.floor(Math.random() * 500 + 100)); }
-                  }}
-                  style={{ border: `2px dashed ${t.cardBorder}`, borderRadius: 12, padding: 40, textAlign: "center", cursor: "pointer" }}
-                  onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file"; input.accept = ".csv,.xlsx,.xls";
-                    input.onchange = (e) => { const file = e.target.files[0]; if (file) { setUploadedFile(file.name); setDataRows(prev => prev + Math.floor(Math.random() * 500 + 100)); } };
-                    input.click();
-                  }}>
-                  <Upload size={32} color={t.textDim} style={{ marginBottom: 10 }} />
-                  <div style={{ fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 4 }}>Arrastra un archivo CSV o Excel aquí</div>
-                  <div style={{ fontSize: 10, color: t.textDim }}>o haz clic para seleccionar</div>
-                  {uploadedFile && (
-                    <div style={{ marginTop: 12, padding: "8px 14px", borderRadius: 8, background: `${t.green}10`, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: t.green }}>
-                      <CheckCircle size={14} /> {uploadedFile} cargado
+
+              {/* ===== KOHA UPLOAD PANEL ===== */}
+              <div style={{ background: t.card, borderRadius: 16, padding: 28, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: `${t.blue}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Upload size={18} color={t.blue} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Importar CSV de Koha</div>
+                    <div style={{ fontSize: 10, color: t.textDim }}>Pipeline automático: validación · limpieza · ingesta a Neon DB</div>
+                  </div>
+                  {kohaUploadState !== "idle" && kohaUploadState !== "uploading" && kohaUploadState !== "confirming" && (
+                    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: t.textDim }}>
+                      Estado: <span style={{ fontWeight: 600, color: kohaUploadState === "done" ? t.green : kohaUploadState === "error" ? t.rose : t.amber }}>
+                        {kohaUploadState === "report" ? "Revisión pendiente" : kohaUploadState === "done" ? "Completado" : "Error"}
+                      </span>
                     </div>
                   )}
                 </div>
+
+                {/* State machine rendering */}
+                {kohaUploadState === "idle" && <KohaDropZone />}
+                {kohaUploadState === "uploading" && <KohaUploading />}
+                {kohaUploadState === "report" && <KohaReportView />}
+                {kohaUploadState === "confirming" && <KohaConfirming />}
+                {kohaUploadState === "done" && <KohaDone />}
+                {kohaUploadState === "error" && <KohaErrorView />}
               </div>
-              <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
+
+              {/* Koha stats actuales */}
+              {kohaStats && (
+                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `2px solid ${t.teal}30`, marginBottom: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.green }} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Estado actual — Base de Datos Koha</span>
+                    <button onClick={fetchKohaStats} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, color: t.textDim, cursor: "pointer" }}>
+                      <RefreshCw size={11} /> Actualizar
+                    </button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+                    {[
+                      { label: "Registros", value: kohaStats.total_registros.toLocaleString(), color: t.teal },
+                      { label: "Transacciones", value: kohaStats.total_transacciones.toLocaleString(), color: t.blue },
+                      { label: "Bibliotecas", value: Object.keys(kohaStats.por_biblioteca).length, color: t.purple },
+                    ].map((kpi, i) => (
+                      <div key={i} style={{ padding: 14, borderRadius: 10, background: `${kpi.color}08`, border: `1px solid ${kpi.color}20`, textAlign: "center" }}>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
+                        <div style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>{kpi.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: t.textDim, marginBottom: 8 }}>Por Año</div>
+                      {Object.entries(kohaStats.por_anio).map(([anio, total], i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${t.cardBorder}`, fontSize: 11 }}>
+                          <span style={{ color: t.text, fontWeight: 500 }}>{anio}</span>
+                          <span style={{ fontWeight: 700, color: t.teal }}>{Number(total).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: t.textDim, marginBottom: 8 }}>Top Carreras</div>
+                      {(kohaStats.top_carreras || []).slice(0, 6).map((c, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${t.cardBorder}`, fontSize: 11 }}>
+                          <span style={{ color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>{c.carrera}</span>
+                          <span style={{ fontWeight: 700, color: t.purple, flexShrink: 0, marginLeft: 8 }}>{c.total.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Fuentes de datos */}
+              <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Fuentes de Datos Conectadas</div>
                 {[
-                  { name: "SIAB (Sistema Bibliotecario)", status: "activo", records: "12,450", lastSync: "Hace 2h", icon: BookOpen, color: t.teal },
-                  { name: "Sistema Escolar UACJ", status: "activo", records: "2,110", lastSync: "Hace 24h", icon: GraduationCap, color: t.blue },
-                  { name: "Google Forms — Uso de Computadoras", status: "activo", records: realLoading ? "..." : `${realStats?.total_sesiones ?? 0}`, lastSync: "Tiempo real", icon: Database, color: t.teal },
-                  { name: "Buzón Digital + Encuestas", status: "activo", records: `${comments.length}`, lastSync: "Tiempo real", icon: MessageSquare, color: t.purple },
+                  { name: "Koha — Préstamos (CSV)", status: kohaStats ? "activo" : "pendiente", records: kohaStats ? kohaStats.total_registros.toLocaleString() : "Sin datos", lastSync: kohaStats ? "Última ingesta" : "Pendiente de carga", icon: BookOpen, color: t.teal },
+                  { name: "Google Forms — Uso de Computadoras", status: realStats ? "activo" : "error", records: realLoading ? "..." : `${realStats?.total_sesiones ?? 0}`, lastSync: "Tiempo real", icon: Database, color: t.blue },
+                  { name: "Buzón Digital + Encuestas (NLP)", status: "activo", records: `${comments.length}`, lastSync: "Tiempo real", icon: MessageSquare, color: t.purple },
                 ].map((src, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, borderRadius: 12, marginBottom: 8, background: `${t.text}03` }}>
                     <div style={{ width: 38, height: 38, borderRadius: 10, background: `${src.color}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1245,25 +1303,9 @@ export default function BiblioAnalytics360() {
                       <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{src.name}</div>
                       <div style={{ fontSize: 10, color: t.textDim }}>{src.records} registros · {src.lastSync}</div>
                     </div>
-                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: `${t.green}12`, color: t.green }}>● Activo</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Auditoría de Calidad de Datos</div>
-                {[
-                  { metric: "Registros completos", value: 96.8, color: t.green },
-                  { metric: "Campos sin valores nulos", value: 94.2, color: t.green },
-                  { metric: "Fechas válidas", value: 99.1, color: t.green },
-                  { metric: "Duplicados eliminados", value: 100, color: t.teal },
-                  { metric: "Datos anonimizados (SHA-256)", value: 100, color: t.teal },
-                ].map((q, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 4 ? `1px solid ${t.cardBorder}` : "none" }}>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: t.text, flex: 1 }}>{q.metric}</span>
-                    <div style={{ width: 200, height: 6, borderRadius: 3, background: `${t.text}08`, overflow: "hidden" }}>
-                      <div style={{ width: `${q.value}%`, height: "100%", borderRadius: 3, background: q.color }} />
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: q.color, width: 50, textAlign: "right" }}>{q.value}%</span>
+                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: src.status === "activo" ? `${t.green}12` : src.status === "pendiente" ? `${t.amber}12` : `${t.rose}12`, color: src.status === "activo" ? t.green : src.status === "pendiente" ? t.amber : t.rose }}>
+                      ● {src.status === "activo" ? "Activo" : src.status === "pendiente" ? "Pendiente" : "Error"}
+                    </span>
                   </div>
                 ))}
               </div>
