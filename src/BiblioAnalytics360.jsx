@@ -481,6 +481,18 @@ export default function BiblioAnalytics360() {
     return unsub;
   }, []);
 
+  // Recargar datos de Supabase cuando el tab vuelve al foco (Realtime se congela en background)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      dbLoadCubiculos().then(data => { if (data && data.length > 0) setCubiculos(data); });
+      dbLoadComputadoras().then(data => { if (data && data.length > 0) setComputadoras(data); });
+      dbLoadAlumnos().then(data => { if (data) setAlumnos(data); });
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
   // Config sync via localStorage (local only, no need for DB)
   useEffect(() => {
     const handler = (e) => {

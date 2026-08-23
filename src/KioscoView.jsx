@@ -857,7 +857,7 @@ export default function KioscoView() {
 
               let color, icon, label, sublabel;
               if (isLibre && isSuficiente)       { color = GREEN; icon = "✅"; label = "Disponible"; sublabel = null; }
-              else if (isLibre && !isSuficiente) { color = "rgba(255,255,255,0.25)"; icon = "🚫"; label = `Máx. ${cubi.capacidad} pers.`; sublabel = null; }
+              else if (isLibre && !isSuficiente) { color = "rgba(255,255,255,0.22)"; icon = "👥"; label = `Solo ${cubi.capacidad} pers.`; sublabel = "Capacidad insuficiente"; }
               else if (canAdvance)               { color = AMBER; icon = "⏱️"; label = `Libre a las ${endTime ? fmtTime(endTime) : "—"}`; sublabel = `Faltan ${fmtRemaining(rem)}`; }
               else if (hasNextReserva)           { color = AMBER; icon = "⏱️"; label = "Siguiente turno reservado"; sublabel = endTime ? `Libre a las ${fmtTime(endTime)}` : null; }
               else                               { color = ROSE;  icon = "🔴"; label = "En uso"; sublabel = endTime ? `Libre aprox. ${fmtTime(endTime)}` : null; }
