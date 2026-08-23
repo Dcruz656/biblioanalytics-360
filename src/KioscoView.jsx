@@ -4,7 +4,6 @@ import {
   findAccount, loadCubiConfig, CUBI_CONFIG_KEY,
 } from "./cubiData";
 
-// ── Palette ──────────────────────────────────────────────
 const NAVY_DEEP = "#060d1b";
 const NAVY      = "#0e1629";
 const CARD      = "#131c2e";
@@ -14,6 +13,8 @@ const GREEN     = "#059669";
 const ROSE      = "#e11d48";
 const AMBER     = "#d97706";
 
+const ADVANCE_MS = 30 * 60 * 1000; // ventana de 30 min para reserva anticipada
+
 // ── Helpers ──────────────────────────────────────────────
 function generateFolio() {
   const d = new Date(), pad = n => String(n).padStart(2, "0");
@@ -22,6 +23,33 @@ function generateFolio() {
 function addMinutes(date, m) { return new Date(date.getTime() + m * 60000); }
 function fmtTime(date) { return date.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }); }
 function initials(name) { return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(); }
+
+function getRemainingMs(cubi) {
+  if (!cubi?.reserva?.inicio) return 0;
+  const end = new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000;
+  return Math.max(0, end - Date.now());
+}
+
+function fmtRemaining(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2,"0")}m`;
+  return `${m}m ${String(s).padStart(2,"0")}s`;
+}
+
+function applyAutoRelease(cubiList) {
+  let changed = false;
+  const result = cubiList.map(c => {
+    if (c.estado !== "ocupado" || !c.reserva) return c;
+    if (getRemainingMs(c) > 0) return c;
+    changed = true;
+    if (c.nextReserva) return { ...c, reserva: { ...c.nextReserva, inicio: new Date() }, nextReserva: null };
+    return { ...c, estado: "libre", reserva: null };
+  });
+  return changed ? result : null;
+}
 
 // ── TopBar ───────────────────────────────────────────────
 function TopBar({ onBack, title, clock }) {
@@ -53,59 +81,66 @@ function TopBar({ onBack, title, clock }) {
 
 // ── Main ─────────────────────────────────────────────────
 export default function KioscoView() {
-  // screens: idle | matricula | bienvenido | browse | duration | success
-  const [screen,        setScreen]        = useState("idle");
-  const [clock,         setClock]         = useState(new Date());
-  const [cubiculos,     setCubiculos]     = useState([]);
-  const [cubiConfig,    setCubiConfig]    = useState({ minPersonas: 3, maxPersonas: 5 });
-  const [matriculaInput,setMatriculaInput]= useState("");
-  const [account,       setAccount]       = useState(null); // { nombre, matricula, carrera }
-  const [lookupError,   setLookupError]   = useState("");
-  const [looking,       setLooking]       = useState(false);
-  const [personas,      setPersonas]      = useState(3);
-  const [selectedId,    setSelectedId]    = useState(null);
-  const [duracion,      setDuracion]      = useState(2);
-  const [folio,         setFolio]         = useState("");
-  const [countdown,     setCountdown]     = useState(15);
-  const [pisoFilter,    setPisoFilter]    = useState(0);
-  const [pulse,         setPulse]         = useState(true);
+  // screens: idle | matricula | mi_reserva | proxima_reserva | bienvenido | browse | duration | success
+  const [screen,          setScreen]          = useState("idle");
+  const [clock,           setClock]           = useState(new Date());
+  const [cubiculos,       setCubiculos]       = useState([]);
+  const [cubiConfig,      setCubiConfig]      = useState({ minPersonas: 3, maxPersonas: 5 });
+  const [matriculaInput,  setMatriculaInput]  = useState("");
+  const [account,         setAccount]         = useState(null);
+  const [lookupError,     setLookupError]     = useState("");
+  const [looking,         setLooking]         = useState(false);
+  const [personas,        setPersonas]        = useState(3);
+  const [selectedId,      setSelectedId]      = useState(null);
+  const [duracion,        setDuracion]        = useState(2);
+  const [folio,           setFolio]           = useState("");
+  const [countdown,       setCountdown]       = useState(15);
+  const [pisoFilter,      setPisoFilter]      = useState(0);
+  const [pulse,           setPulse]           = useState(true);
+  const [confirmTerminar, setConfirmTerminar] = useState(false);
 
-  // Clock
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Pulse
   useEffect(() => {
     const t = setInterval(() => setPulse(p => !p), 900);
     return () => clearInterval(t);
   }, []);
 
-  // Load cubiculos + config + listen for admin changes
   useEffect(() => {
     const loaded = loadCubiculos();
     if (loaded && loaded.length > 0) setCubiculos(loaded);
     const cfg = loadCubiConfig();
     setCubiConfig(cfg);
     setPersonas(cfg.minPersonas);
-
     const handler = (e) => {
       if (e.key === CUBI_STORAGE_KEY && e.newValue) {
         try { setCubiculos(JSON.parse(e.newValue, (k, v) => k === "inicio" && v ? new Date(v) : v)); } catch {}
       }
       if (e.key === CUBI_CONFIG_KEY && e.newValue) {
-        try {
-          const cfg2 = JSON.parse(e.newValue);
-          setCubiConfig(cfg2);
-        } catch {}
+        try { setCubiConfig(JSON.parse(e.newValue)); } catch {}
       }
     };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);
 
-  // Countdown
+  // Auto-liberar reservas expiradas cada 30s
+  useEffect(() => {
+    const check = () => {
+      setCubiculos(prev => {
+        const updated = applyAutoRelease(prev);
+        if (updated) { saveCubiculos(updated); return updated; }
+        return prev;
+      });
+    };
+    check();
+    const t = setInterval(check, 30_000);
+    return () => clearInterval(t);
+  }, []);
+
   useEffect(() => {
     if (screen !== "success") return;
     let c = 15; setCountdown(c);
@@ -117,39 +152,94 @@ export default function KioscoView() {
     setScreen("idle");
     setMatriculaInput(""); setAccount(null); setLookupError(""); setLooking(false);
     setPersonas(cubiConfig.minPersonas);
-    setSelectedId(null); setDuracion(2); setFolio(""); setPisoFilter(0);
+    setSelectedId(null); setDuracion(2); setFolio(""); setPisoFilter(0); setConfirmTerminar(false);
   }
 
   function handleLookup() {
     if (!matriculaInput.trim()) { setLookupError("Ingresa tu matrícula"); return; }
     setLooking(true); setLookupError("");
+
+    // Aplicar auto-liberación antes de buscar para datos frescos
+    let cubiActuales = cubiculos;
+    const released = applyAutoRelease(cubiculos);
+    if (released) { setCubiculos(released); saveCubiculos(released); cubiActuales = released; }
+
     setTimeout(() => {
       const found = findAccount(matriculaInput.trim());
       setLooking(false);
-      if (found) { setAccount(found); setPersonas(cubiConfig.minPersonas); setScreen("bienvenido"); }
-      else { setLookupError("not_found"); }
+      if (!found) { setLookupError("not_found"); return; }
+
+      // ¿Tiene reserva activa (turno actual)?
+      const activeCubi = cubiActuales.find(c => c.estado === "ocupado" && c.reserva?.expediente === found.matricula);
+      if (activeCubi) { setAccount(found); setSelectedId(activeCubi.id); setScreen("mi_reserva"); return; }
+
+      // ¿Tiene reserva anticipada (siguiente turno)?
+      const advanceCubi = cubiActuales.find(c => c.nextReserva?.expediente === found.matricula);
+      if (advanceCubi) { setAccount(found); setSelectedId(advanceCubi.id); setScreen("proxima_reserva"); return; }
+
+      // Sin reserva → flujo normal
+      setAccount(found); setPersonas(cubiConfig.minPersonas); setScreen("bienvenido");
     }, 700);
+  }
+
+  function terminarUso() {
+    const updated = cubiculos.map(c => {
+      if (c.id !== selectedId) return c;
+      if (c.nextReserva) return { ...c, reserva: { ...c.nextReserva, inicio: new Date() }, nextReserva: null };
+      return { ...c, estado: "libre", reserva: null };
+    });
+    setCubiculos(updated);
+    saveCubiculos(updated);
+    resetToIdle();
+  }
+
+  function cancelarProximaReserva() {
+    const updated = cubiculos.map(c => c.id === selectedId ? { ...c, nextReserva: null } : c);
+    setCubiculos(updated);
+    saveCubiculos(updated);
+    resetToIdle();
   }
 
   function confirmarReserva() {
     const cubi = cubiculos.find(c => c.id === selectedId);
     if (!cubi || !account) return;
     const f = generateFolio();
-    const updated = cubiculos.map(c =>
-      c.id === selectedId
-        ? { ...c, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas, inicio: new Date() } }
-        : c
-    );
+    let updated;
+    if (cubi.estado === "ocupado") {
+      // Reserva anticipada — guardar en nextReserva
+      updated = cubiculos.map(c =>
+        c.id === selectedId
+          ? { ...c, nextReserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas } }
+          : c
+      );
+    } else {
+      // Reserva normal
+      updated = cubiculos.map(c =>
+        c.id === selectedId
+          ? { ...c, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas, inicio: new Date() } }
+          : c
+      );
+    }
     setCubiculos(updated);
     saveCubiculos(updated);
     setFolio(f);
     setScreen("success");
   }
 
-  const selectedCubi = cubiculos.find(c => c.id === selectedId) || null;
-  const libresCount  = cubiculos.filter(c => c.estado === "libre").length;
+  const selectedCubi   = cubiculos.find(c => c.id === selectedId) || null;
+  const libresCount    = cubiculos.filter(c => c.estado === "libre").length;
+
+  // Browse: libres + ocupados con ≤30 min y sin nextReserva
   const cubisFiltrados = (pisoFilter === 0 ? cubiculos : cubiculos.filter(c => c.piso === pisoFilter))
-    .filter(c => c.capacidad >= personas);
+    .filter(c => {
+      if (c.capacidad < personas) return false;
+      if (c.estado === "libre") return true;
+      if (c.estado === "ocupado" && !c.nextReserva) {
+        const rem = getRemainingMs(c);
+        return rem > 0 && rem <= ADVANCE_MS;
+      }
+      return false;
+    });
 
   // ── IDLE ────────────────────────────────────────────────
   if (screen === "idle") {
@@ -177,9 +267,9 @@ export default function KioscoView() {
           {cubiculos.length > 0 && (
             <div style={{ display: "flex", gap: 20, justifyContent: "center", marginBottom: 52 }}>
               {[
-                { n: libresCount,                                               label: "Disponibles", color: GREEN },
-                { n: cubiculos.filter(c=>c.estado==="ocupado").length,          label: "En uso",      color: ROSE  },
-                { n: cubiculos.filter(c=>c.estado==="reservado").length,        label: "Reservados",  color: AMBER },
+                { n: libresCount,                                        label: "Disponibles", color: GREEN },
+                { n: cubiculos.filter(c=>c.estado==="ocupado").length,   label: "En uso",      color: ROSE  },
+                { n: cubiculos.filter(c=>c.estado==="reservado").length, label: "Reservados",  color: AMBER },
               ].map(({ n, label, color }) => (
                 <div key={label} style={{ padding: "14px 28px", borderRadius: 16, background: `${color}12`, border: `1px solid ${color}30`, textAlign: "center", minWidth: 110 }}>
                   <div style={{ fontSize: 38, fontWeight: 800, color, fontFamily: "'Space Mono', monospace" }}>{n}</div>
@@ -221,9 +311,7 @@ export default function KioscoView() {
                 ⚠ Matrícula no encontrada en el sistema.
               </div>
               <button onClick={() => window.location.href = "/registro"}
-                style={{ width: "100%", padding: "18px 24px", borderRadius: 14, border: `1.5px solid ${TEAL}60`, background: `${TEAL}12`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 14, fontFamily: "'DM Sans', sans-serif", transition: "background 0.2s" }}
-                onMouseEnter={e => e.currentTarget.style.background = `${TEAL}22`}
-                onMouseLeave={e => e.currentTarget.style.background = `${TEAL}12`}>
+                style={{ width: "100%", padding: "18px 24px", borderRadius: 14, border: `1.5px solid ${TEAL}60`, background: `${TEAL}12`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 14, fontFamily: "'DM Sans', sans-serif" }}>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>✏️</div>
                 <div style={{ textAlign: "left" }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Crear cuenta</div>
@@ -231,6 +319,12 @@ export default function KioscoView() {
                 </div>
                 <div style={{ marginLeft: "auto", fontSize: 20, color: TEAL }}>→</div>
               </button>
+            </div>
+          )}
+
+          {lookupError && lookupError !== "not_found" && (
+            <div style={{ padding: "14px 18px", borderRadius: 10, background: `${ROSE}15`, border: `1px solid ${ROSE}40`, color: ROSE, fontSize: 13, marginBottom: 22 }}>
+              ⚠ {lookupError}
             </div>
           )}
 
@@ -250,7 +344,146 @@ export default function KioscoView() {
     );
   }
 
-  // ── BIENVENIDO + PERSONAS ────────────────────────────────
+  // ── MI RESERVA (turno activo del usuario) ────────────────
+  if (screen === "mi_reserva" && selectedCubi && account) {
+    const remaining  = getRemainingMs(selectedCubi);
+    const total      = (selectedCubi.reserva?.duracion || 1) * 3_600_000;
+    const usedPct    = Math.min(100, ((total - remaining) / total) * 100);
+    const endTime    = selectedCubi.reserva?.inicio
+      ? new Date(new Date(selectedCubi.reserva.inicio).getTime() + total)
+      : null;
+    const hasNext    = !!selectedCubi.nextReserva;
+    const almostDone = remaining < 10 * 60 * 1000;
+
+    return (
+      <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
+        <TopBar onBack={resetToIdle} title="Mi reserva activa" clock={clock} />
+        <div style={{ maxWidth: 520, margin: "0 auto", padding: "48px 28px", textAlign: "center" }}>
+
+          <div style={{ width: 70, height: 70, borderRadius: "50%", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 auto 16px" }}>
+            {initials(account.nombre)}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", marginBottom: 4 }}>
+            {account.nombre.split(" ")[0]}, tienes una reserva activa
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 32 }}>
+            {account.carrera} · <span style={{ fontFamily: "'Space Mono', monospace" }}>{account.matricula}</span>
+          </div>
+
+          {/* Tarjeta cubículo */}
+          <div style={{ background: CARD, borderRadius: 20, padding: "26px 32px", border: `1.5px solid ${almostDone ? ROSE : TEAL}40`, marginBottom: 20 }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{selectedCubi.nombre}</div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", marginBottom: 22 }}>
+              Piso {selectedCubi.piso} · {selectedCubi.reserva?.personas} persona{selectedCubi.reserva?.personas !== 1 ? "s" : ""}
+              {endTime && ` · Hasta las ${fmtTime(endTime)}`}
+            </div>
+
+            {/* Barra de tiempo */}
+            <div style={{ width: "100%", height: 8, borderRadius: 4, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 10 }}>
+              <div style={{ width: `${usedPct}%`, height: "100%", borderRadius: 4, background: almostDone ? ROSE : TEAL, transition: "width 1s linear" }} />
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
+              <span>Tiempo restante</span>
+              <span>{Math.round(usedPct)}% usado</span>
+            </div>
+            <div style={{ fontSize: 38, fontWeight: 800, color: almostDone ? ROSE : "#fff", fontFamily: "'Space Mono', monospace" }}>
+              {fmtRemaining(remaining)}
+            </div>
+
+            {hasNext && (
+              <div style={{ marginTop: 16, padding: "10px 14px", borderRadius: 10, background: `${AMBER}15`, border: `1px solid ${AMBER}40`, fontSize: 12, color: AMBER }}>
+                ⏱️ Hay una reserva para el siguiente turno. Por favor libera el cubículo a tiempo.
+              </div>
+            )}
+          </div>
+
+          {/* Botón terminar */}
+          {!confirmTerminar ? (
+            <button onClick={() => setConfirmTerminar(true)}
+              style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: `1.5px solid ${ROSE}50`, background: `${ROSE}10`, color: ROSE, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 12 }}>
+              Terminar uso anticipadamente
+            </button>
+          ) : (
+            <div style={{ background: `${ROSE}10`, border: `1px solid ${ROSE}40`, borderRadius: 14, padding: "20px", marginBottom: 12 }}>
+              <div style={{ fontSize: 14, color: "#fff", fontWeight: 600, marginBottom: 16 }}>
+                ¿Confirmas que quieres terminar el uso ahora?
+                {hasNext && <span style={{ display: "block", marginTop: 4, fontSize: 12, color: AMBER, fontWeight: 400 }}>El cubículo pasará al siguiente usuario automáticamente.</span>}
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setConfirmTerminar(false)}
+                  style={{ flex: 1, padding: "13px 0", borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                  Cancelar
+                </button>
+                <button onClick={terminarUso}
+                  style={{ flex: 1, padding: "13px 0", borderRadius: 10, border: "none", background: ROSE, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                  Sí, terminar
+                </button>
+              </div>
+            </div>
+          )}
+
+          <button onClick={resetToIdle}
+            style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PRÓXIMA RESERVA (siguiente turno confirmado) ──────────
+  if (screen === "proxima_reserva" && selectedCubi && account) {
+    const remaining  = getRemainingMs(selectedCubi);
+    const endTime    = selectedCubi.reserva?.inicio
+      ? new Date(new Date(selectedCubi.reserva.inicio).getTime() + selectedCubi.reserva.duracion * 3_600_000)
+      : null;
+
+    return (
+      <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
+        <TopBar onBack={resetToIdle} title="Mi próxima reserva" clock={clock} />
+        <div style={{ maxWidth: 520, margin: "0 auto", padding: "48px 28px", textAlign: "center" }}>
+
+          <div style={{ width: 70, height: 70, borderRadius: 20, background: `${AMBER}18`, border: `1.5px solid ${AMBER}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, margin: "0 auto 20px" }}>⏱️</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Lugar asegurado</div>
+          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginBottom: 32, lineHeight: 1.6 }}>
+            Tu reserva para el siguiente turno está confirmada
+          </div>
+
+          <div style={{ background: CARD, borderRadius: 20, padding: "26px 32px", border: `1.5px solid ${AMBER}40`, marginBottom: 24, textAlign: "left" }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14, fontWeight: 700 }}>Tu cubículo</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{selectedCubi.nombre}</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginBottom: 22 }}>
+              Piso {selectedCubi.piso} · {selectedCubi.nextReserva?.personas} personas · {selectedCubi.nextReserva?.duracion}h
+            </div>
+            {endTime && (
+              <div style={{ padding: "14px 18px", borderRadius: 12, background: `${AMBER}12`, border: `1px solid ${AMBER}30`, textAlign: "center" }}>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Disponible a partir de</div>
+                <div style={{ fontSize: 30, fontWeight: 800, color: AMBER, fontFamily: "'Space Mono', monospace" }}>{fmtTime(endTime)}</div>
+                {remaining > 0 && (
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>({fmtRemaining(remaining)} restantes del turno actual)</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", marginBottom: 24, fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
+            Regresa a este kiosco cuando el cubículo esté libre e ingresa tu matrícula para confirmar tu acceso.
+          </div>
+
+          <button onClick={cancelarProximaReserva}
+            style={{ width: "100%", padding: "15px 0", borderRadius: 14, border: `1px solid ${ROSE}40`, background: `${ROSE}10`, color: ROSE, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 10 }}>
+            Cancelar reserva
+          </button>
+          <button onClick={resetToIdle}
+            style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── BIENVENIDO ───────────────────────────────────────────
   if (screen === "bienvenido" && account) {
     const min = cubiConfig.minPersonas;
     const max = cubiConfig.maxPersonas;
@@ -258,8 +491,6 @@ export default function KioscoView() {
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={() => setScreen("matricula")} title="Bienvenido" clock={clock} />
         <div style={{ maxWidth: 540, margin: "0 auto", padding: "52px 28px", textAlign: "center" }}>
-
-          {/* Avatar + greeting */}
           <div style={{ width: 80, height: 80, borderRadius: "50%", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 800, color: "#fff", margin: "0 auto 20px" }}>
             {initials(account.nombre)}
           </div>
@@ -270,26 +501,18 @@ export default function KioscoView() {
             {account.carrera} · <span style={{ fontFamily: "'Space Mono', monospace" }}>{account.matricula}</span>
           </div>
 
-          {/* Personas picker */}
           <div style={{ background: CARD, borderRadius: 20, padding: "30px 28px", border: `1px solid rgba(255,255,255,0.08)`, marginBottom: 32 }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 6 }}>¿Cuántas personas usarán el cubículo?</div>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginBottom: 28 }}>Mínimo {min} · Máximo {max} personas</div>
-
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
-              <button onClick={() => setPersonas(p => Math.max(min, p - 1))}
-                disabled={personas <= min}
-                style={{ width: 60, height: 60, borderRadius: 16, border: `1.5px solid ${personas <= min ? "rgba(255,255,255,0.1)" : TEAL}`, background: personas <= min ? "rgba(255,255,255,0.04)" : `${TEAL}18`, color: personas <= min ? "rgba(255,255,255,0.25)" : TEAL, fontSize: 28, fontWeight: 800, cursor: personas <= min ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
-                −
-              </button>
+              <button onClick={() => setPersonas(p => Math.max(min, p - 1))} disabled={personas <= min}
+                style={{ width: 60, height: 60, borderRadius: 16, border: `1.5px solid ${personas <= min ? "rgba(255,255,255,0.1)" : TEAL}`, background: personas <= min ? "rgba(255,255,255,0.04)" : `${TEAL}18`, color: personas <= min ? "rgba(255,255,255,0.25)" : TEAL, fontSize: 28, fontWeight: 800, cursor: personas <= min ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>−</button>
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 64, fontWeight: 800, color: "#fff", fontFamily: "'Space Mono', monospace", lineHeight: 1 }}>{personas}</div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>persona{personas !== 1 ? "s" : ""}</div>
               </div>
-              <button onClick={() => setPersonas(p => Math.min(max, p + 1))}
-                disabled={personas >= max}
-                style={{ width: 60, height: 60, borderRadius: 16, border: `1.5px solid ${personas >= max ? "rgba(255,255,255,0.1)" : TEAL}`, background: personas >= max ? "rgba(255,255,255,0.04)" : `${TEAL}18`, color: personas >= max ? "rgba(255,255,255,0.25)" : TEAL, fontSize: 28, fontWeight: 800, cursor: personas >= max ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
-                +
-              </button>
+              <button onClick={() => setPersonas(p => Math.min(max, p + 1))} disabled={personas >= max}
+                style={{ width: 60, height: 60, borderRadius: 16, border: `1.5px solid ${personas >= max ? "rgba(255,255,255,0.1)" : TEAL}`, background: personas >= max ? "rgba(255,255,255,0.04)" : `${TEAL}18`, color: personas >= max ? "rgba(255,255,255,0.25)" : TEAL, fontSize: 28, fontWeight: 800, cursor: personas >= max ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>+</button>
             </div>
           </div>
 
@@ -310,10 +533,9 @@ export default function KioscoView() {
         <div style={{ padding: "28px 32px" }}>
           <div style={{ fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 4 }}>Selecciona un cubículo</div>
           <div style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginBottom: 22 }}>
-            Para {personas} persona{personas !== 1 ? "s" : ""} · Mostrando espacios con capacidad ≥ {personas}
+            Para {personas} persona{personas !== 1 ? "s" : ""} · capacidad ≥ {personas}
           </div>
 
-          {/* Filters */}
           <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap", alignItems: "center" }}>
             {[{ v: 0, l: "Todos los pisos" }, { v: 1, l: "Piso 1" }, { v: 2, l: "Piso 2" }].map(p => (
               <button key={p.v} onClick={() => setPisoFilter(p.v)}
@@ -322,31 +544,40 @@ export default function KioscoView() {
               </button>
             ))}
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
-              {[["🟢", GREEN, "Disponible"], ["🔴", ROSE, "En uso"], ["🟡", AMBER, "Reservado"]].map(([ico, c, l]) => (
-                <div key={l} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "rgba(255,255,255,0.4)" }}><span>{ico}</span>{l}</div>
+              {[["🟢", GREEN, "Disponible"], ["🟡", AMBER, "Reservar turno siguiente"], ["🔴", ROSE, "En uso"]].map(([ico, c, l]) => (
+                <div key={l} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.4)" }}><span>{ico}</span>{l}</div>
               ))}
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
             {cubisFiltrados.map(cubi => {
-              const isLibre = cubi.estado === "libre";
-              const color   = isLibre ? GREEN : cubi.estado === "ocupado" ? ROSE : AMBER;
-              const icon    = isLibre ? "✅" : cubi.estado === "ocupado" ? "🔴" : "⏱️";
-              const label   = isLibre ? "Disponible" : cubi.estado === "ocupado" ? "En uso" : "Reservado";
+              const isLibre    = cubi.estado === "libre";
+              const isAdvance  = !isLibre; // ocupado con ≤30 min
+              const rem        = isAdvance ? getRemainingMs(cubi) : 0;
+              const availAt    = isAdvance && cubi.reserva?.inicio
+                ? new Date(new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000)
+                : null;
+              const color      = isLibre ? GREEN : AMBER;
+              const icon       = isLibre ? "✅" : "⏱️";
+              const label      = isLibre ? "Disponible" : `Libre a las ${availAt ? fmtTime(availAt) : "—"}`;
+              const sublabel   = isAdvance ? fmtRemaining(rem) : null;
+
               return (
-                <button key={cubi.id} onClick={() => isLibre ? (setSelectedId(cubi.id), setScreen("duration")) : null}
-                  style={{ padding: "24px 16px", borderRadius: 18, border: `2px solid ${isLibre ? `${color}60` : `${color}20`}`, background: isLibre ? `${color}10` : `${color}05`, cursor: isLibre ? "pointer" : "not-allowed", textAlign: "center", opacity: isLibre ? 1 : 0.45, outline: "none", fontFamily: "'DM Sans', sans-serif" }}>
+                <button key={cubi.id}
+                  onClick={() => { setSelectedId(cubi.id); setScreen("duration"); }}
+                  style={{ padding: "24px 16px", borderRadius: 18, border: `2px solid ${isLibre ? `${color}60` : `${color}40`}`, background: isLibre ? `${color}10` : `${color}08`, cursor: "pointer", textAlign: "center", outline: "none", fontFamily: "'DM Sans', sans-serif" }}>
                   <div style={{ fontSize: 30, marginBottom: 10 }}>{icon}</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{cubi.nombre}</div>
                   <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>Piso {cubi.piso} · {cubi.capacidad} personas</div>
                   <div style={{ fontSize: 11, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
+                  {sublabel && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 3 }}>Turno actual: {sublabel}</div>}
                 </button>
               );
             })}
           </div>
 
-          {cubisFiltrados.filter(c => c.estado === "libre").length === 0 && (
+          {cubisFiltrados.length === 0 && (
             <div style={{ textAlign: "center", padding: "56px 0", color: "rgba(255,255,255,0.3)", fontSize: 16 }}>
               No hay cubículos disponibles para {personas} persona{personas !== 1 ? "s" : ""} en este momento.
             </div>
@@ -358,20 +589,30 @@ export default function KioscoView() {
 
   // ── DURATION ─────────────────────────────────────────────
   if (screen === "duration" && selectedCubi) {
-    const start = new Date();
+    const isAdvance = selectedCubi.estado === "ocupado";
+    const start     = new Date();
+    const availAt   = isAdvance && selectedCubi.reserva?.inicio
+      ? new Date(new Date(selectedCubi.reserva.inicio).getTime() + selectedCubi.reserva.duracion * 3_600_000)
+      : start;
+
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={() => setScreen("browse")} title={selectedCubi.nombre} clock={clock} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "52px 28px", textAlign: "center" }}>
-          <div style={{ background: CARD, borderRadius: 20, padding: "26px 36px", border: `1.5px solid ${GREEN}45`, marginBottom: 38 }}>
+
+          <div style={{ background: CARD, borderRadius: 20, padding: "26px 36px", border: `1.5px solid ${isAdvance ? AMBER : GREEN}45`, marginBottom: 38 }}>
             <div style={{ fontSize: 40, fontWeight: 800, color: "#fff", marginBottom: 6 }}>{selectedCubi.nombre}</div>
             <div style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", marginBottom: 8 }}>Piso {selectedCubi.piso} · Capacidad {selectedCubi.capacidad} personas</div>
-            <div style={{ fontSize: 14, color: GREEN, fontWeight: 700 }}>✓ Disponible · {personas} persona{personas !== 1 ? "s" : ""}</div>
+            {isAdvance ? (
+              <div style={{ fontSize: 14, color: AMBER, fontWeight: 700 }}>⏱️ Reserva anticipada · Disponible a las {fmtTime(availAt)}</div>
+            ) : (
+              <div style={{ fontSize: 14, color: GREEN, fontWeight: 700 }}>✓ Disponible ahora · {personas} persona{personas !== 1 ? "s" : ""}</div>
+            )}
           </div>
 
           <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 8 }}>¿Cuánto tiempo necesitas?</div>
           <div style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", marginBottom: 30 }}>
-            {fmtTime(start)} → {fmtTime(addMinutes(start, duracion * 60))}
+            {fmtTime(availAt)} → {fmtTime(addMinutes(availAt, duracion * 60))}
           </div>
 
           <div style={{ display: "flex", gap: 16, marginBottom: 36 }}>
@@ -389,8 +630,8 @@ export default function KioscoView() {
           </div>
 
           <button onClick={confirmarReserva}
-            style={{ width: "100%", padding: "22px 0", borderRadius: 16, border: "none", background: `linear-gradient(135deg, ${GREEN}, ${TEAL})`, color: "#fff", fontSize: 22, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-            ✓ Confirmar Reserva
+            style={{ width: "100%", padding: "22px 0", borderRadius: 16, border: "none", background: isAdvance ? `linear-gradient(135deg, ${AMBER}, ${ROSE})` : `linear-gradient(135deg, ${GREEN}, ${TEAL})`, color: "#fff", fontSize: 22, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+            {isAdvance ? "⏱️ Confirmar reserva anticipada" : "✓ Confirmar Reserva"}
           </button>
         </div>
       </div>
@@ -399,23 +640,36 @@ export default function KioscoView() {
 
   // ── SUCCESS ──────────────────────────────────────────────
   if (screen === "success") {
-    const pct = Math.min(100, ((15 - countdown) / 15) * 100);
+    const pct       = Math.min(100, ((15 - countdown) / 15) * 100);
+    const isAdvance = !!selectedCubi?.nextReserva && selectedCubi.nextReserva.expediente === account?.matricula;
+    const availAt   = isAdvance && selectedCubi?.reserva?.inicio
+      ? new Date(new Date(selectedCubi.reserva.inicio).getTime() + selectedCubi.reserva.duracion * 3_600_000)
+      : null;
+
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "28px" }}>
-        <div style={{ width: 100, height: 100, borderRadius: "50%", background: `${GREEN}18`, border: `3px solid ${GREEN}70`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, marginBottom: 24 }}>✓</div>
-        <div style={{ fontSize: 42, fontWeight: 800, color: "#fff", marginBottom: 8 }}>¡Reserva Confirmada!</div>
-        <div style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", marginBottom: 36 }}>Puedes dirigirte directamente a tu cubículo</div>
+        <div style={{ width: 100, height: 100, borderRadius: "50%", background: `${isAdvance ? AMBER : GREEN}18`, border: `3px solid ${isAdvance ? AMBER : GREEN}70`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, marginBottom: 24 }}>
+          {isAdvance ? "⏱️" : "✓"}
+        </div>
+        <div style={{ fontSize: 42, fontWeight: 800, color: "#fff", marginBottom: 8 }}>
+          {isAdvance ? "¡Lugar Asegurado!" : "¡Reserva Confirmada!"}
+        </div>
+        <div style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", marginBottom: 36 }}>
+          {isAdvance && availAt
+            ? `Tu cubículo estará listo a partir de las ${fmtTime(availAt)}`
+            : "Puedes dirigirte directamente a tu cubículo"}
+        </div>
 
-        <div style={{ background: CARD, borderRadius: 20, padding: "26px 44px", border: `1.5px solid ${TEAL}45`, marginBottom: 28, width: "100%", maxWidth: 540 }}>
+        <div style={{ background: CARD, borderRadius: 20, padding: "26px 44px", border: `1.5px solid ${isAdvance ? AMBER : TEAL}45`, marginBottom: 28, width: "100%", maxWidth: 540 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10 }}>Folio de reserva</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: TEAL, fontFamily: "'Space Mono', monospace", marginBottom: 22 }}>{folio}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: isAdvance ? AMBER : TEAL, fontFamily: "'Space Mono', monospace", marginBottom: 22 }}>{folio}</div>
           {[
             ["Cubículo",   selectedCubi ? `${selectedCubi.nombre} — Piso ${selectedCubi.piso}` : ""],
-            ["Personas",   `${personas} persona${personas !== 1 ? "s" : ""}`],
+            ["Personas",   `${isAdvance ? selectedCubi?.nextReserva?.personas : selectedCubi?.reserva?.personas} personas`],
             ["Estudiante", account?.nombre || ""],
             ["Matrícula",  account?.matricula || ""],
-            ["Carrera",    account?.carrera || ""],
-            ["Duración",   `${duracion} hora${duracion > 1 ? "s" : ""}`],
+            ["Duración",   `${duracion}h`],
+            ...(isAdvance && availAt ? [["Disponible a las", fmtTime(availAt)]] : []),
           ].map(([k, v]) => (
             <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
               <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>{k}</span>
