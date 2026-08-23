@@ -258,7 +258,7 @@ function Dropdown({ label, value, options, onChange, t, icon: Icon }) {
 // ===== NAV =====
 const navMain = [
   { id: "overview", icon: Home, label: "Vista General" },
-  { id: "servicios", icon: BarChart3, label: "Servicios" },
+  { id: "servicios", icon: BarChart3, label: "Estadísticas" },
   { id: "predictivo", icon: TrendingUp, label: "Mod. Predictivo" },
   { id: "sentimiento", icon: Heart, label: "Mod. Sentimiento" },
   { id: "impacto", icon: GraduationCap, label: "Mod. Impacto" },
