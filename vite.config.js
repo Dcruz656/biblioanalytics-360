@@ -6,5 +6,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    minify: 'terser',
+    terserOptions: {
+      compress: { passes: 2 },
+      mangle: true,
+    },
   },
 })
