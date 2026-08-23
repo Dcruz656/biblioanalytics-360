@@ -9,6 +9,7 @@ import {
   dbFindAlumno, dbGetPushSubscription,
   subscribeCubiculos, subscribeComputadoras,
   loadAppConfig, saveAppConfig, subscribeAppConfig,
+  dbSaveHistorialReserva,
 } from "./db";
 import { registerServiceWorker, sendPush } from "./pushNotifications";
 import { QRCodeSVG } from "qrcode.react";
@@ -201,9 +202,19 @@ export default function KioscoView() {
           updated.forEach((c, i) => {
             if (c === prev[i]) return;
             const old = prev[i];
-            // Notificar al usuario que su tiempo venció
+            // Guardar en historial antes de liberar
             if (old?.reserva?.expediente) {
-              dbGetPushSubscription(old.reserva.expediente).then(sub => {
+              const res = old.reserva;
+              const hh = new Date(res.inicio).getHours();
+              const turno = hh >= 7 && hh < 14 ? 'Matutino' : hh >= 14 && hh < 20 ? 'Vespertino' : 'Nocturno';
+              dbSaveHistorialReserva({
+                cubicule: old.nombre, tipo: 'cubiculos',
+                nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+                duracion: res.duracion, personas: res.personas || null, piso: old.piso,
+                inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
+                fin: new Date(serverNow()).toISOString(), turno,
+              });
+              dbGetPushSubscription(res.expediente).then(sub => {
                 if (sub) sendPush(sub, '📚 Tu reserva ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Gracias por usar la biblioteca.`);
               });
             }
@@ -311,6 +322,18 @@ export default function KioscoView() {
   function terminarUso() {
     const changed = cubiculos.find(c => c.id === selectedId);
     if (!changed) return;
+    if (changed.reserva) {
+      const res = changed.reserva;
+      const h = new Date(res.inicio).getHours();
+      const turno = h >= 7 && h < 14 ? 'Matutino' : h >= 14 && h < 20 ? 'Vespertino' : 'Nocturno';
+      dbSaveHistorialReserva({
+        cubicule: changed.nombre, tipo: 'cubiculos',
+        nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+        duracion: res.duracion, personas: res.personas || null, piso: changed.piso,
+        inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
+        fin: new Date(serverNow()).toISOString(), turno,
+      });
+    }
     const newState = changed.nextReserva
       ? { ...changed, reserva: { ...changed.nextReserva, inicio: new Date(serverNow()) }, nextReserva: null }
       : { ...changed, estado: "libre", reserva: null };
@@ -359,6 +382,18 @@ export default function KioscoView() {
   function terminarUsoCompu() {
     const compu = computadoras.find(c => c.id === compuSelectedId);
     if (!compu) return;
+    if (compu.reserva) {
+      const res = compu.reserva;
+      const h = new Date(res.inicio).getHours();
+      const turno = h >= 7 && h < 14 ? 'Matutino' : h >= 14 && h < 20 ? 'Vespertino' : 'Nocturno';
+      dbSaveHistorialReserva({
+        cubicule: compu.nombre, tipo: 'computadoras',
+        nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+        duracion: res.duracion, personas: null, piso: null,
+        inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
+        fin: new Date(serverNow()).toISOString(), turno,
+      });
+    }
     const newState = { ...compu, estado: "libre", reserva: null };
     setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? newState : c));
     dbSaveComputadora(newState);

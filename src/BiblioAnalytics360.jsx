@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
-import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, broadcastAppConfig, subscribeAppConfig } from "./db";
+import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, broadcastAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas } from "./db";
 import { serverNow } from "./serverTime";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
@@ -356,6 +356,53 @@ function buildTableRows(mesSvc, carreraSvc, tipoSvc, turnoSvc) {
   return rows;
 }
 
+function calcTurno(inicio) {
+  if (!inicio) return 'Vespertino';
+  const h = new Date(inicio).getHours();
+  if (h >= 7 && h < 14) return 'Matutino';
+  if (h >= 14 && h < 20) return 'Vespertino';
+  return 'Nocturno';
+}
+
+function buildSvcMesFromHistorial(historial) {
+  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const now = new Date();
+  return Array.from({ length: 9 }, (_, idx) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (8 - idx), 1);
+    const m = d.getMonth(), y = d.getFullYear();
+    const rows = historial.filter(h => { const f = new Date(h.fin); return f.getMonth() === m && f.getFullYear() === y; });
+    return { mes: MESES[m], cubiculos: rows.filter(r => r.tipo === 'cubiculos').length, computadoras: rows.filter(r => r.tipo === 'computadoras').length };
+  });
+}
+
+function buildSvcCarreraFromHistorial(historial) {
+  const map = {};
+  historial.forEach(h => {
+    const c = h.carrera || 'Sin carrera';
+    if (!map[c]) map[c] = { carrera: c, prestamos: 0, computadoras: 0, talleres: 0, espacios: 0, total: 0 };
+    if (h.tipo === 'cubiculos') map[c].espacios++;
+    else if (h.tipo === 'computadoras') map[c].computadoras++;
+    map[c].total++;
+  });
+  return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10);
+}
+
+function buildSvcTurnoFromHistorial(historial) {
+  const tipos = { Matutino: { cubi: 0, compu: 0 }, Vespertino: { cubi: 0, compu: 0 }, Nocturno: { cubi: 0, compu: 0 } };
+  let total = 0;
+  historial.forEach(h => {
+    const t = h.turno || 'Vespertino';
+    if (!tipos[t]) return;
+    if (h.tipo === 'cubiculos') tipos[t].cubi++;
+    else if (h.tipo === 'computadoras') tipos[t].compu++;
+    total++;
+  });
+  return ['Matutino','Vespertino','Nocturno'].map(t => ({
+    turno: t, prestamos: 0, computo: tipos[t].compu, talleres: 0, espacios: tipos[t].cubi,
+    pct: total > 0 ? Math.round(((tipos[t].cubi + tipos[t].compu) / total) * 100) : 0,
+  }));
+}
+
 function getCubiRemainingMs(cubi) {
   if (!cubi?.reserva?.inicio) return 0;
   const end = new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000;
@@ -574,6 +621,10 @@ export default function BiblioAnalytics360() {
   const circulacion = useMemo(() => genCirculacion(seed, campus, periodo), [seed, campus, periodo]);
   const sentTendencia = useMemo(() => genSentimiento(seed), [seed]);
 
+  // Historial de reservas reales
+  const [historialReservas, setHistorialReservas] = useState([]);
+  useEffect(() => { dbLoadHistorialReservas().then(d => setHistorialReservas(d)); }, []);
+
   // Servicios state
   const [svcView, setSvcView] = useState("realtime"); // realtime | temporal | carrera | usuario | turno
   const [svcCategory, setSvcCategory] = useState("todos"); // todos | prestamos | computo | formacion | espacios
@@ -581,11 +632,22 @@ export default function BiblioAnalytics360() {
   const [svcPage, setSvcPage] = useState(0);
   const SVC_PAGE_SIZE = 15;
 
-  // Servicios data
-  const svcMes = useMemo(() => genServiciosMes(seed), [seed]);
-  const svcCarrera = useMemo(() => genServiciosCarrera(seed), [seed]);
+  // Servicios data — real when historial exists, mock as fallback
+  const svcMes = useMemo(() => {
+    const mock = genServiciosMes(seed);
+    if (!historialReservas.length) return mock;
+    const real = buildSvcMesFromHistorial(historialReservas);
+    return mock.map((m, i) => ({ ...m, cubiculos: real[i]?.cubiculos ?? 0, computadoras: real[i]?.computadoras ?? 0 }));
+  }, [seed, historialReservas]);
+  const svcCarrera = useMemo(() => {
+    if (!historialReservas.length) return genServiciosCarrera(seed);
+    return buildSvcCarreraFromHistorial(historialReservas);
+  }, [seed, historialReservas]);
   const svcTipoUsr = useMemo(() => genServiciosTipoUsuario(seed), [seed]);
-  const svcTurno = useMemo(() => genServiciosTurno(seed), [seed]);
+  const svcTurno = useMemo(() => {
+    if (!historialReservas.length) return genServiciosTurno(seed);
+    return buildSvcTurnoFromHistorial(historialReservas);
+  }, [seed, historialReservas]);
   const svcTableAll = useMemo(() => buildTableRows(svcMes, svcCarrera, svcTipoUsr, svcTurno), [svcMes, svcCarrera, svcTipoUsr, svcTurno]);
 
   const svcTableFiltered = useMemo(() => {
@@ -1129,6 +1191,52 @@ export default function BiblioAnalytics360() {
                     );
                   })()}
                 </div>
+
+                {/* Historial de reservas completadas */}
+                {historialReservas.length > 0 && (() => {
+                  const hoy = historialReservas.filter(h => {
+                    const f = new Date(h.fin);
+                    const n = new Date();
+                    return f.getDate() === n.getDate() && f.getMonth() === n.getMonth() && f.getFullYear() === n.getFullYear();
+                  });
+                  const total = historialReservas.length;
+                  const avgDur = total > 0 ? (historialReservas.reduce((a, h) => a + (h.duracion || 0), 0) / total).toFixed(1) : 0;
+                  const avgPers = historialReservas.filter(h => h.personas).length > 0
+                    ? (historialReservas.filter(h => h.personas).reduce((a, h) => a + h.personas, 0) / historialReservas.filter(h => h.personas).length).toFixed(1)
+                    : "—";
+                  const carreraTop = (() => {
+                    const cnt = {}; historialReservas.forEach(h => { if (h.carrera) cnt[h.carrera] = (cnt[h.carrera] || 0) + 1; });
+                    const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+                    return top ? top[0].split(" ").slice(0, 2).join(" ") : "—";
+                  })();
+                  return (
+                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                        <Activity size={15} color={t.teal} />
+                        <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Historial de Reservas</div>
+                        <div style={{ marginLeft: "auto", fontSize: 9, fontWeight: 600, color: t.teal, padding: "2px 7px", borderRadius: 20, background: `${t.teal}15`, border: `1px solid ${t.teal}30` }}>DATOS REALES</div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                        {[
+                          { label: "Total completadas", value: total, color: t.teal },
+                          { label: "Hoy", value: hoy.length, color: t.green },
+                          { label: "Duración promedio", value: `${avgDur}h`, color: t.blue },
+                          { label: "Carrera más activa", value: carreraTop, color: t.purple },
+                        ].map((s, i) => (
+                          <div key={i} style={{ padding: "14px 16px", borderRadius: 12, background: `${s.color}08`, border: `1px solid ${s.color}20`, textAlign: "center" }}>
+                            <div style={{ fontSize: 24, fontWeight: 800, color: s.color, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>{s.value}</div>
+                            <div style={{ fontSize: 10, color: t.textDim }}>{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {avgPers !== "—" && (
+                        <div style={{ marginTop: 12, padding: "8px 14px", borderRadius: 8, background: `${t.amber}08`, border: `1px solid ${t.amber}20`, fontSize: 11, color: t.textDim }}>
+                          Promedio <span style={{ fontWeight: 700, color: t.amber }}>{avgPers} personas</span> por reserva de cubículo
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Fuentes pendientes */}
                 <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
@@ -2416,10 +2524,19 @@ export default function BiblioAnalytics360() {
                           </div>
                           <button onClick={() => {
                             const nombre = cubiSelected.nombre;
-                            const completed = { id: Date.now(), cubicule: nombre, ...cubiSelected.reserva, estado: "completado" };
+                            const res = cubiSelected.reserva;
+                            const finNow = new Date(serverNow());
+                            const completed = { id: Date.now(), cubicule: nombre, ...res, estado: "completado" };
                             const updated = { ...cubiSelected, estado: "libre", reserva: null };
                             setCubiculos(prev => prev.map(c => c.id === cubiSelectedId ? updated : c));
                             dbSaveCubiculo(updated);
+                            dbSaveHistorialReserva({
+                              cubicule: nombre, tipo: 'cubiculos',
+                              nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+                              duracion: res.duracion, personas: res.personas || null, piso: cubiSelected.piso,
+                              inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
+                              fin: finNow.toISOString(), turno: calcTurno(res.inicio),
+                            }).then(() => dbLoadHistorialReservas().then(d => setHistorialReservas(d)));
                             setCubiHistorial(prev => [completed, ...prev]);
                             setCubiSelectedId(null);
                             setNotifications(prev => [{ id: Date.now(), text: `Cubículo ${nombre} liberado`, type: "info", time: "Ahora" }, ...prev]);
@@ -2912,10 +3029,19 @@ export default function BiblioAnalytics360() {
                               </div>
                               <button onClick={() => {
                                 const nombre = compuSel.nombre;
-                                const completed = { id: Date.now(), pc: nombre, ...compuSel.reserva, estado: "completado" };
+                                const res = compuSel.reserva;
+                                const finNow = new Date(serverNow());
+                                const completed = { id: Date.now(), pc: nombre, ...res, estado: "completado" };
                                 const updated = { ...compuSel, estado: "libre", reserva: null };
                                 setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? updated : c));
                                 dbSaveComputadora(updated);
+                                dbSaveHistorialReserva({
+                                  cubicule: nombre, tipo: 'computadoras',
+                                  nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+                                  duracion: res.duracion, personas: null, piso: null,
+                                  inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
+                                  fin: finNow.toISOString(), turno: calcTurno(res.inicio),
+                                }).then(() => dbLoadHistorialReservas().then(d => setHistorialReservas(d)));
                                 setCompuHistorial(prev => [completed, ...prev]);
                                 setCompuSelectedId(null);
                                 setNotifications(prev => [{ id: Date.now(), text: `${nombre} liberada`, type: "info", time: "Ahora" }, ...prev]);

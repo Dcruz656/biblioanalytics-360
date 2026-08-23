@@ -193,6 +193,24 @@ export function subscribeAppConfig(onChange) {
   return () => supabase.removeChannel(ch);
 }
 
+// ── Historial de reservas ───────────────────────────────────────────────────
+export async function dbSaveHistorialReserva(entry) {
+  if (!supabase) return;
+  const { error } = await supabase.from('historial_reservas').insert(entry);
+  if (error) console.error('[db] historial_reservas insert:', error.message);
+}
+
+export async function dbLoadHistorialReservas(limit = 1000) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('historial_reservas')
+    .select('*')
+    .order('fin', { ascending: false })
+    .limit(limit);
+  if (error) { console.error('[db] historial load:', error.message); return []; }
+  return data ?? [];
+}
+
 // ── Push Subscriptions ──────────────────────────────────────────────────────
 export async function dbSavePushSubscription(matricula, subscription) {
   if (!supabase) return;
