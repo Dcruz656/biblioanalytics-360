@@ -104,6 +104,13 @@ function TopBar({ onBack, title, clock }) {
 export default function KioscoView() {
   // screens: idle | matricula | mi_reserva | proxima_reserva | bienvenido | browse | duration | success
   const [screen,          setScreen]          = useState("idle");
+  const [installPrompt,   setInstallPrompt]   = useState(null);
+  const [showInstall,     setShowInstall]      = useState(false);
+  useEffect(() => {
+    const handler = e => { e.preventDefault(); setInstallPrompt(e); setShowInstall(true); };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
   const [clock,           setClock]           = useState(new Date(serverNow()));
   const [cubiculos,       setCubiculos]       = useState([]);
   const [cubiConfig,      setCubiConfig]      = useState({ minPersonas: 3, maxPersonas: 5 });
@@ -446,6 +453,21 @@ export default function KioscoView() {
           <div style={{ display: "inline-flex", alignItems: "center", gap: 14, padding: "20px 52px", borderRadius: 18, background: `linear-gradient(135deg, ${TEAL}, ${TEAL_L})`, color: "#fff", fontSize: 22, fontWeight: 700, boxShadow: `0 0 48px ${TEAL}35`, opacity: pulse ? 1 : 0.72, transition: "opacity 0.5s ease" }}>
             Toca para comenzar →
           </div>
+          {showInstall && (
+            <div
+              onClick={e => {
+                e.stopPropagation();
+                installPrompt.prompt();
+                installPrompt.userChoice.then(() => setShowInstall(false));
+              }}
+              style={{ marginTop: 28, display: "inline-flex", alignItems: "center", gap: 10, padding: "14px 36px", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1.5px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.75)", fontSize: 15, fontWeight: 600, cursor: "pointer", backdropFilter: "blur(6px)", transition: "background 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+            >
+              <span style={{ fontSize: 20 }}>📲</span>
+              Instalar app en este dispositivo
+            </div>
+          )}
         </div>
       </div>
     );
