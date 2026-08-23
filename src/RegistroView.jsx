@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { loadAccounts, saveAccounts, cubiCarreras } from "./cubiData";
+import { cubiCarreras } from "./cubiData";
+import { dbFindAlumno, dbSaveAlumno } from "./db";
 
 // ── Palette ──────────────────────────────────────────────
 const NAVY_DEEP = "#060d1b";
@@ -59,22 +60,19 @@ export default function RegistroView() {
     setSubmitting(true);
     setGlobalError("");
 
-    setTimeout(() => {
-      const accounts = loadAccounts();
-      const exists = accounts.find(
-        a => String(a.matricula).toLowerCase() === form.matricula.toLowerCase().trim()
-      );
+    dbFindAlumno(form.matricula.trim()).then(exists => {
       if (exists) {
         setGlobalError("Esta matrícula ya tiene una cuenta registrada. Puedes usar el kiosco directamente.");
         setSubmitting(false);
         return;
       }
       const newAccount = { nombre: form.nombre.trim(), matricula: form.matricula.trim().toUpperCase(), carrera: form.carrera };
-      saveAccounts([...accounts, newAccount]);
-      setSavedAccount(newAccount);
-      setSubmitting(false);
-      setScreen("success");
-    }, 800);
+      dbSaveAlumno(newAccount).then(() => {
+        setSavedAccount(newAccount);
+        setSubmitting(false);
+        setScreen("success");
+      });
+    });
   }
 
   // ── FORM ─────────────────────────────────────────────────

@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import {
-  loadCubiculos, saveCubiculos, CUBI_STORAGE_KEY,
-  findAccount, loadCubiConfig, CUBI_CONFIG_KEY,
-  loadComputadoras, saveComputadoras, COMPU_STORAGE_KEY, compuZonas,
+  loadCubiConfig, CUBI_CONFIG_KEY,
+  compuZonas,
 } from "./cubiData";
+import {
+  dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos,
+  dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras,
+  dbFindAlumno,
+  subscribeCubiculos, subscribeComputadoras,
+} from "./db";
 import { serverNow } from "./serverTime";
 
 const NAVY_DEEP = "#060d1b";
@@ -126,21 +131,30 @@ export default function KioscoView() {
   }, []);
 
   useEffect(() => {
-    const loaded = loadCubiculos();
-    if (loaded && loaded.length > 0) setCubiculos(loaded);
     const cfg = loadCubiConfig();
     setCubiConfig(cfg);
     setPersonas(cfg.minPersonas);
-    const handler = (e) => {
-      if (e.key === CUBI_STORAGE_KEY && e.newValue) {
-        try { setCubiculos(JSON.parse(e.newValue, (k, v) => k === "inicio" && v ? new Date(v) : v)); } catch {}
+    dbLoadCubiculos().then(data => {
+      if (data && data.length > 0) setCubiculos(data);
+    });
+    const unsub = subscribeCubiculos((row, eventType) => {
+      if (eventType === 'DELETE') {
+        setCubiculos(prev => prev.filter(c => c.id !== row.id));
+      } else {
+        setCubiculos(prev => {
+          const idx = prev.findIndex(c => c.id === row.id);
+          if (idx >= 0) { const a = [...prev]; a[idx] = row; return a; }
+          return [...prev, row];
+        });
       }
+    });
+    const handler = (e) => {
       if (e.key === CUBI_CONFIG_KEY && e.newValue) {
         try { setCubiConfig(JSON.parse(e.newValue)); } catch {}
       }
     };
     window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
+    return () => { unsub(); window.removeEventListener("storage", handler); };
   }, []);
 
   // Auto-liberar reservas expiradas cada 30s
@@ -148,7 +162,10 @@ export default function KioscoView() {
     const check = () => {
       setCubiculos(prev => {
         const updated = applyAutoRelease(prev);
-        if (updated) { saveCubiculos(updated); return updated; }
+        if (updated) {
+          updated.filter((c, i) => c !== prev[i]).forEach(c => dbSaveCubiculo(c));
+          return updated;
+        }
         return prev;
       });
     };
@@ -158,15 +175,21 @@ export default function KioscoView() {
   }, []);
 
   useEffect(() => {
-    const loaded = loadComputadoras();
-    if (loaded && loaded.length > 0) setComputadoras(loaded);
-    const handler = (e) => {
-      if (e.key === COMPU_STORAGE_KEY && e.newValue) {
-        try { setComputadoras(JSON.parse(e.newValue, (k, v) => k === "inicio" && v ? new Date(v) : v)); } catch {}
+    dbLoadComputadoras().then(data => {
+      if (data && data.length > 0) setComputadoras(data);
+    });
+    const unsub = subscribeComputadoras((row, eventType) => {
+      if (eventType === 'DELETE') {
+        setComputadoras(prev => prev.filter(c => c.id !== row.id));
+      } else {
+        setComputadoras(prev => {
+          const idx = prev.findIndex(c => c.id === row.id);
+          if (idx >= 0) { const a = [...prev]; a[idx] = row; return a; }
+          return [...prev, row];
+        });
       }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
+    });
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -191,10 +214,13 @@ export default function KioscoView() {
     // Aplicar auto-liberación antes de buscar para datos frescos
     let cubiActuales = cubiculos;
     const released = applyAutoRelease(cubiculos);
-    if (released) { setCubiculos(released); saveCubiculos(released); cubiActuales = released; }
+    if (released) {
+      setCubiculos(released);
+      released.filter((c, i) => c !== cubiculos[i]).forEach(c => dbSaveCubiculo(c));
+      cubiActuales = released;
+    }
 
-    setTimeout(() => {
-      const found = findAccount(matriculaInput.trim());
+    dbFindAlumno(matriculaInput.trim()).then(found => {
       setLooking(false);
       if (!found) { setLookupError("not_found"); return; }
 
@@ -212,24 +238,26 @@ export default function KioscoView() {
 
       // Sin reserva → elegir servicio
       setAccount(found); setPersonas(cubiConfig.minPersonas); setScreen("bienvenido");
-    }, 700);
+    });
   }
 
   function terminarUso() {
-    const updated = cubiculos.map(c => {
-      if (c.id !== selectedId) return c;
-      if (c.nextReserva) return { ...c, reserva: { ...c.nextReserva, inicio: new Date(serverNow()) }, nextReserva: null };
-      return { ...c, estado: "libre", reserva: null };
-    });
-    setCubiculos(updated);
-    saveCubiculos(updated);
+    const changed = cubiculos.find(c => c.id === selectedId);
+    if (!changed) return;
+    const newState = changed.nextReserva
+      ? { ...changed, reserva: { ...changed.nextReserva, inicio: new Date(serverNow()) }, nextReserva: null }
+      : { ...changed, estado: "libre", reserva: null };
+    setCubiculos(prev => prev.map(c => c.id === selectedId ? newState : c));
+    dbSaveCubiculo(newState);
     resetToIdle();
   }
 
   function cancelarProximaReserva() {
-    const updated = cubiculos.map(c => c.id === selectedId ? { ...c, nextReserva: null } : c);
-    setCubiculos(updated);
-    saveCubiculos(updated);
+    const changed = cubiculos.find(c => c.id === selectedId);
+    if (!changed) return;
+    const newState = { ...changed, nextReserva: null };
+    setCubiculos(prev => prev.map(c => c.id === selectedId ? newState : c));
+    dbSaveCubiculo(newState);
     resetToIdle();
   }
 
@@ -237,24 +265,14 @@ export default function KioscoView() {
     const cubi = cubiculos.find(c => c.id === selectedId);
     if (!cubi || !account) return;
     const f = generateFolio();
-    let updated;
+    let newState;
     if (cubi.estado === "ocupado") {
-      // Reserva anticipada — guardar en nextReserva
-      updated = cubiculos.map(c =>
-        c.id === selectedId
-          ? { ...c, nextReserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas } }
-          : c
-      );
+      newState = { ...cubi, nextReserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas } };
     } else {
-      // Reserva normal
-      updated = cubiculos.map(c =>
-        c.id === selectedId
-          ? { ...c, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas, inicio: new Date(serverNow()) } }
-          : c
-      );
+      newState = { ...cubi, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas, inicio: new Date(serverNow()) } };
     }
-    setCubiculos(updated);
-    saveCubiculos(updated);
+    setCubiculos(prev => prev.map(c => c.id === selectedId ? newState : c));
+    dbSaveCubiculo(newState);
     setFolio(f);
     setScreen("success");
   }
@@ -264,23 +282,19 @@ export default function KioscoView() {
     if (!compu || !account) return;
     const d = new Date(), pad = n => String(n).padStart(2, "0");
     const f = `PC-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${String(Date.now()).slice(-4)}`;
-    const updated = computadoras.map(c =>
-      c.id === compuSelectedId
-        ? { ...c, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, inicio: new Date(serverNow()) } }
-        : c
-    );
-    setComputadoras(updated);
-    saveComputadoras(updated);
+    const newState = { ...compu, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, inicio: new Date(serverNow()) } };
+    setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? newState : c));
+    dbSaveComputadora(newState);
     setFolio(f);
     setScreen("success");
   }
 
   function terminarUsoCompu() {
-    const updated = computadoras.map(c =>
-      c.id === compuSelectedId ? { ...c, estado: "libre", reserva: null } : c
-    );
-    setComputadoras(updated);
-    saveComputadoras(updated);
+    const compu = computadoras.find(c => c.id === compuSelectedId);
+    if (!compu) return;
+    const newState = { ...compu, estado: "libre", reserva: null };
+    setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? newState : c));
+    dbSaveComputadora(newState);
     resetToIdle();
   }
 

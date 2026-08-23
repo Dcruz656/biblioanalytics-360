@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { CUBI_STORAGE_KEY, loadCubiculos, saveCubiculos, loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, loadAccounts, loadComputadoras, saveComputadoras, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
+import { loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
+import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos } from "./db";
 import { serverNow } from "./serverTime";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
@@ -411,11 +412,10 @@ export default function BiblioAnalytics360() {
   const [alertThresholds, setAlertThresholds] = useState({ prestamos: 900, satisfaccion: 65, calidad: 80 });
   const [alertToggles, setAlertToggles] = useState({ prestamos: true, sentimiento: true, calidad: true, uploads: true });
   const [syncingSource, setSyncingSource] = useState(null);
+  const [alumnos, setAlumnos] = useState([]);
   // Herramientas — Cubículos
-  const [cubiculos, setCubiculos] = useState(() => { const s = loadCubiculos(); return (s && s.length > 0) ? s : createInitCubiculos(); });
+  const [cubiculos, setCubiculos] = useState(createInitCubiculos);
   const [cubiSelectedId, setCubiSelectedId] = useState(null);
-  // Sync cubiculos to localStorage so kiosk can read them
-  useEffect(() => { saveCubiculos(cubiculos); }, [cubiculos]);
   // Cubicle service config (min/max personas)
   const [cubiConfig, setCubiConfig] = useState(() => loadCubiConfig());
   const [cubiConfigDraft, setCubiConfigDraft] = useState(null);
@@ -428,7 +428,7 @@ export default function BiblioAnalytics360() {
   const [herrTool, setHerrTool] = useState("cubiculos");
 
   // Herramientas — Computadoras
-  const [computadoras, setComputadoras] = useState(() => { const s = loadComputadoras(); return (s && s.length > 0) ? s : createInitComputadoras(); });
+  const [computadoras, setComputadoras] = useState(createInitComputadoras);
   const [compuSelectedId, setCompuSelectedId] = useState(null);
   const [compuZonaFilter, setCompuZonaFilter] = useState("Todas");
   const [compuAsignForm, setCompuAsignForm]   = useState({ nombre: "", expediente: "", carrera: cubiCarreras[0], duracion: 1 });
@@ -440,24 +440,70 @@ export default function BiblioAnalytics360() {
       { id:2, pc:"PC-07", nombre:"Marcos Peña",    expediente:"B199333", carrera:"Contaduría",   duracion:1, inicio:new Date(now-86400000),   estado:"completado" },
     ];
   });
-  useEffect(() => { saveComputadoras(computadoras); }, [computadoras]);
 
-  // Listen for kiosk reservations made in another tab
+  // Cargar cubículos y computadoras desde Supabase al montar; suscribir actualizaciones en tiempo real
+  useEffect(() => {
+    dbLoadCubiculos().then(data => {
+      if (data && data.length > 0) setCubiculos(data);
+      else dbSeedCubiculos(createInitCubiculos());
+    });
+    const unsub = subscribeCubiculos((row, eventType) => {
+      if (eventType === 'DELETE') {
+        setCubiculos(prev => prev.filter(c => c.id !== row.id));
+      } else {
+        setCubiculos(prev => {
+          const idx = prev.findIndex(c => c.id === row.id);
+          if (idx >= 0) { const a = [...prev]; a[idx] = row; return a; }
+          return [...prev, row];
+        });
+        setNotifications(prev => [{ id: Date.now(), text: "Reserva actualizada desde otra terminal", type: "info", time: "Ahora" }, ...prev]);
+      }
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    dbLoadComputadoras().then(data => {
+      if (data && data.length > 0) setComputadoras(data);
+      else dbSeedComputadoras(createInitComputadoras());
+    });
+    const unsub = subscribeComputadoras((row, eventType) => {
+      if (eventType === 'DELETE') {
+        setComputadoras(prev => prev.filter(c => c.id !== row.id));
+      } else {
+        setComputadoras(prev => {
+          const idx = prev.findIndex(c => c.id === row.id);
+          if (idx >= 0) { const a = [...prev]; a[idx] = row; return a; }
+          return [...prev, row];
+        });
+      }
+    });
+    return unsub;
+  }, []);
+
+  // Config sync via localStorage (local only, no need for DB)
   useEffect(() => {
     const handler = (e) => {
-      if (e.key === CUBI_STORAGE_KEY && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue, (k, v) => (k === "inicio" && v ? new Date(v) : v));
-          setCubiculos(parsed);
-          setNotifications(prev => [{ id: Date.now(), text: "Reserva registrada desde la terminal de autoservicio", type: "info", time: "Ahora" }, ...prev]);
-        } catch {}
-      }
       if (e.key === CUBI_CONFIG_KEY && e.newValue) {
         try { setCubiConfig(JSON.parse(e.newValue)); } catch {}
       }
     };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  // Alumnos — cargar y suscribir cambios en tiempo real
+  useEffect(() => {
+    dbLoadAlumnos().then(data => { if (data) setAlumnos(data); });
+    const unsub = subscribeAlumnos((row, eventType) => {
+      setAlumnos(prev => {
+        if (eventType === 'DELETE') return prev.filter(a => a.matricula !== row.matricula);
+        const idx = prev.findIndex(a => a.matricula === row.matricula);
+        if (idx >= 0) { const a = [...prev]; a[idx] = row; return a; }
+        return [...prev, row];
+      });
+    });
+    return unsub;
   }, []);
   const [cubiReservaForm, setCubiReservaForm] = useState({ nombre: "", expediente: "", carrera: "Ing. Software", duracion: 2 });
   const [cubiPisoFilter, setCubiPisoFilter] = useState(0);
@@ -2195,9 +2241,9 @@ export default function BiblioAnalytics360() {
                           <button onClick={() => {
                             if (!cubiReservaForm.nombre.trim() || !cubiReservaForm.expediente.trim()) return;
                             const nombre = cubiSelected.nombre;
-                            setCubiculos(prev => prev.map(c => c.id === cubiSelectedId
-                              ? { ...c, estado: "ocupado", reserva: { ...cubiReservaForm, inicio: new Date(serverNow()) } }
-                              : c));
+                            const updated = { ...cubiSelected, estado: "ocupado", reserva: { ...cubiReservaForm, inicio: new Date(serverNow()) } };
+                            setCubiculos(prev => prev.map(c => c.id === cubiSelectedId ? updated : c));
+                            dbSaveCubiculo(updated);
                             setCubiHistorial(prev => [{ id: Date.now(), cubicule: nombre, ...cubiReservaForm, inicio: new Date(serverNow()), estado: "activo" }, ...prev]);
                             setCubiReservaForm({ nombre: "", expediente: "", carrera: "Ing. Software", duracion: 2 });
                             setCubiSelectedId(null);
@@ -2250,7 +2296,9 @@ export default function BiblioAnalytics360() {
                           <button onClick={() => {
                             const nombre = cubiSelected.nombre;
                             const completed = { id: Date.now(), cubicule: nombre, ...cubiSelected.reserva, estado: "completado" };
-                            setCubiculos(prev => prev.map(c => c.id === cubiSelectedId ? { ...c, estado: "libre", reserva: null } : c));
+                            const updated = { ...cubiSelected, estado: "libre", reserva: null };
+                            setCubiculos(prev => prev.map(c => c.id === cubiSelectedId ? updated : c));
+                            dbSaveCubiculo(updated);
                             setCubiHistorial(prev => [completed, ...prev]);
                             setCubiSelectedId(null);
                             setNotifications(prev => [{ id: Date.now(), text: `Cubículo ${nombre} liberado`, type: "info", time: "Ahora" }, ...prev]);
@@ -2419,6 +2467,7 @@ export default function BiblioAnalytics360() {
                       const newId  = Math.max(...cubiculos.map(c => c.id), 0) + 1;
                       const nuevo  = { id: newId, nombre, capacidad: cubiNuevoForm.capacidad, piso: cubiNuevoForm.piso, estado: "libre", reserva: null };
                       setCubiculos(prev => [...prev, nuevo]);
+                      dbSaveCubiculo(nuevo);
                       setCubiNuevoForm({ nombre: "", capacidad: 4, piso: 1 });
                       setNotifications(prev => [{ id: Date.now(), text: `Cubículo ${nombre} agregado (Piso ${cubiNuevoForm.piso}, cap. ${cubiNuevoForm.capacidad})`, type: "success", time: "Ahora" }, ...prev]);
                     }}
@@ -2445,6 +2494,7 @@ export default function BiblioAnalytics360() {
                             onClick={() => {
                               if (!isLibre) return;
                               setCubiculos(prev => prev.filter(x => x.id !== c.id));
+                              dbDeleteCubiculo(c.id);
                               if (cubiSelectedId === c.id) setCubiSelectedId(null);
                               setNotifications(prev => [{ id: Date.now(), text: `Cubículo ${c.nombre} eliminado`, type: "info", time: "Ahora" }, ...prev]);
                             }}
@@ -2459,7 +2509,6 @@ export default function BiblioAnalytics360() {
 
                 {/* Alumnos registrados */}
                 {(() => {
-                  const alumnos = loadAccounts();
                   return (
                     <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
@@ -2674,9 +2723,9 @@ export default function BiblioAnalytics360() {
                                 <button onClick={() => {
                                   if (!compuAsignForm.nombre.trim() || !compuAsignForm.expediente.trim()) return;
                                   const nombre = compuSel.nombre;
-                                  setComputadoras(prev => prev.map(c => c.id === compuSelectedId
-                                    ? { ...c, estado: "ocupado", reserva: { ...compuAsignForm, inicio: new Date(serverNow()) } }
-                                    : c));
+                                  const updated = { ...compuSel, estado: "ocupado", reserva: { ...compuAsignForm, inicio: new Date(serverNow()) } };
+                                  setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? updated : c));
+                                  dbSaveComputadora(updated);
                                   setCompuHistorial(prev => [{ id: Date.now(), pc: nombre, ...compuAsignForm, inicio: new Date(serverNow()), estado: "activo" }, ...prev]);
                                   setCompuAsignForm({ nombre: "", expediente: "", carrera: cubiCarreras[0], duracion: 1 });
                                   setCompuSelectedId(null);
@@ -2687,9 +2736,9 @@ export default function BiblioAnalytics360() {
                                 </button>
                                 <button onClick={() => {
                                   const nombre = compuSel.nombre;
-                                  setComputadoras(prev => prev.map(c => c.id === compuSelectedId
-                                    ? { ...c, estado: "mantenimiento", reserva: null }
-                                    : c));
+                                  const updated = { ...compuSel, estado: "mantenimiento", reserva: null };
+                                  setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? updated : c));
+                                  dbSaveComputadora(updated);
                                   setCompuSelectedId(null);
                                   setNotifications(prev => [{ id: Date.now(), text: `${nombre} puesta en mantenimiento`, type: "info", time: "Ahora" }, ...prev]);
                                 }}
@@ -2743,7 +2792,9 @@ export default function BiblioAnalytics360() {
                               <button onClick={() => {
                                 const nombre = compuSel.nombre;
                                 const completed = { id: Date.now(), pc: nombre, ...compuSel.reserva, estado: "completado" };
-                                setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? { ...c, estado: "libre", reserva: null } : c));
+                                const updated = { ...compuSel, estado: "libre", reserva: null };
+                                setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? updated : c));
+                                dbSaveComputadora(updated);
                                 setCompuHistorial(prev => [completed, ...prev]);
                                 setCompuSelectedId(null);
                                 setNotifications(prev => [{ id: Date.now(), text: `${nombre} liberada`, type: "info", time: "Ahora" }, ...prev]);
@@ -2767,7 +2818,9 @@ export default function BiblioAnalytics360() {
                               </div>
                               <button onClick={() => {
                                 const nombre = compuSel.nombre;
-                                setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? { ...c, estado: "libre", reserva: null } : c));
+                                const updated = { ...compuSel, estado: "libre", reserva: null };
+                                setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? updated : c));
+                                dbSaveComputadora(updated);
                                 setCompuSelectedId(null);
                                 setNotifications(prev => [{ id: Date.now(), text: `${nombre} marcada como disponible`, type: "success", time: "Ahora" }, ...prev]);
                               }}
@@ -2830,7 +2883,9 @@ export default function BiblioAnalytics360() {
                       <button onClick={() => {
                         const nombre = compuNuevoForm.nombre.trim() || `PC-${String(computadoras.length + 1).padStart(2, "0")}`;
                         const newId = Math.max(...computadoras.map(c => c.id), 0) + 1;
-                        setComputadoras(prev => [...prev, { id: newId, nombre, zona: compuNuevoForm.zona, sistema: compuNuevoForm.sistema, estado: "libre", reserva: null }]);
+                        const nueva = { id: newId, nombre, zona: compuNuevoForm.zona, sistema: compuNuevoForm.sistema, estado: "libre", reserva: null };
+                        setComputadoras(prev => [...prev, nueva]);
+                        dbSaveComputadora(nueva);
                         setCompuNuevoForm({ nombre: "", zona: "Sala General", sistema: "Windows 11" });
                         setNotifications(prev => [{ id: Date.now(), text: `${nombre} agregada a ${compuNuevoForm.zona}`, type: "success", time: "Ahora" }, ...prev]);
                       }}
@@ -2856,6 +2911,7 @@ export default function BiblioAnalytics360() {
                               onClick={() => {
                                 if (!isLibre) return;
                                 setComputadoras(prev => prev.filter(x => x.id !== pc.id));
+                                dbDeleteComputadora(pc.id);
                                 if (compuSelectedId === pc.id) setCompuSelectedId(null);
                                 setNotifications(prev => [{ id: Date.now(), text: `${pc.nombre} eliminada`, type: "info", time: "Ahora" }, ...prev]);
                               }}
