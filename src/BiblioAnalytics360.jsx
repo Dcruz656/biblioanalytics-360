@@ -263,7 +263,7 @@ const navMain = [
   { id: "sentimiento", icon: Heart, label: "Mod. Sentimiento" },
   { id: "impacto", icon: GraduationCap, label: "Mod. Impacto" },
   { id: "datos", icon: Database, label: "Datos & Upload" },
-  { id: "herramientas", icon: Wrench, label: "Herramientas" },
+  { id: "herramientas", icon: Wrench, label: "Servicios" },
   { id: "configuracion", icon: Settings, label: "Configuración" },
 ];
 
