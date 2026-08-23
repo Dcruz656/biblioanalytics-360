@@ -458,7 +458,7 @@ export default function BiblioAnalytics360() {
   const [profileDraft, setProfileDraft] = useState(null);
   const [alertThresholds, setAlertThresholds] = useState({ prestamos: 900, satisfaccion: 65, calidad: 80 });
   const [alertToggles, setAlertToggles] = useState({ prestamos: true, sentimiento: true, calidad: true, uploads: true });
-  const [pinRequired,  setPinRequired]  = useState(() => loadAppConfig().pinRequired);
+  const [pinRequired,  setPinRequired]  = useState(true);
   useEffect(() => { dbLoadAppConfig().then(cfg => setPinRequired(cfg.pinRequired)); }, []);
   useEffect(() => subscribeAppConfig(cfg => { if (typeof cfg.pinRequired === 'boolean') setPinRequired(cfg.pinRequired); }), []);
   const [syncingSource, setSyncingSource] = useState(null);

@@ -163,33 +163,18 @@ export function subscribeAlumnos(onChange) {
   return () => supabase.removeChannel(ch);
 }
 
-// ── App Config — Supabase DB como fuente de verdad ─────────────────────────
-const APP_CONFIG_KEY = 'biblio_app_config';
+// ── App Config — Supabase DB como única fuente de verdad ───────────────────
 const DEFAULT_APP_CONFIG = { pinRequired: true };
 
-export function loadAppConfig() {
-  try {
-    const raw = localStorage.getItem(APP_CONFIG_KEY);
-    return raw ? { ...DEFAULT_APP_CONFIG, ...JSON.parse(raw) } : { ...DEFAULT_APP_CONFIG };
-  } catch { return { ...DEFAULT_APP_CONFIG }; }
-}
-
-export function saveAppConfig(config) {
-  try { localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config)); } catch {}
-}
-
 export async function dbLoadAppConfig() {
-  if (!supabase) return loadAppConfig();
+  if (!supabase) return { ...DEFAULT_APP_CONFIG };
   const { data, error } = await supabase
     .from('app_config').select('config').eq('id', 1).single();
-  if (error) { console.error('[db] app_config load:', error.message); return loadAppConfig(); }
-  const cfg = { ...DEFAULT_APP_CONFIG, ...(data?.config ?? {}) };
-  saveAppConfig(cfg);
-  return cfg;
+  if (error) { console.error('[db] app_config load:', error.message); return { ...DEFAULT_APP_CONFIG }; }
+  return { ...DEFAULT_APP_CONFIG, ...(data?.config ?? {}) };
 }
 
 export async function dbSaveAppConfig(config) {
-  saveAppConfig(config);
   if (!supabase) return;
   const { error } = await supabase
     .from('app_config')
@@ -202,13 +187,16 @@ export function subscribeAppConfig(onChange) {
   if (!supabase) return () => {};
   const ch = supabase.channel('rt-app-config')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_config' }, payload => {
-      const cfg = { ...DEFAULT_APP_CONFIG, ...(payload.new?.config ?? {}) };
-      saveAppConfig(cfg);
-      onChange(cfg);
+      onChange({ ...DEFAULT_APP_CONFIG, ...(payload.new?.config ?? {}) });
     })
     .subscribe();
   return () => supabase.removeChannel(ch);
 }
+
+// Kept for backward compat — no longer used
+export function loadAppConfig() { return { ...DEFAULT_APP_CONFIG }; }
+export function saveAppConfig() {}
+export function broadcastAppConfig() {}
 
 // Kept for backward compat — no longer needed
 export function broadcastAppConfig() {}

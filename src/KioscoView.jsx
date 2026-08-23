@@ -129,7 +129,7 @@ export default function KioscoView() {
   const [pinInput,        setPinInput]        = useState("");
   const [pinError,        setPinError]        = useState("");
   const [pinAttempts,     setPinAttempts]     = useState(0);
-  const [pinRequired,     setPinRequired]     = useState(() => loadAppConfig().pinRequired);
+  const [pinRequired,     setPinRequired]     = useState(true);
   useEffect(() => { dbLoadAppConfig().then(cfg => setPinRequired(cfg.pinRequired)); }, []);
 
   // Refs para notificaciones push: evitar re-envío de la misma alerta
