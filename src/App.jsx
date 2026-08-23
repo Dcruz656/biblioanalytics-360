@@ -1,9 +1,12 @@
 import BiblioAnalytics360 from './BiblioAnalytics360'
 import KioscoView from './KioscoView'
+import RegistroView from './RegistroView'
 
 function App() {
-  const isKiosk = window.location.pathname === '/kiosco';
-  return isKiosk ? <KioscoView /> : <BiblioAnalytics360 />;
+  const path = window.location.pathname;
+  if (path === '/kiosco')   return <KioscoView />;
+  if (path === '/registro') return <RegistroView />;
+  return <BiblioAnalytics360 />;
 }
 
 export default App
