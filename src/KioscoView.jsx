@@ -271,6 +271,27 @@ export default function KioscoView() {
     return unsub;
   }, []);
 
+  // Auto-redirigir al inicio cuando expira la reserva activa del alumno
+  useEffect(() => {
+    if (screen === "mi_reserva" && selectedCubi) {
+      if (selectedCubi.estado !== "ocupado") {
+        // Ya liberado por el intervalo (historial ya guardado) — solo regresar al inicio
+        resetToIdle();
+      } else if (getRemainingMs(selectedCubi) <= 0) {
+        // Aún marcado ocupado pero tiempo vencido — liberar y regresar
+        terminarUso();
+      }
+    }
+    if (screen === "mi_compu" && selectedCompu) {
+      if (selectedCompu.estado !== "ocupado") {
+        resetToIdle();
+      } else if (getRemainingMs(selectedCompu) <= 0) {
+        terminarUsoCompu();
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, selectedCubi, selectedCompu]);
+
   function resetToIdle() {
     setScreen("idle");
     setMatriculaInput(""); setAccount(null); setLookupError(""); setLooking(false);
