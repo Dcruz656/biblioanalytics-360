@@ -2342,8 +2342,19 @@ export default function BiblioAnalytics360() {
                             </div>
                           )}
                           <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{cubi.nombre}</div>
-                          <div style={{ fontSize: 10, color: t.textDim, margin: "2px 0 4px" }}>Cap. {cubi.capacidad}</div>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: 0.5 }}>{cubi.estado}</div>
+                          <div style={{ fontSize: 10, color: t.textDim, margin: "2px 0 2px" }}>Cap. {cubi.capacidad}</div>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{cubi.estado}</div>
+                          {cubi.reserva && (() => {
+                            const fmtT = d => new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+                            const fin = new Date(new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000);
+                            const firstName = (cubi.reserva.nombre || "").split(" ")[0];
+                            return (
+                              <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 5, marginTop: 1 }}>
+                                <div style={{ fontSize: 9, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
+                                <div style={{ fontSize: 8, color: t.textDim, fontFamily: "'Space Mono', monospace", marginTop: 1 }}>{fmtT(cubi.reserva.inicio)}–{fmtT(fin)}</div>
+                              </div>
+                            );
+                          })()}
                         </button>
                       );
                     })}
@@ -2886,9 +2897,20 @@ export default function BiblioAnalytics360() {
                               </div>
                             )}
                             <div style={{ fontSize: 10, fontWeight: 700, color: t.text, lineHeight: 1.2 }}>{pc.nombre}</div>
-                            <div style={{ fontSize: 8, color: cfg.color, fontWeight: 700, textTransform: "uppercase", marginTop: 2, letterSpacing: 0.3 }}>
+                            <div style={{ fontSize: 8, color: cfg.color, fontWeight: 700, textTransform: "uppercase", marginTop: 2, letterSpacing: 0.3, marginBottom: 3 }}>
                               {pc.estado === "mantenimiento" ? "Mant." : pc.estado === "ocupado" ? "En uso" : "Libre"}
                             </div>
+                            {pc.estado === "ocupado" && pc.reserva && (() => {
+                              const fmtT = d => new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+                              const fin = new Date(new Date(pc.reserva.inicio).getTime() + pc.reserva.duracion * 3_600_000);
+                              const firstName = (pc.reserva.nombre || "").split(" ")[0];
+                              return (
+                                <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 4 }}>
+                                  <div style={{ fontSize: 8, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
+                                  <div style={{ fontSize: 7, color: t.textDim, fontFamily: "'Space Mono', monospace", marginTop: 1 }}>{fmtT(pc.reserva.inicio)}–{fmtT(fin)}</div>
+                                </div>
+                              );
+                            })()}
                           </button>
                         );
                       })}
