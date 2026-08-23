@@ -683,11 +683,13 @@ export default function BiblioAnalytics360() {
   useEffect(() => { dbLoadHistorialReservas().then(d => setHistorialReservas(d)); }, []);
 
   // Servicios state
-  const [svcView, setSvcView] = useState("realtime"); // realtime | temporal | carrera | usuario | turno
-  const [svcCategory, setSvcCategory] = useState("todos"); // todos | prestamos | computo | formacion | espacios
+  const [svcView, setSvcView] = useState("realtime"); // kept for export compat
+  const [svcCategory, setSvcCategory] = useState("todos");
   const [svcSearch, setSvcSearch] = useState("");
   const [svcPage, setSvcPage] = useState(0);
   const SVC_PAGE_SIZE = 15;
+  const [svcService, setSvcService] = useState("cubiculos"); // cubiculos | computadoras
+  const [svcPeriod,  setSvcPeriod]  = useState("mes");       // dia | semana | mes | anio
 
   // Servicios data — real when historial exists, mock as fallback
   const svcMes = useMemo(() => {
@@ -1032,620 +1034,354 @@ export default function BiblioAnalytics360() {
 
           {/* ===== SERVICIOS ===== */}
           {nav === "servicios" && (() => {
-            const cubiTotal = cubiculos.length;
-            const cubiEnUso = cubiculos.filter(c => c.estado === "ocupado").length;
-            const cubiLbr   = cubiculos.filter(c => c.estado === "libre").length;
-            const cubiTasa  = cubiTotal ? Math.round((cubiEnUso / cubiTotal) * 100) : 0;
-            const compuTotal = computadoras.length;
-            const compuEnUso = computadoras.filter(c => c.estado === "ocupado").length;
-            const compuLbr   = computadoras.filter(c => c.estado === "libre").length;
-            const compuTasa  = compuTotal ? Math.round((compuEnUso / compuTotal) * 100) : 0;
+            // ── period helpers ──────────────────────────────────────────
+            const now = new Date();
+            const MESES  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const DIAS   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+            const getPeriodStart = (p, offset = 0) => {
+              if (p === 'dia')    return new Date(new Date(now.toDateString()) - offset * 86400000);
+              if (p === 'semana') return new Date(now - (7 + offset * 7) * 86400000);
+              if (p === 'mes')    return new Date(now.getFullYear(), now.getMonth() - offset, 1);
+              return new Date(now.getFullYear() - offset, 0, 1);
+            };
+            const periodStart    = getPeriodStart(svcPeriod, 0);
+            const prevPeriodStart = getPeriodStart(svcPeriod, 1);
+
+            // ── data source ─────────────────────────────────────────────
+            const allRecs = historialReservas.length > 0 ? historialReservas : [];
+            const svcRecs = allRecs.filter(h => h.tipo === svcService);
+            const inPeriod = svcRecs.filter(h => new Date(h.fin || h.inicio) >= periodStart);
+            const inPrev   = svcRecs.filter(h => {
+              const f = new Date(h.fin || h.inicio);
+              return f >= prevPeriodStart && f < periodStart;
+            });
+
+            // ── KPIs ────────────────────────────────────────────────────
+            const total       = inPeriod.length;
+            const prevTotal   = inPrev.length;
+            const tendPct     = prevTotal > 0 ? Math.round(((total - prevTotal) / prevTotal) * 100) : (total > 0 ? 100 : 0);
+            const avgDur      = total > 0 ? (inPeriod.reduce((a, h) => a + (h.duracion || 0), 0) / total).toFixed(1) : '0';
+            const withPers    = inPeriod.filter(h => h.personas > 0);
+            const avgPers     = withPers.length > 0 ? (withPers.reduce((a, h) => a + h.personas, 0) / withPers.length).toFixed(1) : '—';
+            const uniqueCarr  = new Set(inPeriod.map(h => h.carrera).filter(Boolean)).size;
+            const uniqueAlmn  = new Set(inPeriod.map(h => h.expediente).filter(Boolean)).size;
+            const cubiInUso   = cubiculos.filter(c => c.estado === 'ocupado').length;
+            const compuInUso  = computadoras.filter(c => c.estado === 'ocupado').length;
+            const tasa        = svcService === 'cubiculos'
+              ? (cubiculos.length > 0 ? Math.round((cubiInUso / cubiculos.length) * 100) : 0)
+              : (computadoras.length > 0 ? Math.round((compuInUso / computadoras.length) * 100) : 0);
+
+            // ── peak hour ───────────────────────────────────────────────
+            const hourCounts = Array.from({length:24}, (_, h) => inPeriod.filter(r => new Date(r.inicio||r.fin).getHours()===h).length);
+            const maxHour    = Math.max(...hourCounts, 0);
+            const peakLabel  = total > 0 ? `${String(hourCounts.indexOf(maxHour)).padStart(2,'0')}:00` : '—';
+
+            // ── top space ───────────────────────────────────────────────
+            const spaceMap = {};
+            inPeriod.forEach(h => { const s = h.cubicule || h.pc; if (s) spaceMap[s] = (spaceMap[s]||0)+1; });
+            const topSpace = Object.entries(spaceMap).sort((a,b)=>b[1]-a[1])[0];
+
+            // ── trend chart ─────────────────────────────────────────────
+            const trendData = (() => {
+              if (svcPeriod === 'dia') {
+                return Array.from({length:24}, (_, h) => ({
+                  label: h % 4 === 0 ? `${String(h).padStart(2,'0')}h` : '',
+                  reservas: inPeriod.filter(r => new Date(r.inicio||r.fin).getHours()===h).length,
+                }));
+              }
+              if (svcPeriod === 'semana') {
+                return Array.from({length:7}, (_, i) => {
+                  const d = new Date(now - (6-i)*86400000);
+                  return { label: DIAS[d.getDay()], reservas: inPeriod.filter(r => new Date(r.fin||r.inicio).toDateString()===d.toDateString()).length };
+                });
+              }
+              if (svcPeriod === 'mes') {
+                const days = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+                const m    = now.getMonth();
+                return Array.from({length:days}, (_, i) => ({
+                  label: i+1,
+                  reservas: inPeriod.filter(r => { const f=new Date(r.fin||r.inicio); return f.getDate()===i+1&&f.getMonth()===m; }).length,
+                }));
+              }
+              const y = now.getFullYear();
+              return Array.from({length:12}, (_, m) => ({
+                label: MESES[m],
+                reservas: inPeriod.filter(r => { const f=new Date(r.fin||r.inicio); return f.getMonth()===m&&f.getFullYear()===y; }).length,
+              }));
+            })();
+
+            // ── by carrera ──────────────────────────────────────────────
+            const carreraMap = {};
+            inPeriod.forEach(h => { const c = h.carrera||'Otra'; carreraMap[c] = (carreraMap[c]||0)+1; });
+            const carreraData = Object.entries(carreraMap)
+              .sort((a,b)=>b[1]-a[1]).slice(0,8)
+              .map(([carrera, tot]) => ({ carrera: carrera.replace('Ing. ','Ing.'), total: tot }));
+
+            // ── by turno ────────────────────────────────────────────────
+            const turnoData = ['Matutino','Vespertino','Nocturno'].map(turno => ({
+              turno, reservas: inPeriod.filter(h => h.turno===turno).length,
+            }));
+
+            // ── by duracion ─────────────────────────────────────────────
+            const durData = [1,2,3].map(d => ({
+              dur: `${d}h`, reservas: inPeriod.filter(h => h.duracion===d).length,
+            }));
+
+            // ── by dia semana ───────────────────────────────────────────
+            const diasData = DIAS.map((d, i) => ({
+              dia: d, reservas: inPeriod.filter(h => new Date(h.fin||h.inicio).getDay()===i).length,
+            }));
+
+            // ── by piso / zona ──────────────────────────────────────────
+            const pisoData = [1,2].map(p => ({
+              piso: `Piso ${p}`, reservas: inPeriod.filter(h => h.piso===p).length,
+            }));
+            const zonaData = ['General','Silencio','Investigación'].map(z => ({
+              zona: z, reservas: inPeriod.filter(h => (h.zona||'').includes(z)).length,
+            }));
+
+            // ── recent table ────────────────────────────────────────────
+            const recentRecs = [...inPeriod]
+              .sort((a,b)=>new Date(b.fin||b.inicio)-new Date(a.fin||a.inicio))
+              .slice(0,10);
+
+            const tendColor = tendPct >= 0 ? t.green : t.rose;
+            const CHART_H   = 200;
+
             return (
             <div>
-              {/* KPI row — datos reales */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 4 }}>
-                <StatCard icon={Layers}      label="Cubículos en uso"   value={`${cubiEnUso} / ${cubiTotal}`}   color={t.teal}   t={t} />
-                <StatCard icon={Target}      label="Tasa cubículos"     value={`${cubiTasa}%`}                  color={t.amber}  t={t} />
-                <StatCard icon={Monitor}     label="PCs en uso"         value={`${compuEnUso} / ${compuTotal}`} color={t.blue}   t={t} />
-                <StatCard icon={Target}      label="Tasa cómputo"       value={`${compuTasa}%`}                 color={t.purple} t={t} />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20, paddingLeft: 2 }}>
-                <div style={{ width: 7, height: 7, borderRadius: "50%", background: t.green, boxShadow: `0 0 6px ${t.green}` }} />
-                <span style={{ fontSize: 10, color: t.textDim }}>Datos en tiempo real · Cubículos y Computadoras conectados</span>
-                <span style={{ marginLeft: "auto", fontSize: 10, color: t.textMuted }}>Fuentes futuras: SIAB, Sistema Escolar, Buzón</span>
-              </div>
-
-              {/* View Toggle + Category Filter */}
-              <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
-                <div style={{ display: "flex", gap: 0, borderRadius: 10, overflow: "hidden", border: `1px solid ${t.cardBorder}` }}>
-                  {[
-                    {v:"realtime", l:"Tiempo Real", ic:Activity},
-                    {v:"temporal", l:"Por Mes",     ic:Calendar},
-                    {v:"carrera",  l:"Por Carrera", ic:GraduationCap},
-                    {v:"usuario",  l:"Por Usuario", ic:Users},
-                    {v:"turno",    l:"Por Turno",   ic:Clock},
-                  ].map(tab => (
-                    <button key={tab.v} onClick={() => { setSvcView(tab.v); setSvcPage(0); }}
-                      style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", border: "none", fontSize: 11, fontWeight: svcView === tab.v ? 600 : 400, cursor: "pointer",
-                        background: svcView === tab.v ? `${t.teal}15` : t.card,
-                        color: svcView === tab.v ? t.teal : t.textDim }}>
-                      <tab.ic size={12} /> {tab.l}
+              {/* — Service tabs + Period selector — */}
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, marginBottom:20}}>
+                <div style={{display:'flex', gap:0, borderRadius:12, overflow:'hidden', border:`1px solid ${t.cardBorder}`}}>
+                  {[{id:'cubiculos',label:'Cubículos',Ic:Layers},{id:'computadoras',label:'Computadoras',Ic:Monitor}].map(({id,label,Ic})=>(
+                    <button key={id} onClick={()=>setSvcService(id)}
+                      style={{display:'flex',alignItems:'center',gap:6,padding:'9px 20px',border:'none',fontSize:12,fontWeight:svcService===id?700:400,cursor:'pointer',
+                        background:svcService===id?`${t.teal}18`:t.card, color:svcService===id?t.teal:t.textDim}}>
+                      <Ic size={13}/> {label}
                     </button>
                   ))}
                 </div>
-                {svcView !== "realtime" && (
-                  <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
-                    {[{v:"todos",l:"Todos"},{v:"computo",l:"Cómputo"},{v:"espacios",l:"Cubículos"},{v:"prestamos",l:"Préstamos"},{v:"formacion",l:"Formación"}].map(cat => (
-                      <button key={cat.v} onClick={() => { setSvcCategory(cat.v); setSvcPage(0); }}
-                        style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${svcCategory === cat.v ? t.teal : t.cardBorder}`, fontSize: 10, fontWeight: svcCategory === cat.v ? 600 : 400, cursor: "pointer",
-                          background: svcCategory === cat.v ? `${t.teal}12` : "transparent",
-                          color: svcCategory === cat.v ? t.teal : t.textDim }}>
-                        {cat.l}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div style={{display:'flex',gap:4}}>
+                  {[{id:'dia',l:'Hoy'},{id:'semana',l:'Semana'},{id:'mes',l:'Mes'},{id:'anio',l:'Año'}].map(({id,l})=>(
+                    <button key={id} onClick={()=>setSvcPeriod(id)}
+                      style={{padding:'7px 16px',borderRadius:8,border:`1px solid ${svcPeriod===id?t.teal:t.cardBorder}`,fontSize:11,fontWeight:svcPeriod===id?700:400,cursor:'pointer',
+                        background:svcPeriod===id?`${t.teal}12`:'transparent', color:svcPeriod===id?t.teal:t.textDim}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* ---- TIEMPO REAL (datos reales de cubículos y computadoras) ---- */}
-              {svcView === "realtime" && (<>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-
-                  {/* Cubículos — estado actual */}
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                      <Layers size={15} color={t.teal} />
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Cubículos — Estado Actual</div>
-                      <div style={{ marginLeft: "auto", fontSize: 9, fontWeight: 600, color: t.green, padding: "2px 7px", borderRadius: 20, background: `${t.green}15`, border: `1px solid ${t.green}30` }}>EN VIVO</div>
-                    </div>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie data={[
-                          { name: "Libres",    value: cubiLbr,                                                  fill: t.green },
-                          { name: "En uso",    value: cubiEnUso,                                                fill: t.rose  },
-                          { name: "Reservados",value: cubiculos.filter(c=>c.estado==="reservado").length,       fill: t.amber },
-                        ].filter(d => d.value > 0)}
-                          dataKey="value" cx="50%" cy="50%" innerRadius={52} outerRadius={80} paddingAngle={3} cornerRadius={3}
-                          animationDuration={800} animationEasing="ease-out">
-                          {[t.green, t.rose, t.amber].map((c,i) => <Cell key={i} fill={c} />)}
-                        </Pie>
-                        <Tooltip content={<CTooltip />} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 4 }}>
-                      {[{l:`Libres (${cubiLbr})`,c:t.green},{l:`En uso (${cubiEnUso})`,c:t.rose},{l:`Reservados (${cubiculos.filter(c=>c.estado==="reservado").length})`,c:t.amber}].map((x,i) => (
-                        <span key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: t.textDim }}>
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: x.c, display: "inline-block" }} />{x.l}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Computadoras — estado actual */}
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                      <Monitor size={15} color={t.blue} />
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Computadoras — Estado Actual</div>
-                      <div style={{ marginLeft: "auto", fontSize: 9, fontWeight: 600, color: t.green, padding: "2px 7px", borderRadius: 20, background: `${t.green}15`, border: `1px solid ${t.green}30` }}>EN VIVO</div>
-                    </div>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie data={[
-                          { name: "Libres",        value: compuLbr,    fill: t.green },
-                          { name: "En uso",        value: compuEnUso,  fill: t.blue  },
-                          { name: "Mantenimiento", value: computadoras.filter(c=>c.estado==="mantenimiento").length, fill: t.amber },
-                        ].filter(d => d.value > 0)}
-                          dataKey="value" cx="50%" cy="50%" innerRadius={52} outerRadius={80} paddingAngle={3} cornerRadius={3}
-                          animationDuration={800} animationEasing="ease-out">
-                          {[t.green, t.blue, t.amber].map((c,i) => <Cell key={i} fill={c} />)}
-                        </Pie>
-                        <Tooltip content={<CTooltip />} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 4 }}>
-                      {[{l:`Libres (${compuLbr})`,c:t.green},{l:`En uso (${compuEnUso})`,c:t.blue},{l:`Mant. (${computadoras.filter(c=>c.estado==="mantenimiento").length})`,c:t.amber}].map((x,i) => (
-                        <span key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: t.textDim }}>
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: x.c, display: "inline-block" }} />{x.l}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ocupación por zona/piso */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                  {/* Cubículos por piso */}
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Cubículos por Piso</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Ocupación actual</div>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <BarChart data={[1,2].map(p => {
-                        const pCubis = cubiculos.filter(c => c.piso === p);
-                        return { piso: `Piso ${p}`, libres: pCubis.filter(c=>c.estado==="libre").length, enUso: pCubis.filter(c=>c.estado==="ocupado").length, reservados: pCubis.filter(c=>c.estado==="reservado").length };
-                      })}>
-                        <defs>
-                          <linearGradient id="rtG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.green} stopOpacity={1}/><stop offset="100%" stopColor={t.green} stopOpacity={0.6}/></linearGradient>
-                          <linearGradient id="rtG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.rose} stopOpacity={1}/><stop offset="100%" stopColor={t.rose} stopOpacity={0.6}/></linearGradient>
-                          <linearGradient id="rtG3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.amber} stopOpacity={1}/><stop offset="100%" stopColor={t.amber} stopOpacity={0.6}/></linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                        <XAxis dataKey="piso" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} allowDecimals={false} />
-                        <Tooltip content={<CTooltip />} />
-                        <Bar dataKey="libres"    name="Libres"    fill="url(#rtG1)" radius={[4,4,0,0]} animationDuration={700} animationEasing="ease-out" />
-                        <Bar dataKey="enUso"     name="En uso"    fill="url(#rtG2)" radius={[4,4,0,0]} animationDuration={800} animationEasing="ease-out" />
-                        <Bar dataKey="reservados" name="Reservados" fill="url(#rtG3)" radius={[4,4,0,0]} animationDuration={900} animationEasing="ease-out" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Computadoras por zona */}
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Computadoras por Zona</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Ocupación actual</div>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <BarChart data={compuZonas.map(z => {
-                        const zPcs = computadoras.filter(c => c.zona === z);
-                        return { zona: z.replace("Sala ",""), libres: zPcs.filter(c=>c.estado==="libre").length, enUso: zPcs.filter(c=>c.estado==="ocupado").length, mant: zPcs.filter(c=>c.estado==="mantenimiento").length };
-                      })}>
-                        <defs>
-                          <linearGradient id="rtG4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.green} stopOpacity={1}/><stop offset="100%" stopColor={t.green} stopOpacity={0.6}/></linearGradient>
-                          <linearGradient id="rtG5" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.blue} stopOpacity={1}/><stop offset="100%" stopColor={t.blue} stopOpacity={0.6}/></linearGradient>
-                          <linearGradient id="rtG6" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.amber} stopOpacity={1}/><stop offset="100%" stopColor={t.amber} stopOpacity={0.6}/></linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                        <XAxis dataKey="zona" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} allowDecimals={false} />
-                        <Tooltip content={<CTooltip />} />
-                        <Bar dataKey="libres" name="Libres"    fill="url(#rtG4)" radius={[4,4,0,0]} animationDuration={700} animationEasing="ease-out" />
-                        <Bar dataKey="enUso"  name="En uso"    fill="url(#rtG5)" radius={[4,4,0,0]} animationDuration={800} animationEasing="ease-out" />
-                        <Bar dataKey="mant"   name="Mantenimiento" fill="url(#rtG6)" radius={[4,4,0,0]} animationDuration={900} animationEasing="ease-out" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Sesiones activas ahora */}
-                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 16 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Sesiones Activas Ahora</div>
-                  {(() => {
-                    const actCubis = cubiculos.filter(c => c.estado === "ocupado" && c.reserva);
-                    const actCompus = computadoras.filter(c => c.estado === "ocupado" && c.reserva);
-                    const total = actCubis.length + actCompus.length;
-                    if (total === 0) return <div style={{ textAlign: "center", padding: "20px 0", color: t.textDim, fontSize: 12 }}>No hay sesiones activas en este momento</div>;
-                    return (
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                          <thead>
-                            <tr>{["Servicio","Recurso","Usuario","Carrera","Dur.","Inicio"].map(h => (
-                              <th key={h} style={{ textAlign: "left", padding: "6px 12px", borderBottom: `2px solid ${t.cardBorder}`, fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</th>
-                            ))}</tr>
-                          </thead>
-                          <tbody>
-                            {actCubis.map(c => (
-                              <tr key={`c-${c.id}`} style={{ borderBottom: `1px solid ${t.cardBorder}` }}>
-                                <td style={{ padding: "8px 12px" }}><span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: `${t.teal}15`, color: t.teal }}>Cubículo</span></td>
-                                <td style={{ padding: "8px 12px", fontWeight: 700, color: t.text }}>{c.nombre}</td>
-                                <td style={{ padding: "8px 12px", color: t.text }}>{c.reserva.nombre}</td>
-                                <td style={{ padding: "8px 12px", color: t.textDim }}>{c.reserva.carrera}</td>
-                                <td style={{ padding: "8px 12px", color: t.text, fontWeight: 600 }}>{c.reserva.duracion}h</td>
-                                <td style={{ padding: "8px 12px", color: t.textDim, fontFamily: "'Space Mono', monospace" }}>{c.reserva.inicio instanceof Date ? c.reserva.inicio.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}) : new Date(c.reserva.inicio).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})}</td>
-                              </tr>
-                            ))}
-                            {actCompus.map(c => (
-                              <tr key={`p-${c.id}`} style={{ borderBottom: `1px solid ${t.cardBorder}` }}>
-                                <td style={{ padding: "8px 12px" }}><span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: `${t.blue}15`, color: t.blue }}>Cómputo</span></td>
-                                <td style={{ padding: "8px 12px", fontWeight: 700, color: t.text }}>{c.nombre}</td>
-                                <td style={{ padding: "8px 12px", color: t.text }}>{c.reserva.nombre}</td>
-                                <td style={{ padding: "8px 12px", color: t.textDim }}>{c.reserva.carrera}</td>
-                                <td style={{ padding: "8px 12px", color: t.text, fontWeight: 600 }}>{c.reserva.duracion}h</td>
-                                <td style={{ padding: "8px 12px", color: t.textDim, fontFamily: "'Space Mono', monospace" }}>{c.reserva.inicio instanceof Date ? c.reserva.inicio.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}) : new Date(c.reserva.inicio).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+              {/* — KPI row 5 cards — */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:14}}>
+                {[
+                  {label:'Total reservas',  value:total,                                  sub:`anterior: ${prevTotal}`, color:t.teal,   Ic:Activity},
+                  {label:'Duración prom.',  value:`${avgDur}h`,                           sub: svcService==='cubiculos'?`${avgPers} pers. prom.`:'por sesión', color:t.blue,   Ic:Clock},
+                  {label:'Carreras',        value:uniqueCarr,                             sub:'distintas atendidas',   color:t.purple, Ic:GraduationCap},
+                  {label:'Tendencia',       value:total===0&&prevTotal===0?'—':`${tendPct>0?'+':''}${tendPct}%`, sub:'vs periodo anterior', color:tendColor, Ic:TrendingUp},
+                  {label:'Tasa uso actual', value:`${tasa}%`,                             sub:'ocupación en tiempo real', color:t.amber, Ic:Target},
+                ].map(({label,value,sub,color,Ic})=>(
+                  <div key={label} style={{background:t.card,borderRadius:14,padding:'14px 16px',border:`1px solid ${t.cardBorder}`}}>
+                    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:8}}>
+                      <div style={{width:28,height:28,borderRadius:8,background:`${color}18`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        <Ic size={13} color={color}/>
                       </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Historial de reservas completadas */}
-                {historialReservas.length > 0 && (() => {
-                  const hoy = historialReservas.filter(h => {
-                    const f = new Date(h.fin);
-                    const n = new Date();
-                    return f.getDate() === n.getDate() && f.getMonth() === n.getMonth() && f.getFullYear() === n.getFullYear();
-                  });
-                  const total = historialReservas.length;
-                  const avgDur = total > 0 ? (historialReservas.reduce((a, h) => a + (h.duracion || 0), 0) / total).toFixed(1) : 0;
-                  const avgPers = historialReservas.filter(h => h.personas).length > 0
-                    ? (historialReservas.filter(h => h.personas).reduce((a, h) => a + h.personas, 0) / historialReservas.filter(h => h.personas).length).toFixed(1)
-                    : "—";
-                  const carreraTop = (() => {
-                    const cnt = {}; historialReservas.forEach(h => { if (h.carrera) cnt[h.carrera] = (cnt[h.carrera] || 0) + 1; });
-                    const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
-                    return top ? top[0].split(" ").slice(0, 2).join(" ") : "—";
-                  })();
-                  return (
-                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 16 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                        <Activity size={15} color={t.teal} />
-                        <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Historial de Reservas</div>
-                        <div style={{ marginLeft: "auto", fontSize: 9, fontWeight: 600, color: t.teal, padding: "2px 7px", borderRadius: 20, background: `${t.teal}15`, border: `1px solid ${t.teal}30` }}>DATOS REALES</div>
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-                        {[
-                          { label: "Total completadas", value: total, color: t.teal },
-                          { label: "Hoy", value: hoy.length, color: t.green },
-                          { label: "Duración promedio", value: `${avgDur}h`, color: t.blue },
-                          { label: "Carrera más activa", value: carreraTop, color: t.purple },
-                        ].map((s, i) => (
-                          <div key={i} style={{ padding: "14px 16px", borderRadius: 12, background: `${s.color}08`, border: `1px solid ${s.color}20`, textAlign: "center" }}>
-                            <div style={{ fontSize: 24, fontWeight: 800, color: s.color, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>{s.value}</div>
-                            <div style={{ fontSize: 10, color: t.textDim }}>{s.label}</div>
-                          </div>
-                        ))}
-                      </div>
-                      {avgPers !== "—" && (
-                        <div style={{ marginTop: 12, padding: "8px 14px", borderRadius: 8, background: `${t.amber}08`, border: `1px solid ${t.amber}20`, fontSize: 11, color: t.textDim }}>
-                          Promedio <span style={{ fontWeight: 700, color: t.amber }}>{avgPers} personas</span> por reserva de cubículo
-                        </div>
-                      )}
+                      <span style={{fontSize:9,color:t.textDim,fontWeight:600,textTransform:'uppercase',letterSpacing:.8,lineHeight:1.2}}>{label}</span>
                     </div>
-                  );
-                })()}
-
-                {/* Fuentes pendientes */}
-                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Fuentes de Datos — Roadmap</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                    {[
-                      { icon: BookOpen, label: "Préstamos y Devoluciones", fuente: "SIAB", color: t.teal, estado: "próximo" },
-                      { icon: Users,    label: "Formación y Talleres",     fuente: "Sistema Escolar", color: t.purple, estado: "próximo" },
-                      { icon: FileText, label: "Buzón de Sugerencias",     fuente: "Buzón Digital",   color: t.rose,   estado: "próximo" },
-                    ].map((src, i) => (
-                      <div key={i} style={{ padding: "16px 18px", borderRadius: 12, background: `${src.color}08`, border: `1px dashed ${src.color}30`, display: "flex", flexDirection: "column", gap: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <src.icon size={16} color={src.color} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{src.label}</span>
-                        </div>
-                        <div style={{ fontSize: 10, color: t.textDim }}>Fuente: {src.fuente}</div>
-                        <span style={{ alignSelf: "flex-start", padding: "2px 8px", borderRadius: 20, background: `${src.color}15`, color: src.color, fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>
-                          Fase 2
-                        </span>
-                      </div>
-                    ))}
+                    <div style={{fontSize:22,fontWeight:800,color:t.text,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{value}</div>
+                    <div style={{fontSize:9,color:t.textDim,marginTop:4}}>{sub}</div>
                   </div>
-                </div>
-              </>)}
+                ))}
+              </div>
 
-              {/* ---- TEMPORAL VIEW ---- */}
-              {svcView === "temporal" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                  {/* Préstamos por tipo */}
-                  {(svcCategory === "todos" || svcCategory === "prestamos") && (
-                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Préstamos por Tipo</div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Domicilio · En sala · Interbibliotecario</div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={svcMes}>
-                          <defs>
-                            <linearGradient id="svG1" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={t.teal} stopOpacity={0.3} />
-                              <stop offset="40%" stopColor={t.teal} stopOpacity={0.1} />
-                              <stop offset="100%" stopColor={t.teal} stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-                          <Tooltip content={<CTooltip />} />
-                          <Area type="monotone" dataKey="domicilio" name="Domicilio" stroke={t.teal} fill="url(#svG1)" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={800} animationEasing="ease-out" />
-                          <Area type="monotone" dataKey="sala" name="En Sala" stroke={t.blue} fill="none" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={900} animationEasing="ease-out" />
-                          <Area type="monotone" dataKey="interbibliotecario" name="Interbiblio." stroke={t.purple} fill="none" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 2 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={1000} animationEasing="ease-out" />
-                        </AreaChart>
-                      </ResponsiveContainer>
+              {/* — Mini KPI row: hora pico · espacio estrella · alumnos únicos — */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
+                {[
+                  {label:'Hora pico',      value:peakLabel, sub:'más reservas en el periodo'},
+                  {label:svcService==='cubiculos'?'Cubículo más usado':'PC más usada', value:topSpace?topSpace[0]:'—', sub:topSpace?`${topSpace[1]} reservas`:'sin datos'},
+                  {label:'Alumnos únicos', value:uniqueAlmn, sub:'expedientes distintos'},
+                ].map(({label,value,sub})=>(
+                  <div key={label} style={{background:t.card,borderRadius:12,padding:'12px 16px',border:`1px solid ${t.cardBorder}`,display:'flex',alignItems:'center',gap:14}}>
+                    <div>
+                      <div style={{fontSize:9,color:t.textDim,textTransform:'uppercase',letterSpacing:.8,marginBottom:3}}>{label}</div>
+                      <div style={{fontSize:18,fontWeight:800,fontFamily:"'Space Mono',monospace",color:t.text}}>{value}</div>
+                      <div style={{fontSize:9,color:t.textDim,marginTop:2}}>{sub}</div>
                     </div>
-                  )}
+                  </div>
+                ))}
+              </div>
 
-                  {/* Cómputo */}
-                  {(svcCategory === "todos" || svcCategory === "computo") && (
-                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Servicios de Cómputo</div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Computadoras · Internet WiFi · Impresiones</div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={svcMes}>
-                          <defs>
-                            <linearGradient id="bG_blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.blue} stopOpacity={1} /><stop offset="100%" stopColor={t.blue} stopOpacity={0.55} /></linearGradient>
-                            <linearGradient id="bG_teal" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.teal} stopOpacity={1} /><stop offset="100%" stopColor={t.teal} stopOpacity={0.55} /></linearGradient>
-                            <linearGradient id="bG_amber" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.amber} stopOpacity={1} /><stop offset="100%" stopColor={t.amber} stopOpacity={0.55} /></linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-                          <Tooltip content={<CTooltip />} />
-                          <Bar dataKey="computadoras" name="Computadoras" fill="url(#bG_blue)" radius={[4,4,0,0]} animationDuration={700} animationEasing="ease-out" />
-                          <Bar dataKey="internet" name="Internet WiFi" fill="url(#bG_teal)" radius={[4,4,0,0]} animationDuration={800} animationEasing="ease-out" />
-                          <Bar dataKey="impresiones" name="Impresiones" fill="url(#bG_amber)" radius={[4,4,0,0]} animationDuration={900} animationEasing="ease-out" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
+              {/* — Charts grid — */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
 
-                  {/* Formación */}
-                  {(svcCategory === "todos" || svcCategory === "formacion") && (
-                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Formación y Asesorías</div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Talleres · Capacitaciones · Asesorías individuales</div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={svcMes}>
-                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-                          <Tooltip content={<CTooltip />} />
-                          <Line type="monotone" dataKey="talleres" name="Talleres" stroke={t.purple} strokeWidth={2.5} dot={{ r: 3, fill: t.purple, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 7, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={800} animationEasing="ease-out" />
-                          <Line type="monotone" dataKey="capacitaciones" name="Capacitaciones" stroke={t.rose} strokeWidth={2} dot={{ r: 3, fill: t.rose, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={900} animationEasing="ease-out" />
-                          <Line type="monotone" dataKey="asesorias" name="Asesorías" stroke={t.amber} strokeWidth={2} dot={{ r: 3, fill: t.amber, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={1000} animationEasing="ease-out" />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* Espacios */}
-                  {(svcCategory === "todos" || svcCategory === "espacios") && (
-                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Uso de Espacios</div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Cubículos · Salas de estudio · Coworking</div>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={svcMes}>
-                          <defs>
-                            <linearGradient id="svG2" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={t.amber} stopOpacity={0.3} />
-                              <stop offset="40%" stopColor={t.amber} stopOpacity={0.1} />
-                              <stop offset="100%" stopColor={t.amber} stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-                          <Tooltip content={<CTooltip />} />
-                          <Area type="monotone" dataKey="cubiculos" name="Cubículos" stroke={t.amber} fill="url(#svG2)" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={800} animationEasing="ease-out" />
-                          <Area type="monotone" dataKey="salasEstudio" name="Salas de Estudio" stroke={t.green} fill="none" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={900} animationEasing="ease-out" />
-                          <Area type="monotone" dataKey="coworking" name="Coworking" stroke={t.rose} fill="none" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={1000} animationEasing="ease-out" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ---- CARRERA VIEW ---- */}
-              {svcView === "carrera" && (
-                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Uso de Servicios por Carrera</div>
-                  <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Total acumulado del periodo · Top 10 carreras</div>
-                  <ResponsiveContainer width="100%" height={340}>
-                    <BarChart data={svcCarrera} layout="vertical" margin={{ left: 20 }}>
+                {/* Tendencia full width */}
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,gridColumn:'1/-1'}}>
+                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Tendencia de uso</div>
+                  <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>
+                    {({dia:'Reservas por hora del día',semana:'Reservas por día (últimos 7 días)',mes:'Reservas por día (mes actual)',anio:'Reservas por mes (año actual)'})[svcPeriod]}
+                  </div>
+                  <ResponsiveContainer width="100%" height={CHART_H}>
+                    <AreaChart data={trendData}>
                       <defs>
-                        <linearGradient id="bG_teal_h" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={t.teal} stopOpacity={1} /><stop offset="100%" stopColor={t.teal} stopOpacity={0.65} /></linearGradient>
-                        <linearGradient id="bG_blue_h" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={t.blue} stopOpacity={1} /><stop offset="100%" stopColor={t.blue} stopOpacity={0.65} /></linearGradient>
-                        <linearGradient id="bG_purple_h" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={t.purple} stopOpacity={1} /><stop offset="100%" stopColor={t.purple} stopOpacity={0.65} /></linearGradient>
-                        <linearGradient id="bG_amber_h" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={t.amber} stopOpacity={1} /><stop offset="100%" stopColor={t.amber} stopOpacity={0.65} /></linearGradient>
+                        <linearGradient id="svGT" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={t.teal} stopOpacity={.28}/>
+                          <stop offset="100%" stopColor={t.teal} stopOpacity={0}/>
+                        </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-                      <YAxis type="category" dataKey="carrera" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} width={110} />
-                      <Tooltip content={<CTooltip />} />
-                      <Bar dataKey="prestamos" name="Préstamos" fill="url(#bG_teal_h)" stackId="a" radius={0} animationDuration={700} animationEasing="ease-out" />
-                      <Bar dataKey="computadoras" name="Cómputo" fill="url(#bG_blue_h)" stackId="a" radius={0} animationDuration={800} animationEasing="ease-out" />
-                      <Bar dataKey="talleres" name="Formación" fill="url(#bG_purple_h)" stackId="a" radius={0} animationDuration={900} animationEasing="ease-out" />
-                      <Bar dataKey="espacios" name="Espacios" fill="url(#bG_amber_h)" stackId="a" radius={[0,4,4,0]} animationDuration={1000} animationEasing="ease-out" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                      <XAxis dataKey="label" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                      <Tooltip content={<CTooltip t={t}/>}/>
+                      <Area type="monotone" dataKey="reservas" name="Reservas" stroke={t.teal} fill="url(#svGT)" strokeWidth={2}
+                        activeDot={{r:4,fill:t.teal,stroke:'#fff',strokeWidth:2}}/>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Por carrera */}
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
+                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por carrera</div>
+                  <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Top 8 carreras</div>
+                  {carreraData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={CHART_H + 40}>
+                      <BarChart data={carreraData} layout="vertical" margin={{left:4,right:20}}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} horizontal={false}/>
+                        <XAxis type="number" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                        <YAxis type="category" dataKey="carrera" tick={{fontSize:8,fill:t.textDim}} axisLine={false} tickLine={false} width={65}/>
+                        <Tooltip content={<CTooltip t={t}/>}/>
+                        <Bar dataKey="total" name="Reservas" radius={[0,4,4,0]} fill={t.blue}>
+                          <LabelList dataKey="total" position="right" style={{fontSize:9,fill:t.textDim}}/>
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{height:CHART_H+40,display:'flex',alignItems:'center',justifyContent:'center',color:t.textMuted,fontSize:12}}>Sin datos en este periodo</div>
+                  )}
+                </div>
+
+                {/* Por turno */}
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
+                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por turno</div>
+                  <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Matutino · Vespertino · Nocturno</div>
+                  <ResponsiveContainer width="100%" height={CHART_H + 40}>
+                    <BarChart data={turnoData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                      <XAxis dataKey="turno" tick={{fontSize:10,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                      <Tooltip content={<CTooltip t={t}/>}/>
+                      <Bar dataKey="reservas" name="Reservas" radius={[6,6,0,0]}>
+                        {turnoData.map((_,i)=><Cell key={i} fill={[t.amber,t.teal,t.purple][i]}/>)}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                  <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 12 }}>
-                    {[{l:"Préstamos",c:t.teal},{l:"Cómputo",c:t.blue},{l:"Formación",c:t.purple},{l:"Espacios",c:t.amber}].map((x,i) => (
-                      <span key={i} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: t.textDim }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 3, background: x.c, display: "inline-block" }} /> {x.l}
-                      </span>
-                    ))}
-                  </div>
                 </div>
-              )}
 
-              {/* ---- TIPO USUARIO VIEW ---- */}
-              {svcView === "usuario" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Distribución por Tipo de Usuario</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Proporción del uso total</div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <PieChart>
-                        <Pie data={svcTipoUsr} dataKey="pct" nameKey="tipo" cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} cornerRadius={3}
-                          activeIndex={svcPieActiveIdx} activeShape={PieActiveShape}
-                          onMouseEnter={(_, idx) => setSvcPieActiveIdx(idx)} onMouseLeave={() => setSvcPieActiveIdx(null)}
-                          animationDuration={800} animationEasing="ease-out">
-                          {svcTipoUsr.map((_,i) => <Cell key={i} fill={[t.teal, t.blue, t.purple, t.amber, t.rose][i]} />)}
-                        </Pie>
-                        <Tooltip content={<CTooltip />} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-                      {svcTipoUsr.map((u, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: [t.teal, t.blue, t.purple, t.amber, t.rose][i], flexShrink: 0 }} />
-                          <span style={{ color: t.text, flex: 1 }}>{u.tipo}</span>
-                          <span style={{ fontWeight: 700, color: t.text, fontFamily: "'Space Mono', monospace" }}>{u.pct}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                {/* Por duración */}
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
+                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por duración</div>
+                  <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Sesiones de 1h, 2h y 3h</div>
+                  <ResponsiveContainer width="100%" height={CHART_H + 40}>
+                    <BarChart data={durData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                      <XAxis dataKey="dur" tick={{fontSize:12,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                      <Tooltip content={<CTooltip t={t}/>}/>
+                      <Bar dataKey="reservas" name="Reservas" radius={[6,6,0,0]}>
+                        {durData.map((_,i)=><Cell key={i} fill={[t.teal,t.blue,t.purple][i]}/>)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
 
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Servicios por Tipo de Usuario</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Desglose de usos por categoría</div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={svcTipoUsr}>
-                        <defs>
-                          <linearGradient id="bGu_teal" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.teal} stopOpacity={1} /><stop offset="100%" stopColor={t.teal} stopOpacity={0.55} /></linearGradient>
-                          <linearGradient id="bGu_blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.blue} stopOpacity={1} /><stop offset="100%" stopColor={t.blue} stopOpacity={0.55} /></linearGradient>
-                          <linearGradient id="bGu_purple" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.purple} stopOpacity={1} /><stop offset="100%" stopColor={t.purple} stopOpacity={0.55} /></linearGradient>
-                          <linearGradient id="bGu_amber" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.amber} stopOpacity={1} /><stop offset="100%" stopColor={t.amber} stopOpacity={0.55} /></linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                        <XAxis dataKey="tipo" tick={{ fontSize: 8, fill: t.textDim }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-                        <Tooltip content={<CTooltip />} />
-                        <Bar dataKey="prestamos" name="Préstamos" fill="url(#bGu_teal)" radius={[4,4,0,0]} animationDuration={700} animationEasing="ease-out" />
-                        <Bar dataKey="computo" name="Cómputo" fill="url(#bGu_blue)" radius={[4,4,0,0]} animationDuration={800} animationEasing="ease-out" />
-                        <Bar dataKey="talleres" name="Formación" fill="url(#bGu_purple)" radius={[4,4,0,0]} animationDuration={900} animationEasing="ease-out" />
-                        <Bar dataKey="espacios" name="Espacios" fill="url(#bGu_amber)" radius={[4,4,0,0]} animationDuration={1000} animationEasing="ease-out" />
+                {/* Por día de semana */}
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
+                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por día de semana</div>
+                  <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Distribución de reservas Lun–Dom</div>
+                  <ResponsiveContainer width="100%" height={CHART_H + 40}>
+                    <BarChart data={diasData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                      <XAxis dataKey="dia" tick={{fontSize:10,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                      <Tooltip content={<CTooltip t={t}/>}/>
+                      <Bar dataKey="reservas" name="Reservas" radius={[6,6,0,0]} fill={t.green}/>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Piso (cubiculos) | Zona (computadoras) */}
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
+                  {svcService === 'cubiculos' ? (<>
+                    <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por piso</div>
+                    <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Reservas por planta del edificio</div>
+                    <ResponsiveContainer width="100%" height={CHART_H + 40}>
+                      <BarChart data={pisoData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                        <XAxis dataKey="piso" tick={{fontSize:11,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                        <Tooltip content={<CTooltip t={t}/>}/>
+                        <Bar dataKey="reservas" name="Reservas" radius={[6,6,0,0]}>
+                          {pisoData.map((_,i)=><Cell key={i} fill={[t.rose,t.amber][i]}/>)}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
-                    <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 10 }}>
-                      {[{l:"Préstamos",c:t.teal},{l:"Cómputo",c:t.blue},{l:"Formación",c:t.purple},{l:"Espacios",c:t.amber}].map((x,i) => (
-                        <span key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: t.textDim }}>
-                          <span style={{ width: 8, height: 4, borderRadius: 2, background: x.c, display: "inline-block" }} /> {x.l}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ---- TURNO VIEW ---- */}
-              {svcView === "turno" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Uso por Turno</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Distribución de servicios: matutino, vespertino, nocturno</div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={svcTurno}>
-                        <defs>
-                          <linearGradient id="bGt_teal" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.teal} stopOpacity={1} /><stop offset="100%" stopColor={t.teal} stopOpacity={0.55} /></linearGradient>
-                          <linearGradient id="bGt_blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.blue} stopOpacity={1} /><stop offset="100%" stopColor={t.blue} stopOpacity={0.55} /></linearGradient>
-                          <linearGradient id="bGt_purple" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.purple} stopOpacity={1} /><stop offset="100%" stopColor={t.purple} stopOpacity={0.55} /></linearGradient>
-                          <linearGradient id="bGt_amber" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.amber} stopOpacity={1} /><stop offset="100%" stopColor={t.amber} stopOpacity={0.55} /></linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                        <XAxis dataKey="turno" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-                        <Tooltip content={<CTooltip />} />
-                        <Bar dataKey="prestamos" name="Préstamos" fill="url(#bGt_teal)" radius={[4,4,0,0]} animationDuration={700} animationEasing="ease-out" />
-                        <Bar dataKey="computo" name="Cómputo" fill="url(#bGt_blue)" radius={[4,4,0,0]} animationDuration={800} animationEasing="ease-out" />
-                        <Bar dataKey="talleres" name="Formación" fill="url(#bGt_purple)" radius={[4,4,0,0]} animationDuration={900} animationEasing="ease-out" />
-                        <Bar dataKey="espacios" name="Espacios" fill="url(#bGt_amber)" radius={[4,4,0,0]} animationDuration={1000} animationEasing="ease-out" />
+                  </>) : (<>
+                    <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por zona</div>
+                    <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Uso por sala de cómputo</div>
+                    <ResponsiveContainer width="100%" height={CHART_H + 40}>
+                      <BarChart data={zonaData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                        <XAxis dataKey="zona" tick={{fontSize:10,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                        <Tooltip content={<CTooltip t={t}/>}/>
+                        <Bar dataKey="reservas" name="Reservas" radius={[6,6,0,0]}>
+                          {zonaData.map((_,i)=><Cell key={i} fill={[t.teal,t.blue,t.purple][i]}/>)}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
-                  </div>
-
-                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Proporción por Turno</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Porcentaje del total de usos</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 20 }}>
-                      {svcTurno.map((tr, i) => {
-                        const colors = [t.teal, t.blue, t.purple];
-                        const total = tr.prestamos + tr.computo + tr.talleres + tr.espacios;
-                        return (
-                          <div key={i}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{tr.turno}</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: colors[i], fontFamily: "'Space Mono', monospace" }}>{tr.pct}% — {total.toLocaleString()} usos</span>
-                            </div>
-                            <div style={{ width: "100%", height: 12, borderRadius: 6, background: `${t.text}06`, overflow: "hidden" }}>
-                              <div style={{ width: `${tr.pct}%`, height: "100%", borderRadius: 6, background: `linear-gradient(90deg, ${colors[i]}, ${colors[i]}88)`, transition: "width 0.8s" }} />
-                            </div>
-                            <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 10, color: t.textDim }}>
-                              <span>Prést: {tr.prestamos.toLocaleString()}</span>
-                              <span>Cómp: {tr.computo.toLocaleString()}</span>
-                              <span>Form: {tr.talleres}</span>
-                              <span>Esp: {tr.espacios.toLocaleString()}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  </>)}
                 </div>
-              )}
-
-              {/* ---- INTERACTIVE DATA TABLE ---- */}
-              <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Tabla de Datos Detallada</div>
-                    <div style={{ fontSize: 10, color: t.textDim }}>{svcTableFiltered.length} registros · Filtro: {svcCategory === "todos" ? "Todos" : svcCategory}</div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: t.inputBg, border: `1px solid ${t.cardBorder}` }}>
-                      <Search size={12} color={t.textDim} />
-                      <input value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(0); }}
-                        placeholder="Buscar servicio, dimensión..."
-                        style={{ border: "none", outline: "none", background: "transparent", fontSize: 11, color: t.text, width: 160 }} />
-                      {svcSearch && <X size={11} color={t.textDim} style={{ cursor: "pointer" }} onClick={() => setSvcSearch("")} />}
-                    </div>
-                    <button onClick={exportSvcCSV}
-                      style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, fontWeight: 600, color: t.text, cursor: "pointer" }}>
-                      <Download size={11} /> CSV
-                    </button>
-                  </div>
-                </div>
-
-                {/* Table */}
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                    <thead>
-                      <tr>
-                        {["#","Periodo","Dimensión","Servicio","Valor"].map((h, i) => (
-                          <th key={i} style={{ textAlign: i === 4 ? "right" : "left", padding: "10px 12px", borderBottom: `2px solid ${t.cardBorder}`, fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {svcTableFiltered.slice(svcPage * SVC_PAGE_SIZE, (svcPage + 1) * SVC_PAGE_SIZE).map((row, i) => {
-                        const dimColor = { "Préstamos": t.teal, "Cómputo": t.blue, "Formación": t.purple, "Espacios": t.amber, "Por Carrera": t.green, "Por Tipo Usuario": t.rose, "Por Turno": t.amber }[row.dimension] || t.textDim;
-                        return (
-                          <tr key={row.id} style={{ borderBottom: `1px solid ${t.cardBorder}`, background: i % 2 === 0 ? "transparent" : `${t.text}03` }}>
-                            <td style={{ padding: "8px 12px", color: t.textDim, fontFamily: "'Space Mono', monospace", fontSize: 10 }}>{row.id}</td>
-                            <td style={{ padding: "8px 12px", color: t.text }}>{row.periodo}</td>
-                            <td style={{ padding: "8px 12px" }}>
-                              <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: `${dimColor}12`, color: dimColor }}>{row.dimension}</span>
-                            </td>
-                            <td style={{ padding: "8px 12px", color: t.text, fontWeight: 500 }}>{row.servicio}</td>
-                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: t.text, fontFamily: "'Space Mono', monospace" }}>{row.valor.toLocaleString()}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                {svcTableFiltered.length > SVC_PAGE_SIZE && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
-                    <span style={{ fontSize: 10, color: t.textDim }}>
-                      Mostrando {svcPage * SVC_PAGE_SIZE + 1}–{Math.min((svcPage + 1) * SVC_PAGE_SIZE, svcTableFiltered.length)} de {svcTableFiltered.length}
-                    </span>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => setSvcPage(p => Math.max(0, p - 1))} disabled={svcPage === 0}
-                        style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, color: svcPage === 0 ? t.textMuted : t.text, cursor: svcPage === 0 ? "default" : "pointer" }}>
-                        <ChevronLeft size={12} />
-                      </button>
-                      {Array.from({ length: Math.min(5, Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE)) }, (_, i) => (
-                        <button key={i} onClick={() => setSvcPage(i)}
-                          style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${svcPage === i ? t.teal : t.cardBorder}`, background: svcPage === i ? `${t.teal}15` : "transparent", fontSize: 10, fontWeight: svcPage === i ? 700 : 400, color: svcPage === i ? t.teal : t.textDim, cursor: "pointer" }}>
-                          {i + 1}
-                        </button>
-                      ))}
-                      <button onClick={() => setSvcPage(p => Math.min(Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1, p + 1))} disabled={svcPage >= Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1}
-                        style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${t.cardBorder}`, background: "transparent", fontSize: 10, color: svcPage >= Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1 ? t.textMuted : t.text, cursor: svcPage >= Math.ceil(svcTableFiltered.length / SVC_PAGE_SIZE) - 1 ? "default" : "pointer" }}>
-                        <ChevronRight size={12} />
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {/* — Últimas reservas table — */}
+              {recentRecs.length > 0 && (
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
+                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:14}}>Últimas reservas del periodo</div>
+                  <div style={{overflowX:'auto'}}>
+                    <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                      <thead>
+                        <tr>{['Espacio','Alumno','Expediente','Carrera','Duración','Turno','Fecha'].map(h=>(
+                          <th key={h} style={{padding:'6px 12px',textAlign:'left',fontSize:9,fontWeight:600,color:t.textDim,textTransform:'uppercase',letterSpacing:.8,borderBottom:`1px solid ${t.cardBorder}`}}>{h}</th>
+                        ))}</tr>
+                      </thead>
+                      <tbody>
+                        {recentRecs.map((r,i)=>{
+                          const f = new Date(r.fin||r.inicio);
+                          return (
+                            <tr key={i} style={{borderBottom:`1px solid ${t.cardBorder}50`}}>
+                              <td style={{padding:'8px 12px',fontWeight:600,color:t.teal,fontFamily:"'Space Mono',monospace",fontSize:10}}>{r.cubicule||r.pc||'—'}</td>
+                              <td style={{padding:'8px 12px',color:t.text}}>{r.nombre||'—'}</td>
+                              <td style={{padding:'8px 12px',color:t.textDim,fontFamily:"'Space Mono',monospace",fontSize:10}}>{r.expediente||'—'}</td>
+                              <td style={{padding:'8px 12px',color:t.textDim,maxWidth:110,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.carrera||'—'}</td>
+                              <td style={{padding:'8px 12px',color:t.text,fontWeight:600}}>{r.duracion}h</td>
+                              <td style={{padding:'8px 12px',color:t.textDim}}>{r.turno||'—'}</td>
+                              <td style={{padding:'8px 12px',color:t.textDim,fontFamily:"'Space Mono',monospace",fontSize:10}}>{f.toLocaleDateString('es-MX')}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* — Empty state — */}
+              {total === 0 && (
+                <div style={{textAlign:'center',padding:'48px 20px',color:t.textDim}}>
+                  <div style={{fontSize:32,marginBottom:12,opacity:.3}}>{svcService==='cubiculos'?'🗂️':'💻'}</div>
+                  <div style={{fontSize:14,fontWeight:600,marginBottom:6}}>Sin registros en este periodo</div>
+                  <div style={{fontSize:12}}>Las reservas completadas aparecerán aquí automáticamente</div>
+                </div>
+              )}
             </div>
             );
           })()}
