@@ -180,8 +180,13 @@ export function saveAppConfig(config) {
 
 export function broadcastAppConfig(config) {
   if (!supabase) return;
-  supabase.channel('biblio-app-config').send({
-    type: 'broadcast', event: 'config-update', payload: config,
+  // Must subscribe first — Supabase drops sends on unsubscribed channels
+  const ch = supabase.channel('biblio-app-config');
+  ch.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      ch.send({ type: 'broadcast', event: 'config-update', payload: config });
+      setTimeout(() => supabase.removeChannel(ch), 2000);
+    }
   });
 }
 
