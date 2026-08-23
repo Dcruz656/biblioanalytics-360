@@ -39,6 +39,16 @@ function fmtRemaining(ms) {
   return `${m}m ${String(s).padStart(2,"0")}s`;
 }
 
+function fmtRing(ms) {
+  const s = Math.floor(ms / 1000);
+  if (s <= 0) return "0s";
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60), rm = m % 60;
+  return rm > 0 ? `${h}h ${rm}m` : `${h}h`;
+}
+
 function applyAutoRelease(cubiList) {
   let changed = false;
   const result = cubiList.map(c => {
@@ -565,7 +575,29 @@ export default function KioscoView() {
                 <button key={cubi.id}
                   onClick={() => { if (!clickable) return; setSelectedId(cubi.id); setScreen("duration"); }}
                   style={{ padding: "22px 14px", borderRadius: 18, border: `2px solid ${clickable ? `${color}65` : `${color}22`}`, background: `${color}${clickable ? "10" : "06"}`, cursor: clickable ? "pointer" : "default", textAlign: "center", outline: "none", fontFamily: "'DM Sans', sans-serif", opacity: isLibre && !isSuficiente ? 0.5 : 1, transition: "border-color 0.2s" }}>
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
+                  {/* Ícono o dona de cuenta regresiva */}
+                  {isOcupado && cubi.reserva ? (() => {
+                    const total = cubi.reserva.duracion * 3_600_000;
+                    const remaining = getRemainingMs(cubi);
+                    const pct = total > 0 ? Math.max(0, remaining / total) : 0;
+                    const SIZE = 56, R = 22, CIRC = 2 * Math.PI * R;
+                    const ringColor = canAdvance ? AMBER : ROSE;
+                    return (
+                      <div style={{ position: "relative", width: SIZE, height: SIZE, margin: "0 auto 8px" }}>
+                        <svg width={SIZE} height={SIZE} style={{ transform: "rotate(-90deg)" }}>
+                          <circle cx={SIZE/2} cy={SIZE/2} r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={4} />
+                          <circle cx={SIZE/2} cy={SIZE/2} r={R} fill="none" stroke={ringColor} strokeWidth={4}
+                            strokeDasharray={`${pct * CIRC} ${CIRC}`} strokeLinecap="round"
+                            style={{ transition: "stroke-dasharray 1s linear" }} />
+                        </svg>
+                        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: ringColor, fontFamily: "'Space Mono', monospace", textAlign: "center", lineHeight: 1.2 }}>
+                          {fmtRing(remaining)}
+                        </div>
+                      </div>
+                    );
+                  })() : (
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
+                  )}
                   <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginBottom: 3 }}>{cubi.nombre}</div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>Piso {cubi.piso} · {cubi.capacidad} pers.</div>
                   <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
