@@ -229,17 +229,8 @@ export default function KioscoView() {
   const selectedCubi   = cubiculos.find(c => c.id === selectedId) || null;
   const libresCount    = cubiculos.filter(c => c.estado === "libre").length;
 
-  // Browse: libres + ocupados con ≤30 min y sin nextReserva
-  const cubisFiltrados = (pisoFilter === 0 ? cubiculos : cubiculos.filter(c => c.piso === pisoFilter))
-    .filter(c => {
-      if (c.capacidad < personas) return false;
-      if (c.estado === "libre") return true;
-      if (c.estado === "ocupado" && !c.nextReserva) {
-        const rem = getRemainingMs(c);
-        return rem > 0 && rem <= ADVANCE_MS;
-      }
-      return false;
-    });
+  // Browse: todos los cubículos (filtrado solo por piso)
+  const cubisFiltrados = pisoFilter === 0 ? cubiculos : cubiculos.filter(c => c.piso === pisoFilter);
 
   // ── IDLE ────────────────────────────────────────────────
   if (screen === "idle") {
@@ -543,8 +534,8 @@ export default function KioscoView() {
                 {p.l}
               </button>
             ))}
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
-              {[["🟢", GREEN, "Disponible"], ["🟡", AMBER, "Reservar turno siguiente"], ["🔴", ROSE, "En uso"]].map(([ico, c, l]) => (
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              {[["🟢", GREEN, "Disponible"], ["🟡", AMBER, "Reservar turno"], ["🔴", ROSE, "En uso"]].map(([ico, c, l]) => (
                 <div key={l} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.4)" }}><span>{ico}</span>{l}</div>
               ))}
             </div>
@@ -552,26 +543,43 @@ export default function KioscoView() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
             {cubisFiltrados.map(cubi => {
-              const isLibre    = cubi.estado === "libre";
-              const isAdvance  = !isLibre; // ocupado con ≤30 min
-              const rem        = isAdvance ? getRemainingMs(cubi) : 0;
-              const availAt    = isAdvance && cubi.reserva?.inicio
+              const isLibre        = cubi.estado === "libre";
+              const isOcupado      = cubi.estado === "ocupado";
+              const isSuficiente   = cubi.capacidad >= personas;
+              const rem            = isOcupado ? getRemainingMs(cubi) : 0;
+              const endTime        = isOcupado && cubi.reserva?.inicio
                 ? new Date(new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000)
                 : null;
-              const color      = isLibre ? GREEN : AMBER;
-              const icon       = isLibre ? "✅" : "⏱️";
-              const label      = isLibre ? "Disponible" : `Libre a las ${availAt ? fmtTime(availAt) : "—"}`;
-              const sublabel   = isAdvance ? fmtRemaining(rem) : null;
+              const canAdvance     = isOcupado && !cubi.nextReserva && rem > 0 && rem <= ADVANCE_MS && isSuficiente;
+              const hasNextReserva = isOcupado && !!cubi.nextReserva;
+              const clickable      = (isLibre && isSuficiente) || canAdvance;
+
+              let color, icon, label, sublabel;
+              if (isLibre && isSuficiente)       { color = GREEN; icon = "✅"; label = "Disponible"; sublabel = null; }
+              else if (isLibre && !isSuficiente) { color = "rgba(255,255,255,0.25)"; icon = "🚫"; label = `Máx. ${cubi.capacidad} pers.`; sublabel = null; }
+              else if (canAdvance)               { color = AMBER; icon = "⏱️"; label = `Libre a las ${endTime ? fmtTime(endTime) : "—"}`; sublabel = `Faltan ${fmtRemaining(rem)}`; }
+              else if (hasNextReserva)           { color = AMBER; icon = "⏱️"; label = "Siguiente turno reservado"; sublabel = endTime ? `Libre a las ${fmtTime(endTime)}` : null; }
+              else                               { color = ROSE;  icon = "🔴"; label = "En uso"; sublabel = endTime ? `Libre aprox. ${fmtTime(endTime)}` : null; }
 
               return (
                 <button key={cubi.id}
-                  onClick={() => { setSelectedId(cubi.id); setScreen("duration"); }}
-                  style={{ padding: "24px 16px", borderRadius: 18, border: `2px solid ${isLibre ? `${color}60` : `${color}40`}`, background: isLibre ? `${color}10` : `${color}08`, cursor: "pointer", textAlign: "center", outline: "none", fontFamily: "'DM Sans', sans-serif" }}>
-                  <div style={{ fontSize: 30, marginBottom: 10 }}>{icon}</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{cubi.nombre}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>Piso {cubi.piso} · {cubi.capacidad} personas</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
-                  {sublabel && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 3 }}>Turno actual: {sublabel}</div>}
+                  onClick={() => { if (!clickable) return; setSelectedId(cubi.id); setScreen("duration"); }}
+                  style={{ padding: "22px 14px", borderRadius: 18, border: `2px solid ${clickable ? `${color}65` : `${color}22`}`, background: `${color}${clickable ? "10" : "06"}`, cursor: clickable ? "pointer" : "default", textAlign: "center", outline: "none", fontFamily: "'DM Sans', sans-serif", opacity: isLibre && !isSuficiente ? 0.5 : 1, transition: "border-color 0.2s" }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginBottom: 3 }}>{cubi.nombre}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>Piso {cubi.piso} · {cubi.capacidad} pers.</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
+                  {sublabel && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 3 }}>{sublabel}</div>}
+                  {/* Info ocupante */}
+                  {isOcupado && cubi.reserva && (
+                    <div style={{ marginTop: 10, padding: "8px 10px", borderRadius: 8, background: "rgba(0,0,0,0.25)", textAlign: "left" }}>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
+                        <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>{cubi.reserva.nombre?.split(" ")[0]}</span>
+                        <br />{cubi.reserva.carrera}
+                        <br />{cubi.reserva.personas} pers. · {cubi.reserva.duracion}h
+                      </div>
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -579,7 +587,7 @@ export default function KioscoView() {
 
           {cubisFiltrados.length === 0 && (
             <div style={{ textAlign: "center", padding: "56px 0", color: "rgba(255,255,255,0.3)", fontSize: 16 }}>
-              No hay cubículos disponibles para {personas} persona{personas !== 1 ? "s" : ""} en este momento.
+              No hay cubículos en este piso.
             </div>
           )}
         </div>
