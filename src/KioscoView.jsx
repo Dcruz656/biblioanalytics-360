@@ -8,6 +8,7 @@ import {
   dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras,
   dbFindAlumno, dbGetPushSubscription,
   subscribeCubiculos, subscribeComputadoras,
+  loadAppConfig, saveAppConfig, subscribeAppConfig,
 } from "./db";
 import { registerServiceWorker, sendPush } from "./pushNotifications";
 import { QRCodeSVG } from "qrcode.react";
@@ -127,6 +128,7 @@ export default function KioscoView() {
   const [pinInput,        setPinInput]        = useState("");
   const [pinError,        setPinError]        = useState("");
   const [pinAttempts,     setPinAttempts]     = useState(0);
+  const [pinRequired,     setPinRequired]     = useState(() => loadAppConfig().pinRequired);
 
   // Refs para notificaciones push: evitar re-envío de la misma alerta
   const pushWarnedRef = useRef(new Set()); // keys tipo "cubiId-inicioISO" ya advertidas a 10 min
@@ -242,6 +244,17 @@ export default function KioscoView() {
     return () => clearInterval(t);
   }, [screen]);
 
+  // Escuchar cambios de config (PIN habilitado/deshabilitado) desde admin
+  useEffect(() => {
+    const unsub = subscribeAppConfig(cfg => {
+      if (typeof cfg.pinRequired === "boolean") {
+        setPinRequired(cfg.pinRequired);
+        saveAppConfig({ ...loadAppConfig(), pinRequired: cfg.pinRequired });
+      }
+    });
+    return unsub;
+  }, []);
+
   function resetToIdle() {
     setScreen("idle");
     setMatriculaInput(""); setAccount(null); setLookupError(""); setLooking(false);
@@ -278,12 +291,20 @@ export default function KioscoView() {
       else if (advanceCubi) dest = { screen: "proxima_reserva", selectedId: advanceCubi.id, compuSelectedId: null };
       else if (activeCompu) dest = { screen: "mi_compu",   selectedId: null, compuSelectedId: activeCompu.id };
 
-      setPendingAccount(found);
-      setPendingDest(dest);
-      setPinInput("");
-      setPinError("");
-      setPinAttempts(0);
-      setScreen("pin_verify");
+      if (!pinRequired) {
+        // PIN desactivado — ir directo al destino
+        setAccount(found);
+        setSelectedId(dest.selectedId);
+        setCompuSelectedId(dest.compuSelectedId);
+        setScreen(dest.screen);
+      } else {
+        setPendingAccount(found);
+        setPendingDest(dest);
+        setPinInput("");
+        setPinError("");
+        setPinAttempts(0);
+        setScreen("pin_verify");
+      }
     });
   }
 

@@ -163,6 +163,36 @@ export function subscribeAlumnos(onChange) {
   return () => supabase.removeChannel(ch);
 }
 
+// ── App Config (PIN, etc.) ──────────────────────────────────────────────────
+const APP_CONFIG_KEY = 'biblio_app_config';
+const DEFAULT_APP_CONFIG = { pinRequired: true };
+
+export function loadAppConfig() {
+  try {
+    const raw = localStorage.getItem(APP_CONFIG_KEY);
+    return raw ? { ...DEFAULT_APP_CONFIG, ...JSON.parse(raw) } : { ...DEFAULT_APP_CONFIG };
+  } catch { return { ...DEFAULT_APP_CONFIG }; }
+}
+
+export function saveAppConfig(config) {
+  try { localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config)); } catch {}
+}
+
+export function broadcastAppConfig(config) {
+  if (!supabase) return;
+  supabase.channel('biblio-app-config').send({
+    type: 'broadcast', event: 'config-update', payload: config,
+  });
+}
+
+export function subscribeAppConfig(onChange) {
+  if (!supabase) return () => {};
+  const ch = supabase.channel('biblio-app-config')
+    .on('broadcast', { event: 'config-update' }, ({ payload }) => onChange(payload))
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}
+
 // ── Push Subscriptions ──────────────────────────────────────────────────────
 export async function dbSavePushSubscription(matricula, subscription) {
   if (!supabase) return;

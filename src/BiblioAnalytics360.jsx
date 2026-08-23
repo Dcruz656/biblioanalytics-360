@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
-import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos } from "./db";
+import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, broadcastAppConfig, subscribeAppConfig } from "./db";
 import { serverNow } from "./serverTime";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
@@ -16,7 +16,7 @@ import {
   Download, Activity, AlertTriangle, CheckCircle, Clock, Heart, ThumbsUp,
   ThumbsDown, Minus, Home, FileText, Zap, Target, Award, Brain, BarChart3,
   Filter, Plus, X, Upload, Play, Pause, RefreshCw, Send, Eye, Layers,
-  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid, Edit2
+  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid, Edit2, Shield
 } from "lucide-react";
 
 // ===== THEME =====
@@ -411,6 +411,7 @@ export default function BiblioAnalytics360() {
   const [profileDraft, setProfileDraft] = useState(null);
   const [alertThresholds, setAlertThresholds] = useState({ prestamos: 900, satisfaccion: 65, calidad: 80 });
   const [alertToggles, setAlertToggles] = useState({ prestamos: true, sentimiento: true, calidad: true, uploads: true });
+  const [pinRequired,  setPinRequired]  = useState(() => loadAppConfig().pinRequired);
   const [syncingSource, setSyncingSource] = useState(null);
   const [alumnos, setAlumnos] = useState([]);
   // Herramientas — Cubículos
@@ -2084,6 +2085,54 @@ export default function BiblioAnalytics360() {
                 </div>
 
               </div>
+
+              {/* Seguridad del kiosco */}
+              <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginTop: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: `${t.rose}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Shield size={18} color={t.rose} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Seguridad del Kiosco</div>
+                    <div style={{ fontSize: 10, color: t.textDim }}>Control de autenticación en terminales de autoservicio</div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 12, background: t.inputBg, border: `1px solid ${pinRequired ? t.teal + "40" : t.cardBorder}` }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: t.text, marginBottom: 2 }}>Requerir PIN en el kiosco</div>
+                    <div style={{ fontSize: 11, color: t.textDim, lineHeight: 1.5 }}>
+                      {pinRequired
+                        ? "Los alumnos deben ingresar su PIN de 4 dígitos para confirmar su identidad."
+                        : "El kiosco acepta cualquier matrícula registrada sin solicitar PIN."}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const next = !pinRequired;
+                      setPinRequired(next);
+                      const cfg = { ...loadAppConfig(), pinRequired: next };
+                      saveAppConfig(cfg);
+                      broadcastAppConfig(cfg);
+                      setNotifications(prev => [{ id: Date.now(), text: `PIN en kiosco ${next ? "habilitado" : "deshabilitado"}`, type: next ? "success" : "info", time: "Ahora" }, ...prev]);
+                    }}
+                    style={{ width: 46, height: 24, borderRadius: 12, border: "none", background: pinRequired ? t.teal : `${t.text}20`, cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0, marginLeft: 20 }}>
+                    <div style={{ position: "absolute", top: 2, left: pinRequired ? 24 : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
+                  </button>
+                </div>
+
+                <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: pinRequired ? `${t.teal}08` : `${t.rose}08`, border: `1px solid ${pinRequired ? t.teal + "25" : t.rose + "25"}` }}>
+                  <div style={{ fontSize: 11, color: pinRequired ? t.teal : t.rose, fontWeight: 600, marginBottom: 2 }}>
+                    {pinRequired ? "🔒 PIN activo" : "⚠️ PIN desactivado"}
+                  </div>
+                  <div style={{ fontSize: 11, color: t.textDim, lineHeight: 1.5 }}>
+                    {pinRequired
+                      ? "Solo el dueño de la matrícula puede reservar. Recomendado para mayor seguridad."
+                      : "Cualquier persona que conozca una matrícula puede hacer reservas. Úsalo solo en entornos controlados."}
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
 
