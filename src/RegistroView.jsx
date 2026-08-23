@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cubiCarreras } from "./cubiData";
 import { dbFindAlumno, dbSaveAlumno, dbSavePushSubscription } from "./db";
 import { registerServiceWorker, subscribeToPush } from "./pushNotifications";
@@ -12,14 +12,23 @@ const TEAL_L    = "#14b8a6";
 const GREEN     = "#059669";
 const ROSE      = "#e11d48";
 
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => window.innerWidth < 500);
+  useEffect(() => {
+    const h = () => setMobile(window.innerWidth < 500);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return mobile;
+}
+
 function initials(name) {
   return name.trim().split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-// ── Field ────────────────────────────────────────────────
 function Field({ label, error, children }) {
   return (
-    <div style={{ marginBottom: 22 }}>
+    <div style={{ marginBottom: 20 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.45)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.2 }}>{label}</div>
       {children}
       {error && <div style={{ fontSize: 12, color: ROSE, marginTop: 5 }}>⚠ {error}</div>}
@@ -28,20 +37,23 @@ function Field({ label, error, children }) {
 }
 
 const inputBase = {
-  width: "100%", background: CARD, borderRadius: 12, padding: "15px 18px",
+  width: "100%", background: CARD, borderRadius: 12, padding: "15px 16px",
   color: "#fff", fontSize: 16, outline: "none", boxSizing: "border-box",
   fontFamily: "'DM Sans', sans-serif", transition: "border-color 0.2s",
+  WebkitAppearance: "none",
 };
 
 // ── Main ─────────────────────────────────────────────────
 export default function RegistroView() {
-  const [screen,      setScreen]      = useState("form"); // form | success
+  const isMobile = useIsMobile();
+
+  const [screen,      setScreen]      = useState("form");
   const [form,        setForm]        = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0] });
   const [errors,      setErrors]      = useState({});
   const [globalError, setGlobalError] = useState("");
   const [submitting,  setSubmitting]  = useState(false);
   const [savedAccount,setSavedAccount]= useState(null);
-  const [pushState,   setPushState]   = useState("idle"); // idle | requesting | granted | denied | unsupported
+  const [pushState,   setPushState]   = useState("idle");
 
   function validate() {
     const e = {};
@@ -55,7 +67,7 @@ export default function RegistroView() {
   }
 
   async function handleActivarNotif() {
-    if (!('Notification' in window)) { setPushState("unsupported"); return; }
+    if (!("Notification" in window)) { setPushState("unsupported"); return; }
     setPushState("requesting");
     await registerServiceWorker();
     const sub = await subscribeToPush();
@@ -68,14 +80,12 @@ export default function RegistroView() {
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-
     setSubmitting(true);
     setGlobalError("");
-
     dbFindAlumno(form.matricula.trim())
       .then(exists => {
         if (exists) {
-          setGlobalError("Esta matrícula ya tiene una cuenta registrada. Puedes usar el kiosco directamente.");
+          setGlobalError("Esta matrícula ya tiene una cuenta. Puedes usar el kiosco directamente.");
           setSubmitting(false);
           return;
         }
@@ -87,61 +97,63 @@ export default function RegistroView() {
         });
       })
       .catch(err => {
-        console.error('[registro] error:', err.message);
         setGlobalError(`Error al registrar: ${err.message}`);
         setSubmitting(false);
       });
   }
 
+  // ── Shared header ──────────────────────────────────────
+  const Header = ({ subtitle }) => (
+    <div style={{ background: NAVY, borderBottom: "1px solid rgba(255,255,255,0.06)", padding: isMobile ? "13px 16px" : "16px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ width: 34, height: 34, borderRadius: 9, background: `linear-gradient(135deg, ${TEAL}, ${TEAL_L})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>📚</div>
+      <div>
+        <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 800, color: "#fff" }}>Biblioteca Central UACJ</div>
+        <div style={{ fontSize: 10, color: TEAL, fontWeight: 600 }}>{subtitle}</div>
+      </div>
+    </div>
+  );
+
   // ── FORM ─────────────────────────────────────────────────
   if (screen === "form") {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
+        <Header subtitle="Servicio de Cubículos — Registro" />
 
-        {/* Header */}
-        <div style={{ background: NAVY, borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "16px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${TEAL}, ${TEAL_L})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>📚</div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>Biblioteca Central UACJ</div>
-            <div style={{ fontSize: 11, color: TEAL, fontWeight: 600 }}>Servicio de Cubículos — Registro</div>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div style={{ maxWidth: 520, margin: "0 auto", padding: "40px 24px 60px" }}>
+        <div style={{ maxWidth: 520, margin: "0 auto", padding: isMobile ? "28px 16px 48px" : "40px 24px 60px" }}>
 
           {/* Hero */}
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <div style={{ width: 72, height: 72, borderRadius: 20, background: `${TEAL}18`, border: `1.5px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, margin: "0 auto 20px" }}>🏛️</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Crea tu cuenta</div>
-            <div style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
-              Regístrate una sola vez y usa el kiosco de la biblioteca con solo tu matrícula.
+          <div style={{ textAlign: "center", marginBottom: isMobile ? 28 : 40 }}>
+            <div style={{ width: isMobile ? 60 : 72, height: isMobile ? 60 : 72, borderRadius: 18, background: `${TEAL}18`, border: `1.5px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 28 : 34, margin: "0 auto 16px" }}>🏛️</div>
+            <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Crea tu cuenta</div>
+            <div style={{ fontSize: isMobile ? 14 : 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
+              Regístrate una vez y usa el kiosco con solo tu matrícula.
             </div>
           </div>
 
           {/* Benefits */}
-          <div style={{ background: `${TEAL}08`, border: `1px solid ${TEAL}25`, borderRadius: 14, padding: "16px 20px", marginBottom: 36 }}>
+          <div style={{ background: `${TEAL}08`, border: `1px solid ${TEAL}25`, borderRadius: 14, padding: isMobile ? "14px 16px" : "16px 20px", marginBottom: isMobile ? 28 : 36 }}>
             {[
               "Reserva cubículos en segundos desde el kiosco",
               "Solo ingresa tu matrícula — sin contraseñas",
               "Registro único, válido en todos los kioscos",
             ].map((b, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
-                <span style={{ color: TEAL, marginTop: 1, flexShrink: 0 }}>✓</span>
+                <span style={{ color: TEAL, marginTop: 2, flexShrink: 0, fontSize: 13 }}>✓</span>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{b}</span>
               </div>
             ))}
           </div>
 
-          {/* Form */}
+          {/* Form fields */}
           <Field label="Nombre completo" error={errors.nombre}>
             <input
               value={form.nombre}
               onChange={e => { setForm(p => ({ ...p, nombre: e.target.value })); setErrors(p => ({ ...p, nombre: "" })); }}
               placeholder="Ej. Juan Pérez López"
+              autoComplete="name"
               style={{ ...inputBase, border: `1.5px solid ${errors.nombre ? ROSE : "rgba(255,255,255,0.1)"}` }}
-              onFocus={e  => e.target.style.borderColor = TEAL}
-              onBlur={e   => e.target.style.borderColor = errors.nombre ? ROSE : "rgba(255,255,255,0.1)"}
+              onFocus={e => e.target.style.borderColor = TEAL}
+              onBlur={e  => e.target.style.borderColor = errors.nombre ? ROSE : "rgba(255,255,255,0.1)"}
             />
           </Field>
 
@@ -150,9 +162,11 @@ export default function RegistroView() {
               value={form.matricula}
               onChange={e => { setForm(p => ({ ...p, matricula: e.target.value })); setErrors(p => ({ ...p, matricula: "" })); setGlobalError(""); }}
               placeholder="Ej. A201234"
-              style={{ ...inputBase, border: `1.5px solid ${errors.matricula ? ROSE : "rgba(255,255,255,0.1)"}`, fontFamily: "'Space Mono', monospace", letterSpacing: 1.5, fontSize: 18 }}
-              onFocus={e  => e.target.style.borderColor = TEAL}
-              onBlur={e   => e.target.style.borderColor = errors.matricula ? ROSE : "rgba(255,255,255,0.1)"}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              style={{ ...inputBase, border: `1.5px solid ${errors.matricula ? ROSE : "rgba(255,255,255,0.1)"}`, fontFamily: "'Space Mono', monospace", letterSpacing: 1.5 }}
+              onFocus={e => e.target.style.borderColor = TEAL}
+              onBlur={e  => e.target.style.borderColor = errors.matricula ? ROSE : "rgba(255,255,255,0.1)"}
             />
           </Field>
 
@@ -166,17 +180,17 @@ export default function RegistroView() {
           </Field>
 
           {globalError && (
-            <div style={{ padding: "14px 18px", borderRadius: 12, background: `${ROSE}15`, border: `1px solid ${ROSE}40`, color: ROSE, fontSize: 13, marginBottom: 22, lineHeight: 1.6 }}>
+            <div style={{ padding: "14px 16px", borderRadius: 12, background: `${ROSE}15`, border: `1px solid ${ROSE}40`, color: ROSE, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
               ⚠ {globalError}
             </div>
           )}
 
           <button onClick={handleSubmit} disabled={submitting}
-            style={{ width: "100%", padding: "18px 0", borderRadius: 14, border: "none", background: submitting ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: submitting ? "rgba(255,255,255,0.35)" : "#fff", fontSize: 18, fontWeight: 700, cursor: submitting ? "default" : "pointer", fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s" }}>
+            style={{ width: "100%", padding: "17px 0", borderRadius: 14, border: "none", background: submitting ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: submitting ? "rgba(255,255,255,0.35)" : "#fff", fontSize: isMobile ? 16 : 18, fontWeight: 700, cursor: submitting ? "default" : "pointer", fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s", touchAction: "manipulation" }}>
             {submitting ? "Creando cuenta…" : "Crear cuenta →"}
           </button>
 
-          <div style={{ textAlign: "center", marginTop: 24, fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+          <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
             ¿Ya tienes cuenta? Ve al kiosco e ingresa tu matrícula.
           </div>
         </div>
@@ -188,85 +202,76 @@ export default function RegistroView() {
   if (screen === "success" && savedAccount) {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif", display: "flex", flexDirection: "column" }}>
+        <Header subtitle="Cuenta creada exitosamente" />
 
-        {/* Header */}
-        <div style={{ background: NAVY, borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "16px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${TEAL}, ${TEAL_L})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📚</div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>Biblioteca Central UACJ</div>
-            <div style={{ fontSize: 11, color: TEAL, fontWeight: 600 }}>Cuenta creada exitosamente</div>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: isMobile ? "28px 16px 40px" : "40px 24px", textAlign: "center" }}>
 
           {/* Check */}
-          <div style={{ width: 90, height: 90, borderRadius: "50%", background: `${GREEN}18`, border: `3px solid ${GREEN}70`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, marginBottom: 22 }}>✓</div>
+          <div style={{ width: isMobile ? 72 : 90, height: isMobile ? 72 : 90, borderRadius: "50%", background: `${GREEN}18`, border: `3px solid ${GREEN}70`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 34 : 44, marginBottom: 18 }}>✓</div>
 
-          <div style={{ fontSize: 32, fontWeight: 800, color: "#fff", marginBottom: 6 }}>¡Cuenta creada!</div>
-          <div style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", marginBottom: 36, lineHeight: 1.6 }}>
+          <div style={{ fontSize: isMobile ? 26 : 32, fontWeight: 800, color: "#fff", marginBottom: 6 }}>¡Cuenta creada!</div>
+          <div style={{ fontSize: isMobile ? 14 : 15, color: "rgba(255,255,255,0.45)", marginBottom: isMobile ? 24 : 32, lineHeight: 1.6 }}>
             Ya puedes usar el kiosco de la biblioteca<br />ingresando solo tu matrícula.
           </div>
 
           {/* Account card */}
-          <div style={{ background: CARD, borderRadius: 20, padding: "24px 36px", border: `1.5px solid ${TEAL}45`, marginBottom: 32, width: "100%", maxWidth: 420 }}>
-            <div style={{ width: 60, height: 60, borderRadius: "50%", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 800, color: "#fff", margin: "0 auto 16px" }}>
+          <div style={{ background: CARD, borderRadius: 18, padding: isMobile ? "20px 20px" : "24px 36px", border: `1.5px solid ${TEAL}45`, marginBottom: isMobile ? 20 : 28, width: "100%", maxWidth: 440 }}>
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "#fff", margin: "0 auto 14px" }}>
               {initials(savedAccount.nombre)}
             </div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{savedAccount.nombre}</div>
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 18 }}>{savedAccount.carrera}</div>
-            <div style={{ padding: "12px 16px", borderRadius: 10, background: `${TEAL}12`, border: `1px solid ${TEAL}30` }}>
+            <div style={{ fontSize: isMobile ? 17 : 20, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{savedAccount.nombre}</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 16 }}>{savedAccount.carrera}</div>
+            <div style={{ padding: "12px 14px", borderRadius: 10, background: `${TEAL}12`, border: `1px solid ${TEAL}30` }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Tu matrícula</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: TEAL, fontFamily: "'Space Mono', monospace", letterSpacing: 2 }}>{savedAccount.matricula}</div>
+              <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: TEAL, fontFamily: "'Space Mono', monospace", letterSpacing: 2 }}>{savedAccount.matricula}</div>
             </div>
           </div>
 
           {/* Instructions */}
-          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "18px 22px", marginBottom: 28, maxWidth: 420, width: "100%", textAlign: "left" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Cómo usar el kiosco</div>
+          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: isMobile ? "14px 16px" : "18px 22px", marginBottom: isMobile ? 16 : 24, maxWidth: 440, width: "100%", textAlign: "left" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Cómo usar el kiosco</div>
             {[
               "Ve al kiosco de la biblioteca",
               "Toca la pantalla para comenzar",
               "Ingresa tu matrícula",
               "Selecciona cubículo y duración",
             ].map((step, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: i < 3 ? 10 : 0 }}>
-                <div style={{ width: 24, height: 24, borderRadius: "50%", background: `${TEAL}20`, border: `1px solid ${TEAL}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: TEAL, flexShrink: 0 }}>{i + 1}</div>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: i < 3 ? 9 : 0 }}>
+                <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${TEAL}20`, border: `1px solid ${TEAL}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: TEAL, flexShrink: 0 }}>{i + 1}</div>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{step}</span>
               </div>
             ))}
           </div>
 
-          {/* Notificaciones push */}
+          {/* Push notifications */}
           {pushState !== "granted" && pushState !== "unsupported" && (
-            <div style={{ width: "100%", maxWidth: 420, marginBottom: 16, borderRadius: 14, border: `1px solid ${TEAL}35`, background: `${TEAL}0a`, padding: "16px 20px" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>🔔 Recibe avisos en tu celular</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 14, lineHeight: 1.5 }}>
-                Te avisaremos cuando queden 10 min de tu reserva y cuando venza tu tiempo.
+            <div style={{ width: "100%", maxWidth: 440, marginBottom: 14, borderRadius: 14, border: `1px solid ${TEAL}35`, background: `${TEAL}0a`, padding: isMobile ? "14px 16px" : "16px 20px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.7)", marginBottom: 5 }}>🔔 Recibe avisos en tu celular</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 12, lineHeight: 1.5 }}>
+                Te avisaremos cuando queden 10 min y cuando venza tu reserva.
               </div>
               <button
                 onClick={handleActivarNotif}
                 disabled={pushState === "requesting"}
-                style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "none", background: pushState === "requesting" ? "rgba(255,255,255,0.08)" : TEAL, color: pushState === "requesting" ? "rgba(255,255,255,0.35)" : "#fff", fontSize: 14, fontWeight: 700, cursor: pushState === "requesting" ? "default" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                style={{ width: "100%", padding: "13px 0", borderRadius: 10, border: "none", background: pushState === "requesting" ? "rgba(255,255,255,0.08)" : TEAL, color: pushState === "requesting" ? "rgba(255,255,255,0.35)" : "#fff", fontSize: 14, fontWeight: 700, cursor: pushState === "requesting" ? "default" : "pointer", fontFamily: "'DM Sans', sans-serif", touchAction: "manipulation" }}>
                 {pushState === "requesting" ? "Activando…" : pushState === "denied" ? "Permiso denegado — intenta de nuevo" : "Activar notificaciones"}
               </button>
             </div>
           )}
           {pushState === "granted" && (
-            <div style={{ width: "100%", maxWidth: 420, marginBottom: 16, borderRadius: 14, border: `1px solid ${GREEN}50`, background: `${GREEN}10`, padding: "14px 20px", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 20 }}>✓</span>
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>Notificaciones activadas — recibirás avisos de tus reservas.</span>
+            <div style={{ width: "100%", maxWidth: 440, marginBottom: 14, borderRadius: 14, border: `1px solid ${GREEN}50`, background: `${GREEN}10`, padding: "13px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 18 }}>✓</span>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", textAlign: "left" }}>Notificaciones activadas — recibirás avisos de tus reservas.</span>
             </div>
           )}
 
           <button onClick={() => window.location.href = "/kiosco"}
-            style={{ width: "100%", maxWidth: 420, padding: "16px 0", borderRadius: 14, border: "none", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: "#fff", fontSize: 17, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 12 }}>
+            style={{ width: "100%", maxWidth: 440, padding: "16px 0", borderRadius: 14, border: "none", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: "#fff", fontSize: isMobile ? 15 : 17, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 10, touchAction: "manipulation" }}>
             Ir al kiosco →
           </button>
 
-          <button onClick={() => { setScreen("form"); setForm({ nombre: "", matricula: "", carrera: cubiCarreras[0] }); setErrors({}); setGlobalError(""); }}
-            style={{ width: "100%", maxWidth: 420, padding: "14px 0", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.45)", fontSize: 15, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+          <button onClick={() => { setScreen("form"); setForm({ nombre: "", matricula: "", carrera: cubiCarreras[0] }); setErrors({}); setGlobalError(""); setSavedAccount(null); setPushState("idle"); }}
+            style={{ width: "100%", maxWidth: 440, padding: "14px 0", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", touchAction: "manipulation" }}>
             Registrar otro alumno
           </button>
         </div>
