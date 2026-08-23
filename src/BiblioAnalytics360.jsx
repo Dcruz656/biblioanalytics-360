@@ -514,7 +514,7 @@ export default function BiblioAnalytics360() {
   const sentTendencia = useMemo(() => genSentimiento(seed), [seed]);
 
   // Servicios state
-  const [svcView, setSvcView] = useState("temporal"); // temporal | carrera | usuario | turno
+  const [svcView, setSvcView] = useState("realtime"); // realtime | temporal | carrera | usuario | turno
   const [svcCategory, setSvcCategory] = useState("todos"); // todos | prestamos | computo | formacion | espacios
   const [svcSearch, setSvcSearch] = useState("");
   const [svcPage, setSvcPage] = useState(0);
@@ -851,20 +851,40 @@ export default function BiblioAnalytics360() {
           )}
 
           {/* ===== SERVICIOS ===== */}
-          {nav === "servicios" && (
+          {nav === "servicios" && (() => {
+            const cubiTotal = cubiculos.length;
+            const cubiEnUso = cubiculos.filter(c => c.estado === "ocupado").length;
+            const cubiLbr   = cubiculos.filter(c => c.estado === "libre").length;
+            const cubiTasa  = cubiTotal ? Math.round((cubiEnUso / cubiTotal) * 100) : 0;
+            const compuTotal = computadoras.length;
+            const compuEnUso = computadoras.filter(c => c.estado === "ocupado").length;
+            const compuLbr   = computadoras.filter(c => c.estado === "libre").length;
+            const compuTasa  = compuTotal ? Math.round((compuEnUso / compuTotal) * 100) : 0;
+            return (
             <div>
-              {/* Stats */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
-                <StatCard icon={BookOpen} label="Préstamos (mes actual)" value={(svcMes[svcMes.length-1]?.domicilio + svcMes[svcMes.length-1]?.sala + svcMes[svcMes.length-1]?.interbibliotecario).toLocaleString()} change="+18.4%" changeType="up" color={t.teal} t={t} />
-                <StatCard icon={Activity} label="Usos de Cómputo" value={(svcMes[svcMes.length-1]?.computadoras + svcMes[svcMes.length-1]?.internet + svcMes[svcMes.length-1]?.impresiones).toLocaleString()} change="+12.1%" changeType="up" color={t.blue} t={t} />
-                <StatCard icon={Users} label="Formación (personas)" value={(svcMes[svcMes.length-1]?.talleres + svcMes[svcMes.length-1]?.capacitaciones + svcMes[svcMes.length-1]?.asesorias).toLocaleString()} change="+7.5%" changeType="up" color={t.purple} t={t} />
-                <StatCard icon={Layers} label="Uso de Espacios" value={(svcMes[svcMes.length-1]?.cubiculos + svcMes[svcMes.length-1]?.salasEstudio + svcMes[svcMes.length-1]?.coworking).toLocaleString()} change="+22.3%" changeType="up" color={t.amber} t={t} />
+              {/* KPI row — datos reales */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 4 }}>
+                <StatCard icon={Layers}      label="Cubículos en uso"   value={`${cubiEnUso} / ${cubiTotal}`}   color={t.teal}   t={t} />
+                <StatCard icon={Target}      label="Tasa cubículos"     value={`${cubiTasa}%`}                  color={t.amber}  t={t} />
+                <StatCard icon={Monitor}     label="PCs en uso"         value={`${compuEnUso} / ${compuTotal}`} color={t.blue}   t={t} />
+                <StatCard icon={Target}      label="Tasa cómputo"       value={`${compuTasa}%`}                 color={t.purple} t={t} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20, paddingLeft: 2 }}>
+                <div style={{ width: 7, height: 7, borderRadius: "50%", background: t.green, boxShadow: `0 0 6px ${t.green}` }} />
+                <span style={{ fontSize: 10, color: t.textDim }}>Datos en tiempo real · Cubículos y Computadoras conectados</span>
+                <span style={{ marginLeft: "auto", fontSize: 10, color: t.textMuted }}>Fuentes futuras: SIAB, Sistema Escolar, Buzón</span>
               </div>
 
               {/* View Toggle + Category Filter */}
               <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
                 <div style={{ display: "flex", gap: 0, borderRadius: 10, overflow: "hidden", border: `1px solid ${t.cardBorder}` }}>
-                  {[{v:"temporal",l:"Por Mes",ic:Calendar},{v:"carrera",l:"Por Carrera",ic:GraduationCap},{v:"usuario",l:"Por Tipo Usuario",ic:Users},{v:"turno",l:"Por Turno",ic:Clock}].map(tab => (
+                  {[
+                    {v:"realtime", l:"Tiempo Real", ic:Activity},
+                    {v:"temporal", l:"Por Mes",     ic:Calendar},
+                    {v:"carrera",  l:"Por Carrera", ic:GraduationCap},
+                    {v:"usuario",  l:"Por Usuario", ic:Users},
+                    {v:"turno",    l:"Por Turno",   ic:Clock},
+                  ].map(tab => (
                     <button key={tab.v} onClick={() => { setSvcView(tab.v); setSvcPage(0); }}
                       style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", border: "none", fontSize: 11, fontWeight: svcView === tab.v ? 600 : 400, cursor: "pointer",
                         background: svcView === tab.v ? `${t.teal}15` : t.card,
@@ -873,17 +893,205 @@ export default function BiblioAnalytics360() {
                     </button>
                   ))}
                 </div>
-                <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
-                  {[{v:"todos",l:"Todos"},{v:"prestamos",l:"Préstamos"},{v:"computo",l:"Cómputo"},{v:"formacion",l:"Formación"},{v:"espacios",l:"Espacios"}].map(cat => (
-                    <button key={cat.v} onClick={() => { setSvcCategory(cat.v); setSvcPage(0); }}
-                      style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${svcCategory === cat.v ? t.teal : t.cardBorder}`, fontSize: 10, fontWeight: svcCategory === cat.v ? 600 : 400, cursor: "pointer",
-                        background: svcCategory === cat.v ? `${t.teal}12` : "transparent",
-                        color: svcCategory === cat.v ? t.teal : t.textDim }}>
-                      {cat.l}
-                    </button>
-                  ))}
-                </div>
+                {svcView !== "realtime" && (
+                  <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
+                    {[{v:"todos",l:"Todos"},{v:"computo",l:"Cómputo"},{v:"espacios",l:"Cubículos"},{v:"prestamos",l:"Préstamos"},{v:"formacion",l:"Formación"}].map(cat => (
+                      <button key={cat.v} onClick={() => { setSvcCategory(cat.v); setSvcPage(0); }}
+                        style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${svcCategory === cat.v ? t.teal : t.cardBorder}`, fontSize: 10, fontWeight: svcCategory === cat.v ? 600 : 400, cursor: "pointer",
+                          background: svcCategory === cat.v ? `${t.teal}12` : "transparent",
+                          color: svcCategory === cat.v ? t.teal : t.textDim }}>
+                        {cat.l}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* ---- TIEMPO REAL (datos reales de cubículos y computadoras) ---- */}
+              {svcView === "realtime" && (<>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+
+                  {/* Cubículos — estado actual */}
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                      <Layers size={15} color={t.teal} />
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Cubículos — Estado Actual</div>
+                      <div style={{ marginLeft: "auto", fontSize: 9, fontWeight: 600, color: t.green, padding: "2px 7px", borderRadius: 20, background: `${t.green}15`, border: `1px solid ${t.green}30` }}>EN VIVO</div>
+                    </div>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie data={[
+                          { name: "Libres",    value: cubiLbr,                                                  fill: t.green },
+                          { name: "En uso",    value: cubiEnUso,                                                fill: t.rose  },
+                          { name: "Reservados",value: cubiculos.filter(c=>c.estado==="reservado").length,       fill: t.amber },
+                        ].filter(d => d.value > 0)}
+                          dataKey="value" cx="50%" cy="50%" innerRadius={52} outerRadius={80} paddingAngle={3} cornerRadius={3}
+                          animationDuration={800} animationEasing="ease-out">
+                          {[t.green, t.rose, t.amber].map((c,i) => <Cell key={i} fill={c} />)}
+                        </Pie>
+                        <Tooltip content={<CTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 4 }}>
+                      {[{l:`Libres (${cubiLbr})`,c:t.green},{l:`En uso (${cubiEnUso})`,c:t.rose},{l:`Reservados (${cubiculos.filter(c=>c.estado==="reservado").length})`,c:t.amber}].map((x,i) => (
+                        <span key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: t.textDim }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: x.c, display: "inline-block" }} />{x.l}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Computadoras — estado actual */}
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                      <Monitor size={15} color={t.blue} />
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Computadoras — Estado Actual</div>
+                      <div style={{ marginLeft: "auto", fontSize: 9, fontWeight: 600, color: t.green, padding: "2px 7px", borderRadius: 20, background: `${t.green}15`, border: `1px solid ${t.green}30` }}>EN VIVO</div>
+                    </div>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie data={[
+                          { name: "Libres",        value: compuLbr,    fill: t.green },
+                          { name: "En uso",        value: compuEnUso,  fill: t.blue  },
+                          { name: "Mantenimiento", value: computadoras.filter(c=>c.estado==="mantenimiento").length, fill: t.amber },
+                        ].filter(d => d.value > 0)}
+                          dataKey="value" cx="50%" cy="50%" innerRadius={52} outerRadius={80} paddingAngle={3} cornerRadius={3}
+                          animationDuration={800} animationEasing="ease-out">
+                          {[t.green, t.blue, t.amber].map((c,i) => <Cell key={i} fill={c} />)}
+                        </Pie>
+                        <Tooltip content={<CTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 4 }}>
+                      {[{l:`Libres (${compuLbr})`,c:t.green},{l:`En uso (${compuEnUso})`,c:t.blue},{l:`Mant. (${computadoras.filter(c=>c.estado==="mantenimiento").length})`,c:t.amber}].map((x,i) => (
+                        <span key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: t.textDim }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: x.c, display: "inline-block" }} />{x.l}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ocupación por zona/piso */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                  {/* Cubículos por piso */}
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Cubículos por Piso</div>
+                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Ocupación actual</div>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={[1,2].map(p => {
+                        const pCubis = cubiculos.filter(c => c.piso === p);
+                        return { piso: `Piso ${p}`, libres: pCubis.filter(c=>c.estado==="libre").length, enUso: pCubis.filter(c=>c.estado==="ocupado").length, reservados: pCubis.filter(c=>c.estado==="reservado").length };
+                      })}>
+                        <defs>
+                          <linearGradient id="rtG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.green} stopOpacity={1}/><stop offset="100%" stopColor={t.green} stopOpacity={0.6}/></linearGradient>
+                          <linearGradient id="rtG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.rose} stopOpacity={1}/><stop offset="100%" stopColor={t.rose} stopOpacity={0.6}/></linearGradient>
+                          <linearGradient id="rtG3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.amber} stopOpacity={1}/><stop offset="100%" stopColor={t.amber} stopOpacity={0.6}/></linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
+                        <XAxis dataKey="piso" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip content={<CTooltip />} />
+                        <Bar dataKey="libres"    name="Libres"    fill="url(#rtG1)" radius={[4,4,0,0]} animationDuration={700} animationEasing="ease-out" />
+                        <Bar dataKey="enUso"     name="En uso"    fill="url(#rtG2)" radius={[4,4,0,0]} animationDuration={800} animationEasing="ease-out" />
+                        <Bar dataKey="reservados" name="Reservados" fill="url(#rtG3)" radius={[4,4,0,0]} animationDuration={900} animationEasing="ease-out" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Computadoras por zona */}
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Computadoras por Zona</div>
+                    <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>Ocupación actual</div>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={compuZonas.map(z => {
+                        const zPcs = computadoras.filter(c => c.zona === z);
+                        return { zona: z.replace("Sala ",""), libres: zPcs.filter(c=>c.estado==="libre").length, enUso: zPcs.filter(c=>c.estado==="ocupado").length, mant: zPcs.filter(c=>c.estado==="mantenimiento").length };
+                      })}>
+                        <defs>
+                          <linearGradient id="rtG4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.green} stopOpacity={1}/><stop offset="100%" stopColor={t.green} stopOpacity={0.6}/></linearGradient>
+                          <linearGradient id="rtG5" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.blue} stopOpacity={1}/><stop offset="100%" stopColor={t.blue} stopOpacity={0.6}/></linearGradient>
+                          <linearGradient id="rtG6" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={t.amber} stopOpacity={1}/><stop offset="100%" stopColor={t.amber} stopOpacity={0.6}/></linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
+                        <XAxis dataKey="zona" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip content={<CTooltip />} />
+                        <Bar dataKey="libres" name="Libres"    fill="url(#rtG4)" radius={[4,4,0,0]} animationDuration={700} animationEasing="ease-out" />
+                        <Bar dataKey="enUso"  name="En uso"    fill="url(#rtG5)" radius={[4,4,0,0]} animationDuration={800} animationEasing="ease-out" />
+                        <Bar dataKey="mant"   name="Mantenimiento" fill="url(#rtG6)" radius={[4,4,0,0]} animationDuration={900} animationEasing="ease-out" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Sesiones activas ahora */}
+                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Sesiones Activas Ahora</div>
+                  {(() => {
+                    const actCubis = cubiculos.filter(c => c.estado === "ocupado" && c.reserva);
+                    const actCompus = computadoras.filter(c => c.estado === "ocupado" && c.reserva);
+                    const total = actCubis.length + actCompus.length;
+                    if (total === 0) return <div style={{ textAlign: "center", padding: "20px 0", color: t.textDim, fontSize: 12 }}>No hay sesiones activas en este momento</div>;
+                    return (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                          <thead>
+                            <tr>{["Servicio","Recurso","Usuario","Carrera","Dur.","Inicio"].map(h => (
+                              <th key={h} style={{ textAlign: "left", padding: "6px 12px", borderBottom: `2px solid ${t.cardBorder}`, fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</th>
+                            ))}</tr>
+                          </thead>
+                          <tbody>
+                            {actCubis.map(c => (
+                              <tr key={`c-${c.id}`} style={{ borderBottom: `1px solid ${t.cardBorder}` }}>
+                                <td style={{ padding: "8px 12px" }}><span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: `${t.teal}15`, color: t.teal }}>Cubículo</span></td>
+                                <td style={{ padding: "8px 12px", fontWeight: 700, color: t.text }}>{c.nombre}</td>
+                                <td style={{ padding: "8px 12px", color: t.text }}>{c.reserva.nombre}</td>
+                                <td style={{ padding: "8px 12px", color: t.textDim }}>{c.reserva.carrera}</td>
+                                <td style={{ padding: "8px 12px", color: t.text, fontWeight: 600 }}>{c.reserva.duracion}h</td>
+                                <td style={{ padding: "8px 12px", color: t.textDim, fontFamily: "'Space Mono', monospace" }}>{c.reserva.inicio instanceof Date ? c.reserva.inicio.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}) : new Date(c.reserva.inicio).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})}</td>
+                              </tr>
+                            ))}
+                            {actCompus.map(c => (
+                              <tr key={`p-${c.id}`} style={{ borderBottom: `1px solid ${t.cardBorder}` }}>
+                                <td style={{ padding: "8px 12px" }}><span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: `${t.blue}15`, color: t.blue }}>Cómputo</span></td>
+                                <td style={{ padding: "8px 12px", fontWeight: 700, color: t.text }}>{c.nombre}</td>
+                                <td style={{ padding: "8px 12px", color: t.text }}>{c.reserva.nombre}</td>
+                                <td style={{ padding: "8px 12px", color: t.textDim }}>{c.reserva.carrera}</td>
+                                <td style={{ padding: "8px 12px", color: t.text, fontWeight: 600 }}>{c.reserva.duracion}h</td>
+                                <td style={{ padding: "8px 12px", color: t.textDim, fontFamily: "'Space Mono', monospace" }}>{c.reserva.inicio instanceof Date ? c.reserva.inicio.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}) : new Date(c.reserva.inicio).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Fuentes pendientes */}
+                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Fuentes de Datos — Roadmap</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                    {[
+                      { icon: BookOpen, label: "Préstamos y Devoluciones", fuente: "SIAB", color: t.teal, estado: "próximo" },
+                      { icon: Users,    label: "Formación y Talleres",     fuente: "Sistema Escolar", color: t.purple, estado: "próximo" },
+                      { icon: FileText, label: "Buzón de Sugerencias",     fuente: "Buzón Digital",   color: t.rose,   estado: "próximo" },
+                    ].map((src, i) => (
+                      <div key={i} style={{ padding: "16px 18px", borderRadius: 12, background: `${src.color}08`, border: `1px dashed ${src.color}30`, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <src.icon size={16} color={src.color} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{src.label}</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: t.textDim }}>Fuente: {src.fuente}</div>
+                        <span style={{ alignSelf: "flex-start", padding: "2px 8px", borderRadius: 20, background: `${src.color}15`, color: src.color, fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>
+                          Fase 2
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>)}
 
               {/* ---- TEMPORAL VIEW ---- */}
               {svcView === "temporal" && (
@@ -1213,7 +1421,8 @@ export default function BiblioAnalytics360() {
                 )}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ===== PREDICTIVO ===== */}
           {nav === "predictivo" && (
