@@ -216,22 +216,29 @@ export async function dbLoadHistorialReservas(limit = 1000) {
   return data ?? [];
 }
 
-// ── Push Subscriptions ──────────────────────────────────────────────────────
+// ── Push Subscriptions (multi-dispositivo: unique by endpoint) ───────────────
 export async function dbSavePushSubscription(matricula, subscription) {
   if (!supabase) return;
+  const endpoint = subscription.endpoint;
   const { error } = await supabase
     .from('push_subscriptions')
-    .upsert({ matricula, subscription }, { onConflict: 'matricula' });
+    .upsert({ matricula, subscription, endpoint }, { onConflict: 'endpoint' });
   if (error) console.error('[db] push_subscriptions save:', error.message);
 }
 
-export async function dbGetPushSubscription(matricula) {
-  if (!supabase || !matricula) return null;
+// Devuelve array con todas las suscripciones del alumno (uno por dispositivo)
+export async function dbGetPushSubscriptions(matricula) {
+  if (!supabase || !matricula) return [];
   const { data, error } = await supabase
     .from('push_subscriptions')
     .select('subscription')
-    .eq('matricula', matricula)
-    .single();
-  if (error) return null;
-  return data?.subscription ?? null;
+    .eq('matricula', matricula);
+  if (error) return [];
+  return (data ?? []).map(r => r.subscription);
+}
+
+// Alias de compatibilidad — devuelve la primera suscripción o null
+export async function dbGetPushSubscription(matricula) {
+  const subs = await dbGetPushSubscriptions(matricula);
+  return subs[0] ?? null;
 }

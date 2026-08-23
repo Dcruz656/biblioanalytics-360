@@ -98,8 +98,10 @@ export default function RegistroView() {
     dbFindAlumno(form.matricula.trim())
       .then(exists => {
         if (exists) {
-          setGlobalError("Esta matrícula ya tiene una cuenta. Puedes usar el kiosco directamente.");
+          // Cuenta existente: activar notificaciones en este dispositivo sin re-registrar
+          setSavedAccount({ nombre: exists.nombre ?? form.nombre.trim(), matricula: exists.matricula ?? form.matricula.trim().toUpperCase(), carrera: exists.carrera ?? form.carrera });
           setSubmitting(false);
+          setScreen("success");
           return;
         }
         const newAccount = { nombre: form.nombre.trim(), matricula: form.matricula.trim().toUpperCase(), carrera: form.carrera, pin: form.pin };

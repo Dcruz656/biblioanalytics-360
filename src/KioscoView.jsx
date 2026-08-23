@@ -6,7 +6,7 @@ import {
 import {
   dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos,
   dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras,
-  dbFindAlumno, dbGetPushSubscription,
+  dbFindAlumno, dbGetPushSubscriptions,
   subscribeCubiculos, subscribeComputadoras,
   loadAppConfig, dbLoadAppConfig, subscribeAppConfig,
   dbSaveHistorialReserva,
@@ -197,8 +197,8 @@ export default function KioscoView() {
         if (remainMs > 0 && remainMs <= 10 * 60 * 1000 && !pushWarnedRef.current.has(warnKey)) {
           pushWarnedRef.current.add(warnKey);
           const minLeft = Math.ceil(remainMs / 60000);
-          dbGetPushSubscription(c.reserva.expediente).then(sub => {
-            if (sub) sendPush(sub, `⏰ Te quedan ${minLeft} min`, `Tu reserva en ${c.nombre} vence pronto. Libera el espacio a tiempo.`);
+          dbGetPushSubscriptions(c.reserva.expediente).then(subs => {
+            subs.forEach(sub => sendPush(sub, `⏰ Te quedan ${minLeft} min`, `Tu reserva en ${c.nombre} vence pronto. Libera el espacio a tiempo.`));
           });
         }
       });
@@ -221,8 +221,8 @@ export default function KioscoView() {
                 inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
                 fin: new Date(serverNow()).toISOString(), turno,
               });
-              dbGetPushSubscription(res.expediente).then(sub => {
-                if (sub) sendPush(sub, '📚 Tu reserva ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Gracias por usar la biblioteca.`);
+              dbGetPushSubscriptions(res.expediente).then(subs => {
+                subs.forEach(sub => sendPush(sub, '📚 Tu reserva ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Gracias por usar la biblioteca.`));
               });
             }
             dbSaveCubiculo(c);
@@ -250,8 +250,8 @@ export default function KioscoView() {
                 inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
                 fin: new Date(serverNow()).toISOString(), turno,
               });
-              dbGetPushSubscription(res.expediente).then(sub => {
-                if (sub) sendPush(sub, '💻 Tu sesión ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Por favor libera la computadora.`);
+              dbGetPushSubscriptions(res.expediente).then(subs => {
+                subs.forEach(sub => sendPush(sub, '💻 Tu sesión ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Por favor libera la computadora.`));
               });
             }
             dbSaveComputadora(c);
