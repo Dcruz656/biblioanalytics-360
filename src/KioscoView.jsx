@@ -10,6 +10,7 @@ import {
   subscribeCubiculos, subscribeComputadoras,
 } from "./db";
 import { registerServiceWorker, sendPush } from "./pushNotifications";
+import { QRCodeSVG } from "qrcode.react";
 import { serverNow } from "./serverTime";
 
 const NAVY_DEEP = "#060d1b";
@@ -408,17 +409,44 @@ export default function KioscoView() {
 
           {lookupError === "not_found" && (
             <div style={{ marginBottom: 22 }}>
-              <div style={{ padding: "12px 16px", borderRadius: 10, background: `${ROSE}15`, border: `1px solid ${ROSE}40`, color: ROSE, fontSize: 13, marginBottom: 14, textAlign: "left" }}>
-                ⚠ Matrícula no encontrada en el sistema.
-              </div>
-              <button onClick={() => window.location.href = "/registro"}
-                style={{ width: "100%", padding: "18px 24px", borderRadius: 14, border: `1.5px solid ${TEAL}60`, background: `${TEAL}12`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 14, fontFamily: "'DM Sans', sans-serif" }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>✏️</div>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Crear cuenta</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>Regístrate una sola vez para usar el servicio</div>
+              {/* QR panel */}
+              <div style={{ borderRadius: 18, border: `1.5px solid ${TEAL}40`, background: `${TEAL}08`, padding: "28px 24px", marginBottom: 14 }}>
+                <div style={{ fontSize: 13, color: ROSE, fontWeight: 600, marginBottom: 18 }}>
+                  ⚠ Matrícula no registrada — debes crear una cuenta primero
                 </div>
-                <div style={{ marginLeft: "auto", fontSize: 20, color: TEAL }}>→</div>
+
+                {/* QR code */}
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+                  <div style={{ background: "#fff", borderRadius: 16, padding: 14, display: "inline-flex", boxShadow: `0 0 32px ${TEAL}30` }}>
+                    <QRCodeSVG
+                      value="https://analitica360.vercel.app/registro"
+                      size={180}
+                      bgColor="#ffffff"
+                      fgColor="#060d1b"
+                      level="M"
+                    />
+                  </div>
+                </div>
+
+                {/* Call to action */}
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 6 }}>
+                  📱 Abre con tu celular
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 20 }}>
+                  Escanea el código QR con la cámara de tu teléfono,<br />
+                  crea tu cuenta y regresa al kiosco.
+                </div>
+
+                {/* URL label */}
+                <div style={{ display: "inline-block", padding: "6px 14px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", fontFamily: "'Space Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)", letterSpacing: 0.5 }}>
+                  analitica360.vercel.app/registro
+                </div>
+              </div>
+
+              {/* Fallback link */}
+              <button onClick={() => window.location.href = "/registro"}
+                style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", cursor: "pointer", color: "rgba(255,255,255,0.35)", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
+                Registrar en este dispositivo →
               </button>
             </div>
           )}
