@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
 import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, dbLoadAppConfig, dbSaveAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas } from "./db";
 import { serverNow } from "./serverTime";
-import { sendPush, getOwnSubscription } from "./pushNotifications";
+import { getOwnSubscription } from "./pushNotifications";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
 import {
@@ -2149,7 +2149,8 @@ export default function BiblioAnalytics360() {
                       try {
                         const sub = await getOwnSubscription();
                         if (!sub) { setTestPushState("error"); setTestPushMsg("No se pudo obtener suscripción. ¿Notificaciones bloqueadas?"); return; }
-                        const result = await sendPush(sub, "🔔 Prueba de notificación", "Las notificaciones push están funcionando correctamente.");
+                        const { sendPush: sp } = await import("./pushNotifications");
+                        const result = await sp(sub, "🔔 Prueba de notificación", "Las notificaciones push están funcionando correctamente.");
                         if (result?.ok) { setTestPushState("ok"); setTestPushMsg("Notificación enviada. ¿La recibiste?"); }
                         else { setTestPushState("error"); setTestPushMsg(`Error HTTP ${result?.status ?? "?"}: ${result?.text ?? result?.error ?? "sin detalle"}`); }
                       } catch (e) {
