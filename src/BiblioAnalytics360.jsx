@@ -802,7 +802,16 @@ export default function BiblioAnalytics360() {
     setExportLoading(true);
     try {
       if (nav === "servicios") {
-        const svcRecs = historialReservas.filter(h => h.tipo === svcService);
+        const now = new Date();
+        const getPeriodStart = (p) => {
+          if (p === 'dia')    return new Date(new Date(now.toDateString()));
+          if (p === 'semana') return new Date(now - 7 * 86400000);
+          if (p === 'mes')    return new Date(now.getFullYear(), now.getMonth(), 1);
+          return new Date(now.getFullYear(), 0, 1);
+        };
+        const periodStart = getPeriodStart(svcPeriod);
+        const allSvcRecs = historialReservas.filter(h => h.tipo === svcService);
+        const svcRecs = allSvcRecs.filter(h => new Date(h.fin || h.inicio) >= periodStart);
         const serviceName = svcService === "cubiculos" ? "Cubículos" : "Computadoras";
         const pLabel = ({ dia: "Hoy", semana: "Esta semana", mes: "Este mes", anio: "Este año" })[svcPeriod] || "Todo el periodo";
         if (exportFormat === "excel") {
@@ -1176,26 +1185,32 @@ export default function BiblioAnalytics360() {
 
             return (
             <div>
-              {/* — Service tabs + Period selector — */}
-              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, marginBottom:20}}>
-                <div style={{display:'flex', gap:0, borderRadius:12, overflow:'hidden', border:`1px solid ${t.cardBorder}`}}>
-                  {[{id:'cubiculos',label:'Cubículos',Ic:Layers},{id:'computadoras',label:'Computadoras',Ic:Monitor}].map(({id,label,Ic})=>(
-                    <button key={id} onClick={()=>setSvcService(id)}
-                      style={{display:'flex',alignItems:'center',gap:6,padding:'9px 20px',border:'none',fontSize:12,fontWeight:svcService===id?700:400,cursor:'pointer',
-                        background:svcService===id?`${t.teal}18`:t.card, color:svcService===id?t.teal:t.textDim}}>
-                      <Ic size={13}/> {label}
-                    </button>
-                  ))}
-                </div>
-                <div style={{display:'flex',gap:4}}>
-                  {[{id:'dia',l:'Hoy'},{id:'semana',l:'Semana'},{id:'mes',l:'Mes'},{id:'anio',l:'Año'}].map(({id,l})=>(
-                    <button key={id} onClick={()=>setSvcPeriod(id)}
-                      style={{padding:'7px 16px',borderRadius:8,border:`1px solid ${svcPeriod===id?t.teal:t.cardBorder}`,fontSize:11,fontWeight:svcPeriod===id?700:400,cursor:'pointer',
-                        background:svcPeriod===id?`${t.teal}12`:'transparent', color:svcPeriod===id?t.teal:t.textDim}}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
+              {/* — Unified filter bar — */}
+              <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:20,
+                background:t.card, borderRadius:12, padding:'10px 16px', border:`1px solid ${t.cardBorder}`}}>
+                <span style={{fontSize:11, fontWeight:700, color:t.textDim, whiteSpace:'nowrap'}}>Servicio:</span>
+                {[{id:'cubiculos',label:'Cubículos',Ic:Layers},{id:'computadoras',label:'Computadoras',Ic:Monitor}].map(({id,label,Ic})=>(
+                  <button key={id} onClick={()=>setSvcService(id)}
+                    style={{display:'flex',alignItems:'center',gap:5,padding:'6px 14px',borderRadius:8,
+                      border:`1px solid ${svcService===id?t.teal:t.cardBorder}`,fontSize:11,
+                      fontWeight:svcService===id?700:400,cursor:'pointer',
+                      background:svcService===id?`${t.teal}18`:'transparent',
+                      color:svcService===id?t.teal:t.textDim}}>
+                    <Ic size={12}/> {label}
+                  </button>
+                ))}
+                <div style={{width:1,height:20,background:t.cardBorder,margin:'0 4px'}}/>
+                <span style={{fontSize:11, fontWeight:700, color:t.textDim, whiteSpace:'nowrap'}}>Período:</span>
+                {[{id:'dia',l:'Hoy'},{id:'semana',l:'Semana'},{id:'mes',l:'Mes'},{id:'anio',l:'Año'}].map(({id,l})=>(
+                  <button key={id} onClick={()=>setSvcPeriod(id)}
+                    style={{padding:'6px 14px',borderRadius:8,
+                      border:`1px solid ${svcPeriod===id?t.teal:t.cardBorder}`,fontSize:11,
+                      fontWeight:svcPeriod===id?700:400,cursor:'pointer',
+                      background:svcPeriod===id?`${t.teal}18`:'transparent',
+                      color:svcPeriod===id?t.teal:t.textDim}}>
+                    {l}
+                  </button>
+                ))}
               </div>
 
               {/* — KPI row 5 cards — */}
