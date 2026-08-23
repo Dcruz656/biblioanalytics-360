@@ -688,8 +688,12 @@ export default function BiblioAnalytics360() {
   const [svcSearch, setSvcSearch] = useState("");
   const [svcPage, setSvcPage] = useState(0);
   const SVC_PAGE_SIZE = 15;
-  const [svcService, setSvcService] = useState("cubiculos"); // cubiculos | computadoras
-  const [svcPeriod,  setSvcPeriod]  = useState("mes");       // dia | semana | mes | anio
+  const [svcService,       setSvcService]       = useState("cubiculos");
+  const [svcDateFrom,      setSvcDateFrom]      = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10); });
+  const [svcDateTo,        setSvcDateTo]        = useState(() => new Date().toISOString().slice(0,10));
+  const [svcCarreraFilter, setSvcCarreraFilter] = useState("");
+  const [svcTurnoFilter,   setSvcTurnoFilter]   = useState("");
+  const [svcDurFilter,     setSvcDurFilter]     = useState(null);
 
   // Servicios data — real when historial exists, mock as fallback
   const svcMes = useMemo(() => {
@@ -802,18 +806,16 @@ export default function BiblioAnalytics360() {
     setExportLoading(true);
     try {
       if (nav === "servicios") {
-        const now = new Date();
-        const getPeriodStart = (p) => {
-          if (p === 'dia')    return new Date(new Date(now.toDateString()));
-          if (p === 'semana') return new Date(now - 7 * 86400000);
-          if (p === 'mes')    return new Date(now.getFullYear(), now.getMonth(), 1);
-          return new Date(now.getFullYear(), 0, 1);
-        };
-        const periodStart = getPeriodStart(svcPeriod);
-        const allSvcRecs = historialReservas.filter(h => h.tipo === svcService);
-        const svcRecs = allSvcRecs.filter(h => new Date(h.fin || h.inicio) >= periodStart);
+        const expFromDate = new Date(svcDateFrom);
+        const expToDate   = new Date(svcDateTo + 'T23:59:59');
+        const svcRecs = historialReservas
+          .filter(h => h.tipo === svcService)
+          .filter(h => { const d = new Date(h.fin||h.inicio); return d >= expFromDate && d <= expToDate; })
+          .filter(h => !svcCarreraFilter || h.carrera === svcCarreraFilter)
+          .filter(h => !svcTurnoFilter   || h.turno   === svcTurnoFilter)
+          .filter(h => svcDurFilter == null || h.duracion === svcDurFilter);
         const serviceName = svcService === "cubiculos" ? "Cubículos" : "Computadoras";
-        const pLabel = ({ dia: "Hoy", semana: "Esta semana", mes: "Este mes", anio: "Este año" })[svcPeriod] || "Todo el periodo";
+        const pLabel = `${svcDateFrom} – ${svcDateTo}`;
         if (exportFormat === "excel") {
           generateServiceExcel(svcRecs, svcService, pLabel, { institution: "UACJ" });
           setShowExport(false);
@@ -867,7 +869,7 @@ export default function BiblioAnalytics360() {
       setExportLoading(false);
       setIsExportRendering(false);
     }
-  }, [nav, svcService, svcPeriod, historialReservas, exportFormat, exportCampus, exportPeriodos, exportServicios, exportSecciones, circulacion, svcMes, svcCarrera, svcTipoUsr, svcTurno, comments, predModel, predHorizon]);
+  }, [nav, svcService, svcDateFrom, svcDateTo, svcCarreraFilter, svcTurnoFilter, svcDurFilter, historialReservas, exportFormat, exportCampus, exportPeriodos, exportServicios, exportSecciones, circulacion, svcMes, svcCarrera, svcTipoUsr, svcTurno, comments, predModel, predHorizon]);
 
   const posCount = comments.filter(c => c.sentimiento === "positivo").length;
   const negCount = comments.filter(c => c.sentimiento === "negativo").length;
@@ -1069,27 +1071,26 @@ export default function BiblioAnalytics360() {
 
           {/* ===== SERVICIOS ===== */}
           {nav === "servicios" && (() => {
-            // ── period helpers ──────────────────────────────────────────
-            const now = new Date();
-            const MESES  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-            const DIAS   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-            const getPeriodStart = (p, offset = 0) => {
-              if (p === 'dia')    return new Date(new Date(now.toDateString()) - offset * 86400000);
-              if (p === 'semana') return new Date(now - (7 + offset * 7) * 86400000);
-              if (p === 'mes')    return new Date(now.getFullYear(), now.getMonth() - offset, 1);
-              return new Date(now.getFullYear() - offset, 0, 1);
-            };
-            const periodStart    = getPeriodStart(svcPeriod, 0);
-            const prevPeriodStart = getPeriodStart(svcPeriod, 1);
+            // ── helpers ─────────────────────────────────────────────────
+            const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+            // ── date range ──────────────────────────────────────────────
+            const fromDate  = new Date(svcDateFrom);
+            const toDate    = new Date(svcDateTo + 'T23:59:59');
+            const rangeDays = Math.max(1, Math.ceil((toDate - fromDate) / 86400000));
+            const prevFrom  = new Date(fromDate.getTime() - rangeDays * 86400000);
 
             // ── data source ─────────────────────────────────────────────
-            const allRecs = historialReservas.length > 0 ? historialReservas : [];
-            const svcRecs = allRecs.filter(h => h.tipo === svcService);
-            const inPeriod = svcRecs.filter(h => new Date(h.fin || h.inicio) >= periodStart);
-            const inPrev   = svcRecs.filter(h => {
-              const f = new Date(h.fin || h.inicio);
-              return f >= prevPeriodStart && f < periodStart;
-            });
+            const baseRecs    = historialReservas.filter(h => h.tipo === svcService);
+            const allCarreras = [...new Set(baseRecs.map(h => h.carrera).filter(Boolean))].sort();
+            const applyFilters = arr => arr
+              .filter(h => !svcCarreraFilter || h.carrera === svcCarreraFilter)
+              .filter(h => !svcTurnoFilter   || h.turno   === svcTurnoFilter)
+              .filter(h => svcDurFilter == null || h.duracion === svcDurFilter);
+            const inRange  = baseRecs.filter(h => { const d = new Date(h.fin||h.inicio); return d >= fromDate && d <= toDate; });
+            const inPeriod = applyFilters(inRange);
+            const inPrev   = applyFilters(baseRecs.filter(h => { const d = new Date(h.fin||h.inicio); return d >= prevFrom && d < fromDate; }));
 
             // ── KPIs ────────────────────────────────────────────────────
             const total       = inPeriod.length;
@@ -1118,31 +1119,30 @@ export default function BiblioAnalytics360() {
 
             // ── trend chart ─────────────────────────────────────────────
             const trendData = (() => {
-              if (svcPeriod === 'dia') {
+              if (rangeDays <= 1) {
                 return Array.from({length:24}, (_, h) => ({
                   label: h % 4 === 0 ? `${String(h).padStart(2,'0')}h` : '',
                   reservas: inPeriod.filter(r => new Date(r.inicio||r.fin).getHours()===h).length,
                 }));
               }
-              if (svcPeriod === 'semana') {
-                return Array.from({length:7}, (_, i) => {
-                  const d = new Date(now - (6-i)*86400000);
-                  return { label: DIAS[d.getDay()], reservas: inPeriod.filter(r => new Date(r.fin||r.inicio).toDateString()===d.toDateString()).length };
+              if (rangeDays <= 60) {
+                const skip = Math.ceil((rangeDays + 1) / 12);
+                return Array.from({length: rangeDays + 1}, (_, i) => {
+                  const d = new Date(fromDate.getTime() + i * 86400000);
+                  return {
+                    label: i % skip === 0 ? `${d.getDate()}/${d.getMonth()+1}` : '',
+                    reservas: inPeriod.filter(r => new Date(r.fin||r.inicio).toDateString()===d.toDateString()).length,
+                  };
                 });
               }
-              if (svcPeriod === 'mes') {
-                const days = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-                const m    = now.getMonth();
-                return Array.from({length:days}, (_, i) => ({
-                  label: i+1,
-                  reservas: inPeriod.filter(r => { const f=new Date(r.fin||r.inicio); return f.getDate()===i+1&&f.getMonth()===m; }).length,
-                }));
+              const months = [];
+              const cur = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+              while (cur <= toDate) {
+                const m = cur.getMonth(), y = cur.getFullYear();
+                months.push({ label: `${MESES[m]} ${y}`, reservas: inPeriod.filter(r => { const f=new Date(r.fin||r.inicio); return f.getMonth()===m&&f.getFullYear()===y; }).length });
+                cur.setMonth(cur.getMonth() + 1);
               }
-              const y = now.getFullYear();
-              return Array.from({length:12}, (_, m) => ({
-                label: MESES[m],
-                reservas: inPeriod.filter(r => { const f=new Date(r.fin||r.inicio); return f.getMonth()===m&&f.getFullYear()===y; }).length,
-              }));
+              return months;
             })();
 
             // ── by carrera ──────────────────────────────────────────────
@@ -1186,32 +1186,68 @@ export default function BiblioAnalytics360() {
             return (
             <div>
               {/* — Unified filter bar — */}
-              <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:20,
-                background:t.card, borderRadius:12, padding:'10px 16px', border:`1px solid ${t.cardBorder}`}}>
-                <span style={{fontSize:11, fontWeight:700, color:t.textDim, whiteSpace:'nowrap'}}>Servicio:</span>
-                {[{id:'cubiculos',label:'Cubículos',Ic:Layers},{id:'computadoras',label:'Computadoras',Ic:Monitor}].map(({id,label,Ic})=>(
-                  <button key={id} onClick={()=>setSvcService(id)}
-                    style={{display:'flex',alignItems:'center',gap:5,padding:'6px 14px',borderRadius:8,
-                      border:`1px solid ${svcService===id?t.teal:t.cardBorder}`,fontSize:11,
-                      fontWeight:svcService===id?700:400,cursor:'pointer',
-                      background:svcService===id?`${t.teal}18`:'transparent',
-                      color:svcService===id?t.teal:t.textDim}}>
-                    <Ic size={12}/> {label}
-                  </button>
-                ))}
-                <div style={{width:1,height:20,background:t.cardBorder,margin:'0 4px'}}/>
-                <span style={{fontSize:11, fontWeight:700, color:t.textDim, whiteSpace:'nowrap'}}>Período:</span>
-                {[{id:'dia',l:'Hoy'},{id:'semana',l:'Semana'},{id:'mes',l:'Mes'},{id:'anio',l:'Año'}].map(({id,l})=>(
-                  <button key={id} onClick={()=>setSvcPeriod(id)}
-                    style={{padding:'6px 14px',borderRadius:8,
-                      border:`1px solid ${svcPeriod===id?t.teal:t.cardBorder}`,fontSize:11,
-                      fontWeight:svcPeriod===id?700:400,cursor:'pointer',
-                      background:svcPeriod===id?`${t.teal}18`:'transparent',
-                      color:svcPeriod===id?t.teal:t.textDim}}>
-                    {l}
-                  </button>
-                ))}
-              </div>
+              {(() => {
+                const lbl = { fontSize:11, fontWeight:700, color:t.textDim, whiteSpace:'nowrap' };
+                const pill = (active) => ({
+                  padding:'5px 13px', borderRadius:8, fontSize:11, fontWeight:active?700:400, cursor:'pointer',
+                  border:`1px solid ${active?t.teal:t.cardBorder}`,
+                  background:active?`${t.teal}18`:'transparent', color:active?t.teal:t.textDim,
+                });
+                const sep = <div style={{width:1,height:20,background:t.cardBorder,margin:'0 2px'}}/>;
+                const dateInput = (val, setter, max) => (
+                  <input type="date" value={val} max={max} onChange={e=>setter(e.target.value)}
+                    style={{padding:'4px 8px',borderRadius:8,border:`1px solid ${t.cardBorder}`,fontSize:11,
+                      background:t.bg,color:t.text,outline:'none',cursor:'pointer'}}/>
+                );
+                const hasFilters = svcCarreraFilter || svcTurnoFilter || svcDurFilter;
+                return (
+                  <div style={{background:t.card,borderRadius:12,border:`1px solid ${t.cardBorder}`,marginBottom:20}}>
+                    {/* Fila 1: Servicio + fechas */}
+                    <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',padding:'10px 16px'}}>
+                      <span style={lbl}>Servicio:</span>
+                      {[{id:'cubiculos',label:'Cubículos',Ic:Layers},{id:'computadoras',label:'Computadoras',Ic:Monitor}].map(({id,label,Ic})=>(
+                        <button key={id} onClick={()=>setSvcService(id)} style={{...pill(svcService===id),display:'flex',alignItems:'center',gap:5}}>
+                          <Ic size={12}/>{label}
+                        </button>
+                      ))}
+                      {sep}
+                      <span style={lbl}>Desde:</span>
+                      {dateInput(svcDateFrom, setSvcDateFrom, svcDateTo)}
+                      <span style={lbl}>Hasta:</span>
+                      {dateInput(svcDateTo, setSvcDateTo, new Date().toISOString().slice(0,10))}
+                    </div>
+                    {/* Divider */}
+                    <div style={{height:1,background:t.cardBorder}}/>
+                    {/* Fila 2: Carrera + Turno + Duración */}
+                    <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',padding:'10px 16px'}}>
+                      <span style={lbl}>Carrera:</span>
+                      <select value={svcCarreraFilter} onChange={e=>setSvcCarreraFilter(e.target.value)}
+                        style={{padding:'4px 10px',borderRadius:8,border:`1px solid ${svcCarreraFilter?t.teal:t.cardBorder}`,fontSize:11,
+                          background:t.bg,color:svcCarreraFilter?t.teal:t.text,outline:'none',cursor:'pointer',fontWeight:svcCarreraFilter?700:400}}>
+                        <option value="">Todas</option>
+                        {allCarreras.map(c=><option key={c} value={c}>{c}</option>)}
+                      </select>
+                      {sep}
+                      <span style={lbl}>Turno:</span>
+                      {['Matutino','Vespertino','Nocturno'].map(t2=>(
+                        <button key={t2} onClick={()=>setSvcTurnoFilter(p=>p===t2?'':t2)} style={pill(svcTurnoFilter===t2)}>{t2}</button>
+                      ))}
+                      {sep}
+                      <span style={lbl}>Duración:</span>
+                      {[1,2,3].map(d=>(
+                        <button key={d} onClick={()=>setSvcDurFilter(p=>p===d?null:d)} style={pill(svcDurFilter===d)}>{d}h</button>
+                      ))}
+                      {hasFilters && (
+                        <button onClick={()=>{setSvcCarreraFilter('');setSvcTurnoFilter('');setSvcDurFilter(null);}}
+                          style={{marginLeft:'auto',padding:'4px 12px',borderRadius:8,border:`1px solid ${t.rose}`,fontSize:10,
+                            background:'transparent',color:t.rose,cursor:'pointer',fontWeight:600}}>
+                          Limpiar filtros
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* — KPI row 5 cards — */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:14}}>
@@ -1259,7 +1295,7 @@ export default function BiblioAnalytics360() {
                 <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,gridColumn:'1/-1'}}>
                   <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Tendencia de uso</div>
                   <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>
-                    {({dia:'Reservas por hora del día',semana:'Reservas por día (últimos 7 días)',mes:'Reservas por día (mes actual)',anio:'Reservas por mes (año actual)'})[svcPeriod]}
+                    {rangeDays <= 1 ? 'Reservas por hora del día' : rangeDays <= 60 ? `Reservas por día · ${svcDateFrom} – ${svcDateTo}` : `Reservas por mes · ${svcDateFrom} – ${svcDateTo}`}
                   </div>
                   <ResponsiveContainer width="100%" height={CHART_H}>
                     <AreaChart data={trendData}>
