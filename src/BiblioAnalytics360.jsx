@@ -16,7 +16,7 @@ import {
   Download, Activity, AlertTriangle, CheckCircle, Clock, Heart, ThumbsUp,
   ThumbsDown, Minus, Home, FileText, Zap, Target, Award, Brain, BarChart3,
   Filter, Plus, X, Upload, Play, Pause, RefreshCw, Send, Eye, Layers,
-  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid
+  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid, Edit2
 } from "lucide-react";
 
 // ===== THEME =====
@@ -420,7 +420,9 @@ export default function BiblioAnalytics360() {
   const [cubiConfig, setCubiConfig] = useState(() => loadCubiConfig());
   const [cubiConfigDraft, setCubiConfigDraft] = useState(null);
   useEffect(() => { saveCubiConfig(cubiConfig); }, [cubiConfig]);
-  const [cubiNuevoForm, setCubiNuevoForm] = useState({ nombre: "", capacidad: 4, piso: 1 });
+  const [cubiNuevoForm,  setCubiNuevoForm]  = useState({ nombre: "", capacidad: 4, piso: 1 });
+  const [cubiEditMode,   setCubiEditMode]   = useState(false);
+  const [cubiEditDraft,  setCubiEditDraft]  = useState(null);
   const [cubiClock, setCubiClock] = useState(new Date(serverNow()));
   useEffect(() => { const t = setInterval(() => setCubiClock(new Date(serverNow())), 1000); return () => clearInterval(t); }, []);
 
@@ -2209,19 +2211,76 @@ export default function BiblioAnalytics360() {
                           <div style={{ fontSize: 22, fontWeight: 800, color: t.text }}>{cubiSelected.nombre}</div>
                           <div style={{ fontSize: 11, color: t.textDim, marginTop: 2 }}>Piso {cubiSelected.piso} · Capacidad {cubiSelected.capacidad} personas</div>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ padding: "4px 12px", borderRadius: 20, background: cubiSelected.estado === "libre" ? `${t.green}15` : cubiSelected.estado === "ocupado" ? `${t.rose}15` : `${t.amber}15`, color: cubiSelected.estado === "libre" ? t.green : cubiSelected.estado === "ocupado" ? t.rose : t.amber, fontSize: 11, fontWeight: 700 }}>
                             {cubiSelected.estado === "libre" ? "Libre" : cubiSelected.estado === "ocupado" ? "En uso" : "Reservado"}
                           </span>
-                          <button onClick={() => setCubiSelectedId(null)}
-                            style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${t.cardBorder}`, background: t.inputBg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <button
+                            onClick={() => { setCubiEditMode(true); setCubiEditDraft({ nombre: cubiSelected.nombre, capacidad: cubiSelected.capacidad, piso: cubiSelected.piso }); }}
+                            title="Editar cubículo"
+                            style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${t.teal}50`, background: `${t.teal}10`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Edit2 size={12} color={t.teal} />
+                          </button>
+                          <button onClick={() => { setCubiSelectedId(null); setCubiEditMode(false); setCubiEditDraft(null); }}
+                            style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${t.cardBorder}`, background: t.inputBg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             <X size={12} color={t.textDim} />
                           </button>
                         </div>
                       </div>
 
+                      {/* MODO EDICIÓN */}
+                      {cubiEditMode && cubiEditDraft && (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: t.text, marginBottom: 12 }}>Editar cubículo</div>
+                          {/* Nombre */}
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>Nombre</div>
+                            <input value={cubiEditDraft.nombre}
+                              onChange={e => setCubiEditDraft(p => ({ ...p, nombre: e.target.value }))}
+                              style={{ width: "100%", background: t.inputBg, border: `1px solid ${t.teal}60`, borderRadius: 8, padding: "8px 12px", color: t.text, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                          </div>
+                          {/* Capacidad */}
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>Capacidad (personas)</div>
+                            <input type="number" min={1} max={30} value={cubiEditDraft.capacidad}
+                              onChange={e => setCubiEditDraft(p => ({ ...p, capacidad: parseInt(e.target.value) || 1 }))}
+                              style={{ width: "100%", background: t.inputBg, border: `1px solid ${t.teal}60`, borderRadius: 8, padding: "8px 12px", color: t.text, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                          </div>
+                          {/* Piso */}
+                          <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 }}>Piso</div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              {[1, 2].map(p => (
+                                <button key={p} onClick={() => setCubiEditDraft(prev => ({ ...prev, piso: p }))}
+                                  style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${cubiEditDraft.piso === p ? t.teal : t.cardBorder}`, background: cubiEditDraft.piso === p ? `${t.teal}15` : t.inputBg, color: cubiEditDraft.piso === p ? t.teal : t.textDim, fontSize: 13, fontWeight: cubiEditDraft.piso === p ? 700 : 400, cursor: "pointer" }}>
+                                  Piso {p}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => { setCubiEditMode(false); setCubiEditDraft(null); }}
+                              style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.textDim, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                              Cancelar
+                            </button>
+                            <button onClick={() => {
+                              if (!cubiEditDraft.nombre.trim()) return;
+                              const updated = { ...cubiSelected, nombre: cubiEditDraft.nombre.trim(), capacidad: cubiEditDraft.capacidad, piso: cubiEditDraft.piso };
+                              setCubiculos(prev => prev.map(c => c.id === cubiSelectedId ? updated : c));
+                              dbSaveCubiculo(updated);
+                              setCubiEditMode(false);
+                              setCubiEditDraft(null);
+                              setNotifications(prev => [{ id: Date.now(), text: `Cubículo ${updated.nombre} actualizado`, type: "success", time: "Ahora" }, ...prev]);
+                            }}
+                              style={{ flex: 2, padding: "10px 0", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                              Guardar cambios
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* LIBRE → form */}
-                      {cubiSelected.estado === "libre" && (
+                      {!cubiEditMode && cubiSelected.estado === "libre" && (
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: t.text, marginBottom: 12 }}>Nueva Reserva</div>
                           {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "expediente", label: "No. Expediente", placeholder: "Ej. A201234" }].map(f => (
@@ -2268,7 +2327,7 @@ export default function BiblioAnalytics360() {
                       )}
 
                       {/* OCUPADO / RESERVADO → detail + liberar */}
-                      {cubiSelected.estado !== "libre" && cubiSelected.reserva && (
+                      {!cubiEditMode && cubiSelected.estado !== "libre" && cubiSelected.reserva && (
                         <div>
                           <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
                             {[
