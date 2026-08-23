@@ -483,7 +483,7 @@ export default function KioscoView() {
           </div>
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 32px", textAlign: "center" }}>
-          <div style={{ width: 110, height: 110, borderRadius: 30, background: `linear-gradient(135deg, ${TEAL}25, ${TEAL_L}10)`, border: `2px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 54, marginBottom: 28 }}>🏛️</div>
+          <div style={{ width: 110, height: 110, borderRadius: 30, background: `linear-gradient(135deg, ${TEAL}25, ${TEAL_L}10)`, border: `2px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 54, marginBottom: 28 }}>🚪</div>
           <div style={{ fontSize: 46, fontWeight: 800, color: "#fff", letterSpacing: -1, marginBottom: 10 }}>Biblioteca Central</div>
           <div style={{ fontSize: 18, color: "rgba(255,255,255,0.4)", marginBottom: 44 }}>Reserva cubículos y computadoras</div>
           {(cubiculos.length > 0 || computadoras.length > 0) && (
@@ -878,7 +878,7 @@ export default function KioscoView() {
             {/* Cubículos */}
             <button onClick={() => { setServicio("cubiculos"); setScreen("personas"); }}
               style={{ flex: 1, padding: "32px 20px", borderRadius: 20, border: `2px solid ${TEAL}50`, background: `${TEAL}12`, cursor: "pointer", textAlign: "center", fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s" }}>
-              <div style={{ fontSize: 44, marginBottom: 14 }}>🏛️</div>
+              <div style={{ fontSize: 44, marginBottom: 14 }}>🚪</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Cubículos</div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 16, lineHeight: 1.5 }}>Espacios de estudio grupal e individual</div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20, background: `${GREEN}20`, border: `1px solid ${GREEN}40` }}>
@@ -917,7 +917,7 @@ export default function KioscoView() {
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={() => setScreen("bienvenido")} title="Cubículos" clock={clock} />
         <div style={{ maxWidth: 540, margin: "0 auto", padding: "52px 28px", textAlign: "center" }}>
-          <div style={{ fontSize: 44, marginBottom: 16 }}>🏛️</div>
+          <div style={{ fontSize: 44, marginBottom: 16 }}>🚪</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", marginBottom: 6 }}>¿Cuántas personas?</div>
           <div style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginBottom: 40 }}>Mínimo {min} · Máximo {max} personas por cubículo</div>
 

@@ -138,7 +138,7 @@ export default function RegistroView() {
 
           {/* Hero */}
           <div style={{ textAlign: "center", marginBottom: isMobile ? 28 : 40 }}>
-            <div style={{ width: isMobile ? 60 : 72, height: isMobile ? 60 : 72, borderRadius: 18, background: `${TEAL}18`, border: `1.5px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 28 : 34, margin: "0 auto 16px" }}>🏛️</div>
+            <div style={{ width: isMobile ? 60 : 72, height: isMobile ? 60 : 72, borderRadius: 18, background: `${TEAL}18`, border: `1.5px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 28 : 34, margin: "0 auto 16px" }}>🚪</div>
             <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Crea tu cuenta</div>
             <div style={{ fontSize: isMobile ? 14 : 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
               Regístrate una vez y usa el kiosco con solo tu matrícula.
