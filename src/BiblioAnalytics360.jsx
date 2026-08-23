@@ -354,6 +354,12 @@ function buildTableRows(mesSvc, carreraSvc, tipoSvc, turnoSvc) {
   return rows;
 }
 
+function getCubiRemainingMs(cubi) {
+  if (!cubi?.reserva?.inicio) return 0;
+  const end = new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000;
+  return Math.max(0, end - Date.now());
+}
+
 // ===== CUBICULOS INITIAL DATA =====
 function createInitCubiculos() {
   const now = Date.now();
@@ -392,6 +398,8 @@ export default function BiblioAnalytics360() {
   const [cubiConfigDraft, setCubiConfigDraft] = useState(null);
   useEffect(() => { saveCubiConfig(cubiConfig); }, [cubiConfig]);
   const [cubiNuevoForm, setCubiNuevoForm] = useState({ nombre: "", capacidad: 4, piso: 1 });
+  const [cubiClock, setCubiClock] = useState(new Date());
+  useEffect(() => { const t = setInterval(() => setCubiClock(new Date()), 1000); return () => clearInterval(t); }, []);
 
   // Listen for kiosk reservations made in another tab
   useEffect(() => {
@@ -1831,9 +1839,31 @@ export default function BiblioAnalytics360() {
                       return (
                         <button key={cubi.id} onClick={() => setCubiSelectedId(isSelected ? null : cubi.id)}
                           style={{ padding: "14px 8px", borderRadius: 12, border: `2px solid ${isSelected ? cfg.color : `${t.cardBorder}`}`, background: isSelected ? cfg.bg : `${t.text}03`, cursor: "pointer", textAlign: "center", transition: "all 0.15s", outline: "none" }}>
-                          <div style={{ width: 34, height: 34, borderRadius: 9, background: cfg.bg, border: `1.5px solid ${cfg.color}50`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px" }}>
-                            <Layers size={15} color={cfg.color} />
-                          </div>
+                          {cubi.estado !== "libre" && cubi.reserva ? (() => {
+                            const total = cubi.reserva.duracion * 3_600_000;
+                            const rem   = getCubiRemainingMs(cubi);
+                            const pct   = total > 0 ? Math.max(0, rem / total) : 0;
+                            const S = 38, R = 14, CIRC = 2 * Math.PI * R;
+                            const mins  = Math.floor(rem / 60000);
+                            const label = mins >= 60 ? `${Math.floor(mins/60)}h` : `${mins}m`;
+                            return (
+                              <div style={{ position: "relative", width: S, height: S, margin: "0 auto 8px" }}>
+                                <svg width={S} height={S} style={{ transform: "rotate(-90deg)" }}>
+                                  <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={`${cfg.color}20`} strokeWidth={3} />
+                                  <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={cfg.color} strokeWidth={3}
+                                    strokeDasharray={`${pct * CIRC} ${CIRC}`} strokeLinecap="round"
+                                    style={{ transition: "stroke-dasharray 1s linear" }} />
+                                </svg>
+                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800, color: cfg.color, fontFamily: "'Space Mono', monospace" }}>
+                                  {label}
+                                </div>
+                              </div>
+                            );
+                          })() : (
+                            <div style={{ width: 34, height: 34, borderRadius: 9, background: cfg.bg, border: `1.5px solid ${cfg.color}50`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px" }}>
+                              <Layers size={15} color={cfg.color} />
+                            </div>
+                          )}
                           <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{cubi.nombre}</div>
                           <div style={{ fontSize: 10, color: t.textDim, margin: "2px 0 4px" }}>Cap. {cubi.capacidad}</div>
                           <div style={{ fontSize: 9, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: 0.5 }}>{cubi.estado}</div>
