@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { CUBI_STORAGE_KEY, loadCubiculos, saveCubiculos } from "./cubiData";
+import { CUBI_STORAGE_KEY, loadCubiculos, saveCubiculos, loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, loadAccounts } from "./cubiData";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
 import {
@@ -387,6 +387,11 @@ export default function BiblioAnalytics360() {
   const [cubiSelectedId, setCubiSelectedId] = useState(null);
   // Sync cubiculos to localStorage so kiosk can read them
   useEffect(() => { saveCubiculos(cubiculos); }, [cubiculos]);
+  // Cubicle service config (min/max personas)
+  const [cubiConfig, setCubiConfig] = useState(() => loadCubiConfig());
+  const [cubiConfigDraft, setCubiConfigDraft] = useState(null);
+  useEffect(() => { saveCubiConfig(cubiConfig); }, [cubiConfig]);
+
   // Listen for kiosk reservations made in another tab
   useEffect(() => {
     const handler = (e) => {
@@ -396,6 +401,9 @@ export default function BiblioAnalytics360() {
           setCubiculos(parsed);
           setNotifications(prev => [{ id: Date.now(), text: "Reserva registrada desde la terminal de autoservicio", type: "info", time: "Ahora" }, ...prev]);
         } catch {}
+      }
+      if (e.key === CUBI_CONFIG_KEY && e.newValue) {
+        try { setCubiConfig(JSON.parse(e.newValue)); } catch {}
       }
     };
     window.addEventListener("storage", handler);
@@ -2010,6 +2018,99 @@ export default function BiblioAnalytics360() {
                     </table>
                   </div>
                 )}
+              </div>
+
+              {/* Configuración del servicio + Alumnos registrados */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+
+                {/* Config */}
+                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.purple}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Sliders size={17} color={t.purple} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Configuración del Servicio</div>
+                      <div style={{ fontSize: 10, color: t.textDim }}>Límites de personas por cubículo</div>
+                    </div>
+                  </div>
+                  {cubiConfigDraft === null ? (
+                    <div>
+                      {[["Mínimo de personas", cubiConfig.minPersonas], ["Máximo de personas", cubiConfig.maxPersonas]].map(([label, val]) => (
+                        <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
+                          <span style={{ fontSize: 12, color: t.textDim }}>{label}</span>
+                          <span style={{ fontSize: 16, fontWeight: 800, color: t.teal, fontFamily: "'Space Mono', monospace" }}>{val}</span>
+                        </div>
+                      ))}
+                      <button onClick={() => setCubiConfigDraft({ ...cubiConfig })}
+                        style={{ marginTop: 14, width: "100%", padding: "9px 0", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        Editar
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      {[
+                        { key: "minPersonas", label: "Mínimo de personas", min: 1, max: cubiConfigDraft.maxPersonas - 1 },
+                        { key: "maxPersonas", label: "Máximo de personas", min: cubiConfigDraft.minPersonas + 1, max: 20 },
+                      ].map(f => (
+                        <div key={f.key} style={{ marginBottom: 14 }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 }}>{f.label}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <button onClick={() => setCubiConfigDraft(prev => ({ ...prev, [f.key]: Math.max(f.min, prev[f.key] - 1) }))}
+                              style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                            <span style={{ flex: 1, textAlign: "center", fontSize: 22, fontWeight: 800, color: t.teal, fontFamily: "'Space Mono', monospace" }}>{cubiConfigDraft[f.key]}</span>
+                            <button onClick={() => setCubiConfigDraft(prev => ({ ...prev, [f.key]: Math.min(f.max, prev[f.key] + 1) }))}
+                              style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                        <button onClick={() => { setCubiConfig(cubiConfigDraft); setCubiConfigDraft(null); setNotifications(prev => [{ id: Date.now(), text: "Configuración de cubículos actualizada", type: "success", time: "Ahora" }, ...prev]); }}
+                          style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Guardar</button>
+                        <button onClick={() => setCubiConfigDraft(null)}
+                          style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Alumnos registrados */}
+                {(() => {
+                  const alumnos = loadAccounts();
+                  return (
+                    <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.blue}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Users size={17} color={t.blue} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Alumnos Registrados</div>
+                          <div style={{ fontSize: 10, color: t.textDim }}>{alumnos.length} cuenta{alumnos.length !== 1 ? "s" : ""} activa{alumnos.length !== 1 ? "s" : ""}</div>
+                        </div>
+                      </div>
+                      {alumnos.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "20px 0", color: t.textDim, fontSize: 12 }}>
+                          Ningún alumno registrado aún.<br />
+                          <span style={{ fontSize: 11, color: t.textMuted }}>Los alumnos se registran en /registro</span>
+                        </div>
+                      ) : (
+                        <div style={{ overflowY: "auto", maxHeight: 180 }}>
+                          {alumnos.map((a, i) => (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
+                              <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(135deg, ${t.purple}, ${t.blue})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
+                                {a.nombre.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{a.nombre}</div>
+                                <div style={{ fontSize: 10, color: t.textDim }}>{a.carrera} · <span style={{ fontFamily: "'Space Mono', monospace" }}>{a.matricula}</span></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Historial */}
