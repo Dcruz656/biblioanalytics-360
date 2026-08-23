@@ -1,11 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL
+  || 'https://mqlpqjhyulibwpeiivws.supabase.co';
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbHBxamh5dWxpYndwZWlpdndzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NDYxNTIsImV4cCI6MjEwMzAyMjE1Mn0.D-DQCQCG--2mRMEcemyaZ6X0irYrBxNZBy3Ad4jszLs';
 
-if (!url || !key) {
-  console.warn('[Supabase] Variables de entorno no configuradas — modo offline (localStorage)');
-}
-
-export const supabase = (url && key) ? createClient(url, key) : null;
-export const isOnline = !!supabase;
+export const supabase = createClient(url, key);
+export const isOnline = true;
