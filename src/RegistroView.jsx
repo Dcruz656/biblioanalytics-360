@@ -60,19 +60,25 @@ export default function RegistroView() {
     setSubmitting(true);
     setGlobalError("");
 
-    dbFindAlumno(form.matricula.trim()).then(exists => {
-      if (exists) {
-        setGlobalError("Esta matrícula ya tiene una cuenta registrada. Puedes usar el kiosco directamente.");
+    dbFindAlumno(form.matricula.trim())
+      .then(exists => {
+        if (exists) {
+          setGlobalError("Esta matrícula ya tiene una cuenta registrada. Puedes usar el kiosco directamente.");
+          setSubmitting(false);
+          return;
+        }
+        const newAccount = { nombre: form.nombre.trim(), matricula: form.matricula.trim().toUpperCase(), carrera: form.carrera };
+        return dbSaveAlumno(newAccount).then(() => {
+          setSavedAccount(newAccount);
+          setSubmitting(false);
+          setScreen("success");
+        });
+      })
+      .catch(err => {
+        console.error('[registro] error:', err.message);
+        setGlobalError(`Error al registrar: ${err.message}`);
         setSubmitting(false);
-        return;
-      }
-      const newAccount = { nombre: form.nombre.trim(), matricula: form.matricula.trim().toUpperCase(), carrera: form.carrera };
-      dbSaveAlumno(newAccount).then(() => {
-        setSavedAccount(newAccount);
-        setSubmitting(false);
-        setScreen("success");
       });
-    });
   }
 
   // ── FORM ─────────────────────────────────────────────────

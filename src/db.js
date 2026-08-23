@@ -118,8 +118,11 @@ export async function dbSaveAlumno(alumno) {
   if (idx >= 0) accounts[idx] = alumno; else accounts.push(alumno);
   lsSaveAccounts(accounts);
   if (!supabase) return;
-  const { error } = await supabase.from('alumnos').upsert(alumno, { onConflict: 'matricula' });
-  if (error) console.error('[db] alumnos save:', error.message);
+  const { error } = await supabase.from('alumnos').insert(alumno);
+  if (error) {
+    console.error('[db] alumnos insert:', error.code, error.message, error.hint);
+    throw new Error(error.message);
+  }
 }
 
 export async function dbLoadAlumnos() {
