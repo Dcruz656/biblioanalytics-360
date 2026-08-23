@@ -15,7 +15,7 @@ import {
   Download, Activity, AlertTriangle, CheckCircle, Clock, Heart, ThumbsUp,
   ThumbsDown, Minus, Home, FileText, Zap, Target, Award, Brain, BarChart3,
   Filter, Plus, X, Upload, Play, Pause, RefreshCw, Send, Eye, Layers,
-  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor
+  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid
 } from "lucide-react";
 
 // ===== THEME =====
@@ -263,7 +263,7 @@ const navMain = [
   { id: "sentimiento", icon: Heart, label: "Mod. Sentimiento" },
   { id: "impacto", icon: GraduationCap, label: "Mod. Impacto" },
   { id: "datos", icon: Database, label: "Datos & Upload" },
-  { id: "herramientas", icon: Wrench, label: "Servicios" },
+  { id: "herramientas", icon: LayoutGrid, label: "Servicios" },
   { id: "configuracion", icon: Settings, label: "Configuración" },
 ];
 
