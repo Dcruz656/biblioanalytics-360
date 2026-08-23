@@ -375,7 +375,7 @@ export default function KioscoView() {
           </div>
 
           <div style={{ display: "flex", gap: 16, marginBottom: 36 }}>
-            {[1, 2, 3].map(h => (
+            {[1, 2].map(h => (
               <button key={h} onClick={() => setDuracion(h)}
                 style={{ flex: 1, padding: "30px 0", borderRadius: 18, border: `2.5px solid ${duracion === h ? TEAL : "rgba(255,255,255,0.1)"}`, background: duracion === h ? `${TEAL}22` : CARD, color: duracion === h ? TEAL : "rgba(255,255,255,0.55)", fontSize: 32, fontWeight: 800, cursor: "pointer", outline: "none", fontFamily: "'Space Mono', monospace" }}>
                 {h}h
