@@ -127,7 +127,7 @@ export default function KioscoView() {
       const found = findAccount(matriculaInput.trim());
       setLooking(false);
       if (found) { setAccount(found); setPersonas(cubiConfig.minPersonas); setScreen("bienvenido"); }
-      else { setLookupError("Matrícula no encontrada. Crea tu cuenta en analitica360.vercel.app/registro"); }
+      else { setLookupError("not_found"); }
     }, 700);
   }
 
@@ -215,9 +215,22 @@ export default function KioscoView() {
             style={{ width: "100%", background: CARD, border: `1.5px solid ${lookupError ? ROSE : "rgba(255,255,255,0.1)"}`, borderRadius: 14, padding: "20px 24px", color: "#fff", fontSize: 24, fontWeight: 700, outline: "none", boxSizing: "border-box", fontFamily: "'Space Mono', monospace", textAlign: "center", letterSpacing: 2, marginBottom: lookupError ? 12 : 28 }}
           />
 
-          {lookupError && (
-            <div style={{ padding: "14px 18px", borderRadius: 10, background: `${ROSE}15`, border: `1px solid ${ROSE}40`, color: ROSE, fontSize: 13, marginBottom: 22, textAlign: "left", lineHeight: 1.6 }}>
-              ⚠ {lookupError}
+          {lookupError === "not_found" && (
+            <div style={{ marginBottom: 22 }}>
+              <div style={{ padding: "12px 16px", borderRadius: 10, background: `${ROSE}15`, border: `1px solid ${ROSE}40`, color: ROSE, fontSize: 13, marginBottom: 14, textAlign: "left" }}>
+                ⚠ Matrícula no encontrada en el sistema.
+              </div>
+              <button onClick={() => window.location.href = "/registro"}
+                style={{ width: "100%", padding: "18px 24px", borderRadius: 14, border: `1.5px solid ${TEAL}60`, background: `${TEAL}12`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 14, fontFamily: "'DM Sans', sans-serif", transition: "background 0.2s" }}
+                onMouseEnter={e => e.currentTarget.style.background = `${TEAL}22`}
+                onMouseLeave={e => e.currentTarget.style.background = `${TEAL}12`}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>✏️</div>
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Crear cuenta</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>Regístrate una sola vez para usar el servicio</div>
+                </div>
+                <div style={{ marginLeft: "auto", fontSize: 20, color: TEAL }}>→</div>
+              </button>
             </div>
           )}
 
