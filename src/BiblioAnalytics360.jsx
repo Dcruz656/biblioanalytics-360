@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { CUBI_STORAGE_KEY, loadCubiculos, saveCubiculos } from "./cubiData";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
 import {
@@ -382,8 +383,24 @@ export default function BiblioAnalytics360() {
   const [alertToggles, setAlertToggles] = useState({ prestamos: true, sentimiento: true, calidad: true, uploads: true });
   const [syncingSource, setSyncingSource] = useState(null);
   // Herramientas — Cubículos
-  const [cubiculos, setCubiculos] = useState(() => createInitCubiculos());
+  const [cubiculos, setCubiculos] = useState(() => { const s = loadCubiculos(); return (s && s.length > 0) ? s : createInitCubiculos(); });
   const [cubiSelectedId, setCubiSelectedId] = useState(null);
+  // Sync cubiculos to localStorage so kiosk can read them
+  useEffect(() => { saveCubiculos(cubiculos); }, [cubiculos]);
+  // Listen for kiosk reservations made in another tab
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === CUBI_STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue, (k, v) => (k === "inicio" && v ? new Date(v) : v));
+          setCubiculos(parsed);
+          setNotifications(prev => [{ id: Date.now(), text: "Reserva registrada desde la terminal de autoservicio", type: "info", time: "Ahora" }, ...prev]);
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
   const [cubiReservaForm, setCubiReservaForm] = useState({ nombre: "", expediente: "", carrera: "Ing. Software", duracion: 2 });
   const [cubiPisoFilter, setCubiPisoFilter] = useState(0);
   const [cubiHistorial, setCubiHistorial] = useState(() => {
@@ -1747,13 +1764,19 @@ export default function BiblioAnalytics360() {
           {nav === "herramientas" && (
             <div>
               {/* Tool sub-nav */}
-              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 20, alignItems: "center" }}>
                 <button style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 10, border: `1px solid ${t.teal}`, background: `${t.teal}15`, color: t.teal, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   <Layers size={14} /> Cubículos
                 </button>
                 <button style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.textDim, fontSize: 12, fontWeight: 400, cursor: "not-allowed", opacity: 0.5 }}>
                   <MessageSquare size={14} /> Encuesta (próximo)
                 </button>
+                <div style={{ marginLeft: "auto" }}>
+                  <button onClick={() => window.open("/kiosco", "_blank")}
+                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    <Eye size={14} /> Abrir Terminal
+                  </button>
+                </div>
               </div>
 
               {/* KPI row */}
