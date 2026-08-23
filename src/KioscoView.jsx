@@ -8,7 +8,7 @@ import {
   dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras,
   dbFindAlumno, dbGetPushSubscription,
   subscribeCubiculos, subscribeComputadoras,
-  loadAppConfig, saveAppConfig, subscribeAppConfig,
+  loadAppConfig, dbLoadAppConfig, subscribeAppConfig,
   dbSaveHistorialReserva,
 } from "./db";
 import { registerServiceWorker, sendPush } from "./pushNotifications";
@@ -130,6 +130,7 @@ export default function KioscoView() {
   const [pinError,        setPinError]        = useState("");
   const [pinAttempts,     setPinAttempts]     = useState(0);
   const [pinRequired,     setPinRequired]     = useState(() => loadAppConfig().pinRequired);
+  useEffect(() => { dbLoadAppConfig().then(cfg => setPinRequired(cfg.pinRequired)); }, []);
 
   // Refs para notificaciones push: evitar re-envío de la misma alerta
   const pushWarnedRef = useRef(new Set()); // keys tipo "cubiId-inicioISO" ya advertidas a 10 min
@@ -258,10 +259,7 @@ export default function KioscoView() {
   // Escuchar cambios de config (PIN habilitado/deshabilitado) desde admin
   useEffect(() => {
     const unsub = subscribeAppConfig(cfg => {
-      if (typeof cfg.pinRequired === "boolean") {
-        setPinRequired(cfg.pinRequired);
-        saveAppConfig({ ...loadAppConfig(), pinRequired: cfg.pinRequired });
-      }
+      if (typeof cfg.pinRequired === "boolean") setPinRequired(cfg.pinRequired);
     });
     return unsub;
   }, []);

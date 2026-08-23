@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
-import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, broadcastAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas } from "./db";
+import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, dbLoadAppConfig, dbSaveAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas } from "./db";
 import { serverNow } from "./serverTime";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
@@ -459,6 +459,8 @@ export default function BiblioAnalytics360() {
   const [alertThresholds, setAlertThresholds] = useState({ prestamos: 900, satisfaccion: 65, calidad: 80 });
   const [alertToggles, setAlertToggles] = useState({ prestamos: true, sentimiento: true, calidad: true, uploads: true });
   const [pinRequired,  setPinRequired]  = useState(() => loadAppConfig().pinRequired);
+  useEffect(() => { dbLoadAppConfig().then(cfg => setPinRequired(cfg.pinRequired)); }, []);
+  useEffect(() => subscribeAppConfig(cfg => { if (typeof cfg.pinRequired === 'boolean') setPinRequired(cfg.pinRequired); }), []);
   const [syncingSource, setSyncingSource] = useState(null);
   const [alumnos, setAlumnos] = useState([]);
   // Herramientas — Cubículos
@@ -2220,8 +2222,7 @@ export default function BiblioAnalytics360() {
                       const next = !pinRequired;
                       setPinRequired(next);
                       const cfg = { ...loadAppConfig(), pinRequired: next };
-                      saveAppConfig(cfg);
-                      broadcastAppConfig(cfg);
+                      dbSaveAppConfig(cfg);
                       setNotifications(prev => [{ id: Date.now(), text: `PIN en kiosco ${next ? "habilitado" : "deshabilitado"}`, type: next ? "success" : "info", time: "Ahora" }, ...prev]);
                     }}
                     style={{ width: 46, height: 24, borderRadius: 12, border: "none", background: pinRequired ? t.teal : `${t.text}20`, cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0, marginLeft: 20 }}>

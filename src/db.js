@@ -163,7 +163,7 @@ export function subscribeAlumnos(onChange) {
   return () => supabase.removeChannel(ch);
 }
 
-// ── App Config (PIN, etc.) ──────────────────────────────────────────────────
+// ── App Config — Supabase DB como fuente de verdad ─────────────────────────
 const APP_CONFIG_KEY = 'biblio_app_config';
 const DEFAULT_APP_CONFIG = { pinRequired: true };
 
@@ -178,25 +178,40 @@ export function saveAppConfig(config) {
   try { localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config)); } catch {}
 }
 
-export function broadcastAppConfig(config) {
+export async function dbLoadAppConfig() {
+  if (!supabase) return loadAppConfig();
+  const { data, error } = await supabase
+    .from('app_config').select('config').eq('id', 1).single();
+  if (error) { console.error('[db] app_config load:', error.message); return loadAppConfig(); }
+  const cfg = { ...DEFAULT_APP_CONFIG, ...(data?.config ?? {}) };
+  saveAppConfig(cfg);
+  return cfg;
+}
+
+export async function dbSaveAppConfig(config) {
+  saveAppConfig(config);
   if (!supabase) return;
-  // Must subscribe first — Supabase drops sends on unsubscribed channels
-  const ch = supabase.channel('biblio-app-config');
-  ch.subscribe((status) => {
-    if (status === 'SUBSCRIBED') {
-      ch.send({ type: 'broadcast', event: 'config-update', payload: config });
-      setTimeout(() => supabase.removeChannel(ch), 2000);
-    }
-  });
+  const { error } = await supabase
+    .from('app_config')
+    .update({ config, updated_at: new Date().toISOString() })
+    .eq('id', 1);
+  if (error) console.error('[db] app_config save:', error.message);
 }
 
 export function subscribeAppConfig(onChange) {
   if (!supabase) return () => {};
-  const ch = supabase.channel('biblio-app-config')
-    .on('broadcast', { event: 'config-update' }, ({ payload }) => onChange(payload))
+  const ch = supabase.channel('rt-app-config')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_config' }, payload => {
+      const cfg = { ...DEFAULT_APP_CONFIG, ...(payload.new?.config ?? {}) };
+      saveAppConfig(cfg);
+      onChange(cfg);
+    })
     .subscribe();
   return () => supabase.removeChannel(ch);
 }
+
+// Kept for backward compat — no longer needed
+export function broadcastAppConfig() {}
 
 // ── Historial de reservas ───────────────────────────────────────────────────
 export async function dbSaveHistorialReserva(entry) {
