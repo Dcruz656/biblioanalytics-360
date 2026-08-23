@@ -2955,7 +2955,8 @@ export default function BiblioAnalytics360() {
                               const pct = total > 0 ? Math.max(0, rem / total) : 0;
                               const S = 32, R = 11, CIRC = 2 * Math.PI * R;
                               const mins = Math.floor(rem / 60000);
-                              const label = mins >= 60 ? `${Math.floor(mins / 60)}h` : `${mins}m`;
+                              const hh2 = Math.floor(mins / 60), mm2 = mins % 60;
+                              const label = mins >= 60 ? (mm2 === 0 ? `${hh2}h` : `${hh2}h${mm2}m`) : `${mins}m`;
                               return (
                                 <div style={{ position: "relative", width: S, height: S, margin: "0 auto 6px" }}>
                                   <svg width={S} height={S} style={{ transform: "rotate(-90deg)" }}>
