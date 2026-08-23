@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   loadCubiConfig, CUBI_CONFIG_KEY,
   compuZonas,
@@ -6,9 +6,10 @@ import {
 import {
   dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos,
   dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras,
-  dbFindAlumno,
+  dbFindAlumno, dbGetPushSubscription,
   subscribeCubiculos, subscribeComputadoras,
 } from "./db";
+import { registerServiceWorker, sendPush } from "./pushNotifications";
 import { serverNow } from "./serverTime";
 
 const NAVY_DEEP = "#060d1b";
@@ -120,6 +121,16 @@ export default function KioscoView() {
   const [compuSelectedId, setCompuSelectedId] = useState(null);
   const [compuZonaFilter, setCompuZonaFilter] = useState("Todas");
 
+  // Refs para notificaciones push: evitar re-envío de la misma alerta
+  const pushWarnedRef = useRef(new Set()); // keys tipo "cubiId-inicioISO" ya advertidas a 10 min
+  const cubiculosRef  = useRef([]);        // snapshot actualizado sin closure stale
+
+  useEffect(() => { cubiculosRef.current = cubiculos; }, [cubiculos]);
+
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
   useEffect(() => {
     const t = setInterval(() => setClock(new Date(serverNow())), 1000);
     return () => clearInterval(t);
@@ -157,13 +168,38 @@ export default function KioscoView() {
     return () => { unsub(); window.removeEventListener("storage", handler); };
   }, []);
 
-  // Auto-liberar reservas expiradas cada 30s
+  // Auto-liberar reservas expiradas cada 30s + push notifications
   useEffect(() => {
     const check = () => {
+      // Aviso 10 min antes — usa ref para evitar closure stale
+      cubiculosRef.current.forEach(c => {
+        if (c.estado !== 'ocupado' || !c.reserva?.expediente) return;
+        const remainMs = getRemainingMs(c);
+        const warnKey  = `${c.id}-${String(c.reserva.inicio)}`;
+        if (remainMs > 0 && remainMs <= 10 * 60 * 1000 && !pushWarnedRef.current.has(warnKey)) {
+          pushWarnedRef.current.add(warnKey);
+          const minLeft = Math.ceil(remainMs / 60000);
+          dbGetPushSubscription(c.reserva.expediente).then(sub => {
+            if (sub) sendPush(sub, `⏰ Te quedan ${minLeft} min`, `Tu reserva en ${c.nombre} vence pronto. Libera el espacio a tiempo.`);
+          });
+        }
+      });
+
+      // Auto-liberar expiradas
       setCubiculos(prev => {
         const updated = applyAutoRelease(prev);
         if (updated) {
-          updated.filter((c, i) => c !== prev[i]).forEach(c => dbSaveCubiculo(c));
+          updated.forEach((c, i) => {
+            if (c === prev[i]) return;
+            const old = prev[i];
+            // Notificar al usuario que su tiempo venció
+            if (old?.reserva?.expediente) {
+              dbGetPushSubscription(old.reserva.expediente).then(sub => {
+                if (sub) sendPush(sub, '📚 Tu reserva ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Gracias por usar la biblioteca.`);
+              });
+            }
+            dbSaveCubiculo(c);
+          });
           return updated;
         }
         return prev;

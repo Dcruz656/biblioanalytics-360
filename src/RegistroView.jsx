@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cubiCarreras } from "./cubiData";
-import { dbFindAlumno, dbSaveAlumno } from "./db";
+import { dbFindAlumno, dbSaveAlumno, dbSavePushSubscription } from "./db";
+import { registerServiceWorker, subscribeToPush } from "./pushNotifications";
 
 // ── Palette ──────────────────────────────────────────────
 const NAVY_DEEP = "#060d1b";
@@ -34,12 +35,13 @@ const inputBase = {
 
 // ── Main ─────────────────────────────────────────────────
 export default function RegistroView() {
-  const [screen,     setScreen]     = useState("form"); // form | success
-  const [form,       setForm]       = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0] });
-  const [errors,     setErrors]     = useState({});
-  const [globalError,setGlobalError]= useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [savedAccount, setSavedAccount] = useState(null);
+  const [screen,      setScreen]      = useState("form"); // form | success
+  const [form,        setForm]        = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0] });
+  const [errors,      setErrors]      = useState({});
+  const [globalError, setGlobalError] = useState("");
+  const [submitting,  setSubmitting]  = useState(false);
+  const [savedAccount,setSavedAccount]= useState(null);
+  const [pushState,   setPushState]   = useState("idle"); // idle | requesting | granted | denied | unsupported
 
   function validate() {
     const e = {};
@@ -50,6 +52,16 @@ export default function RegistroView() {
     if (form.matricula.includes(" "))
       e.matricula = "La matrícula no debe contener espacios";
     return e;
+  }
+
+  async function handleActivarNotif() {
+    if (!('Notification' in window)) { setPushState("unsupported"); return; }
+    setPushState("requesting");
+    await registerServiceWorker();
+    const sub = await subscribeToPush();
+    if (!sub) { setPushState("denied"); return; }
+    await dbSavePushSubscription(savedAccount.matricula, sub);
+    setPushState("granted");
   }
 
   function handleSubmit() {
@@ -225,6 +237,28 @@ export default function RegistroView() {
               </div>
             ))}
           </div>
+
+          {/* Notificaciones push */}
+          {pushState !== "granted" && pushState !== "unsupported" && (
+            <div style={{ width: "100%", maxWidth: 420, marginBottom: 16, borderRadius: 14, border: `1px solid ${TEAL}35`, background: `${TEAL}0a`, padding: "16px 20px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>🔔 Recibe avisos en tu celular</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 14, lineHeight: 1.5 }}>
+                Te avisaremos cuando queden 10 min de tu reserva y cuando venza tu tiempo.
+              </div>
+              <button
+                onClick={handleActivarNotif}
+                disabled={pushState === "requesting"}
+                style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "none", background: pushState === "requesting" ? "rgba(255,255,255,0.08)" : TEAL, color: pushState === "requesting" ? "rgba(255,255,255,0.35)" : "#fff", fontSize: 14, fontWeight: 700, cursor: pushState === "requesting" ? "default" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                {pushState === "requesting" ? "Activando…" : pushState === "denied" ? "Permiso denegado — intenta de nuevo" : "Activar notificaciones"}
+              </button>
+            </div>
+          )}
+          {pushState === "granted" && (
+            <div style={{ width: "100%", maxWidth: 420, marginBottom: 16, borderRadius: 14, border: `1px solid ${GREEN}50`, background: `${GREEN}10`, padding: "14px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>✓</span>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>Notificaciones activadas — recibirás avisos de tus reservas.</span>
+            </div>
+          )}
 
           <button onClick={() => window.location.href = "/kiosco"}
             style={{ width: "100%", maxWidth: 420, padding: "16px 0", borderRadius: 14, border: "none", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: "#fff", fontSize: 17, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 12 }}>

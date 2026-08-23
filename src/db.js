@@ -162,3 +162,23 @@ export function subscribeAlumnos(onChange) {
     .subscribe();
   return () => supabase.removeChannel(ch);
 }
+
+// ── Push Subscriptions ──────────────────────────────────────────────────────
+export async function dbSavePushSubscription(matricula, subscription) {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .upsert({ matricula, subscription }, { onConflict: 'matricula' });
+  if (error) console.error('[db] push_subscriptions save:', error.message);
+}
+
+export async function dbGetPushSubscription(matricula) {
+  if (!supabase || !matricula) return null;
+  const { data, error } = await supabase
+    .from('push_subscriptions')
+    .select('subscription')
+    .eq('matricula', matricula)
+    .single();
+  if (error) return null;
+  return data?.subscription ?? null;
+}
