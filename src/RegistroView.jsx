@@ -48,7 +48,7 @@ export default function RegistroView() {
   const isMobile = useIsMobile();
 
   const [screen,      setScreen]      = useState("form");
-  const [form,        setForm]        = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0] });
+  const [form,        setForm]        = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0], pin: "", pinConfirm: "" });
   const [errors,      setErrors]      = useState({});
   const [globalError, setGlobalError] = useState("");
   const [submitting,  setSubmitting]  = useState(false);
@@ -63,6 +63,10 @@ export default function RegistroView() {
       e.matricula = "Ingresa tu número de matrícula";
     if (form.matricula.includes(" "))
       e.matricula = "La matrícula no debe contener espacios";
+    if (!/^\d{4}$/.test(form.pin))
+      e.pin = "El PIN debe ser exactamente 4 dígitos numéricos";
+    if (form.pin !== form.pinConfirm)
+      e.pinConfirm = "Los PINs no coinciden";
     return e;
   }
 
@@ -98,7 +102,7 @@ export default function RegistroView() {
           setSubmitting(false);
           return;
         }
-        const newAccount = { nombre: form.nombre.trim(), matricula: form.matricula.trim().toUpperCase(), carrera: form.carrera };
+        const newAccount = { nombre: form.nombre.trim(), matricula: form.matricula.trim().toUpperCase(), carrera: form.carrera, pin: form.pin };
         return dbSaveAlumno(newAccount).then(() => {
           setSavedAccount(newAccount);
           setSubmitting(false);
@@ -186,6 +190,45 @@ export default function RegistroView() {
               style={{ ...inputBase, border: "1.5px solid rgba(255,255,255,0.1)" }}>
               {cubiCarreras.map(c => <option key={c} value={c} style={{ background: CARD }}>{c}</option>)}
             </select>
+          </Field>
+
+          {/* Separador PIN */}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", margin: "6px 0 22px", position: "relative" }}>
+            <span style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: NAVY_DEEP, padding: "0 12px", fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>PIN de seguridad</span>
+          </div>
+
+          <div style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 18 }}>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
+              🔒 El kiosco pedirá este PIN para confirmar que eres tú. Solo tú lo sabes.
+            </div>
+          </div>
+
+          <Field label="PIN (4 dígitos)" error={errors.pin}>
+            <input
+              value={form.pin}
+              onChange={e => { if (/^\d{0,4}$/.test(e.target.value)) { setForm(p => ({ ...p, pin: e.target.value })); setErrors(p => ({ ...p, pin: "" })); } }}
+              placeholder="••••"
+              type="tel"
+              inputMode="numeric"
+              maxLength={4}
+              style={{ ...inputBase, border: `1.5px solid ${errors.pin ? ROSE : "rgba(255,255,255,0.1)"}`, fontFamily: "'Space Mono', monospace", letterSpacing: 8, fontSize: 22, textAlign: "center" }}
+              onFocus={e => e.target.style.borderColor = TEAL}
+              onBlur={e  => e.target.style.borderColor = errors.pin ? ROSE : "rgba(255,255,255,0.1)"}
+            />
+          </Field>
+
+          <Field label="Confirmar PIN" error={errors.pinConfirm}>
+            <input
+              value={form.pinConfirm}
+              onChange={e => { if (/^\d{0,4}$/.test(e.target.value)) { setForm(p => ({ ...p, pinConfirm: e.target.value })); setErrors(p => ({ ...p, pinConfirm: "" })); } }}
+              placeholder="••••"
+              type="tel"
+              inputMode="numeric"
+              maxLength={4}
+              style={{ ...inputBase, border: `1.5px solid ${errors.pinConfirm ? ROSE : "rgba(255,255,255,0.1)"}`, fontFamily: "'Space Mono', monospace", letterSpacing: 8, fontSize: 22, textAlign: "center" }}
+              onFocus={e => e.target.style.borderColor = TEAL}
+              onBlur={e  => e.target.style.borderColor = errors.pinConfirm ? ROSE : "rgba(255,255,255,0.1)"}
+            />
           </Field>
 
           {globalError && (
@@ -289,7 +332,8 @@ export default function RegistroView() {
             Ir al kiosco →
           </button>
 
-          <button onClick={() => { setScreen("form"); setForm({ nombre: "", matricula: "", carrera: cubiCarreras[0] }); setErrors({}); setGlobalError(""); setSavedAccount(null); setPushState("idle"); }}
+          <button
+            onClick={() => { setScreen("form"); setForm({ nombre: "", matricula: "", carrera: cubiCarreras[0], pin: "", pinConfirm: "" }); setErrors({}); setGlobalError(""); setSavedAccount(null); setPushState("idle"); }}
             style={{ width: "100%", maxWidth: 440, padding: "14px 0", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", touchAction: "manipulation" }}>
             Registrar otro alumno
           </button>

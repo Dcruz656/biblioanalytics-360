@@ -121,6 +121,12 @@ export default function KioscoView() {
   const [computadoras,    setComputadoras]    = useState([]);
   const [compuSelectedId, setCompuSelectedId] = useState(null);
   const [compuZonaFilter, setCompuZonaFilter] = useState("Todas");
+  // PIN verification
+  const [pendingAccount,  setPendingAccount]  = useState(null);
+  const [pendingDest,     setPendingDest]     = useState(null); // { screen, selectedId, compuSelectedId }
+  const [pinInput,        setPinInput]        = useState("");
+  const [pinError,        setPinError]        = useState("");
+  const [pinAttempts,     setPinAttempts]     = useState(0);
 
   // Refs para notificaciones push: evitar re-envío de la misma alerta
   const pushWarnedRef = useRef(new Set()); // keys tipo "cubiId-inicioISO" ya advertidas a 10 min
@@ -242,6 +248,7 @@ export default function KioscoView() {
     setPersonas(cubiConfig.minPersonas);
     setSelectedId(null); setDuracion(2); setFolio(""); setPisoFilter(0); setConfirmTerminar(false);
     setServicio("cubiculos"); setCompuSelectedId(null); setCompuZonaFilter("Todas");
+    setPendingAccount(null); setPendingDest(null); setPinInput(""); setPinError(""); setPinAttempts(0);
   }
 
   function handleLookup() {
@@ -261,20 +268,22 @@ export default function KioscoView() {
       setLooking(false);
       if (!found) { setLookupError("not_found"); return; }
 
-      // ¿Tiene reserva activa (turno actual)?
-      const activeCubi = cubiActuales.find(c => c.estado === "ocupado" && c.reserva?.expediente === found.matricula);
-      if (activeCubi) { setAccount(found); setSelectedId(activeCubi.id); setScreen("mi_reserva"); return; }
-
-      // ¿Tiene reserva anticipada (siguiente turno)?
+      // Determinar destino tras verificar PIN
+      const activeCubi  = cubiActuales.find(c => c.estado === "ocupado" && c.reserva?.expediente === found.matricula);
       const advanceCubi = cubiActuales.find(c => c.nextReserva?.expediente === found.matricula);
-      if (advanceCubi) { setAccount(found); setSelectedId(advanceCubi.id); setScreen("proxima_reserva"); return; }
-
-      // ¿Tiene equipo de cómputo activo?
       const activeCompu = computadoras.find(c => c.estado === "ocupado" && c.reserva?.expediente === found.matricula);
-      if (activeCompu) { setAccount(found); setCompuSelectedId(activeCompu.id); setScreen("mi_compu"); return; }
 
-      // Sin reserva → elegir servicio
-      setAccount(found); setPersonas(cubiConfig.minPersonas); setScreen("bienvenido");
+      let dest = { screen: "bienvenido", selectedId: null, compuSelectedId: null };
+      if (activeCubi)  dest = { screen: "mi_reserva",      selectedId: activeCubi.id,  compuSelectedId: null };
+      else if (advanceCubi) dest = { screen: "proxima_reserva", selectedId: advanceCubi.id, compuSelectedId: null };
+      else if (activeCompu) dest = { screen: "mi_compu",   selectedId: null, compuSelectedId: activeCompu.id };
+
+      setPendingAccount(found);
+      setPendingDest(dest);
+      setPinInput("");
+      setPinError("");
+      setPinAttempts(0);
+      setScreen("pin_verify");
     });
   }
 
@@ -468,6 +477,115 @@ export default function KioscoView() {
               <span style={{ color: TEAL, fontWeight: 600 }}>analitica360.vercel.app/registro</span>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PIN VERIFY ───────────────────────────────────────────
+  if (screen === "pin_verify" && pendingAccount) {
+    const noPinConfigured = !pendingAccount.pin;
+    const locked = pinAttempts >= 3;
+
+    function confirmPin() {
+      if (pinInput !== pendingAccount.pin) {
+        const next = pinAttempts + 1;
+        setPinAttempts(next);
+        setPinError(next >= 3 ? "Demasiados intentos. Vuelve a ingresar tu matrícula." : `PIN incorrecto (${next}/3)`);
+        setPinInput("");
+        return;
+      }
+      // PIN correcto — navegar al destino
+      setAccount(pendingAccount);
+      if (pendingDest.selectedId)      setSelectedId(pendingDest.selectedId);
+      if (pendingDest.compuSelectedId) setCompuSelectedId(pendingDest.compuSelectedId);
+      if (pendingDest.screen === "bienvenido") setPersonas(cubiConfig.minPersonas);
+      setPendingAccount(null); setPendingDest(null); setPinInput(""); setPinError(""); setPinAttempts(0);
+      setScreen(pendingDest.screen);
+    }
+
+    const digits = [1,2,3,4,5,6,7,8,9,"",0,"⌫"];
+
+    return (
+      <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
+
+        {/* Card */}
+        <div style={{ width: "100%", maxWidth: 420, textAlign: "center" }}>
+
+          {/* Avatar */}
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 auto 16px" }}>
+            {pendingAccount.nombre.trim().split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{pendingAccount.nombre}</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 32 }}>{pendingAccount.carrera}</div>
+
+          {noPinConfigured ? (
+            /* Cuenta sin PIN — pedir que se actualice */
+            <div style={{ borderRadius: 16, border: `1px solid ${AMBER}40`, background: `${AMBER}0c`, padding: "24px 20px" }}>
+              <div style={{ fontSize: 28, marginBottom: 12 }}>⚠️</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 8 }}>Tu cuenta no tiene PIN</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6, marginBottom: 20 }}>
+                Por seguridad, necesitas configurar un PIN.<br />
+                Escanea el código con tu celular para actualizar tu cuenta.
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                <div style={{ background: "#fff", borderRadius: 12, padding: 10, display: "inline-flex" }}>
+                  <QRCodeSVG value="https://analitica360.vercel.app/registro" size={140} bgColor="#ffffff" fgColor="#060d1b" level="M" />
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontFamily: "'Space Mono', monospace" }}>analitica360.vercel.app/registro</div>
+            </div>
+          ) : locked ? (
+            /* Bloqueado por intentos */
+            <div style={{ borderRadius: 16, border: `1px solid ${ROSE}40`, background: `${ROSE}0c`, padding: "28px 20px", marginBottom: 20 }}>
+              <div style={{ fontSize: 34, marginBottom: 10 }}>🔒</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: ROSE, marginBottom: 8 }}>Demasiados intentos incorrectos</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>Por seguridad, vuelve a ingresar tu matrícula para reintentar.</div>
+            </div>
+          ) : (
+            /* Entrada de PIN */
+            <>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>Ingresa tu PIN de 4 dígitos</div>
+
+              {/* Puntos visuales */}
+              <div style={{ display: "flex", gap: 16, justifyContent: "center", marginBottom: 24 }}>
+                {[0,1,2,3].map(i => (
+                  <div key={i} style={{ width: 18, height: 18, borderRadius: "50%", background: i < pinInput.length ? TEAL : "rgba(255,255,255,0.12)", border: `2px solid ${i < pinInput.length ? TEAL : "rgba(255,255,255,0.2)"}`, transition: "all 0.15s" }} />
+                ))}
+              </div>
+
+              {pinError && (
+                <div style={{ padding: "10px 14px", borderRadius: 10, background: `${ROSE}15`, border: `1px solid ${ROSE}35`, color: ROSE, fontSize: 13, marginBottom: 16 }}>
+                  ⚠ {pinError}
+                </div>
+              )}
+
+              {/* Teclado numérico táctil */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }}>
+                {digits.map((d, i) => (
+                  <button key={i}
+                    disabled={d === ""}
+                    onClick={() => {
+                      if (d === "⌫") { setPinInput(p => p.slice(0,-1)); setPinError(""); return; }
+                      if (typeof d === "number" && pinInput.length < 4) { const next = pinInput + d; setPinInput(next); setPinError(""); if (next.length === 4) setTimeout(() => {}, 0); }
+                    }}
+                    style={{ padding: "18px 0", borderRadius: 12, border: d === "" ? "none" : "1px solid rgba(255,255,255,0.1)", background: d === "" ? "transparent" : d === "⌫" ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.05)", color: "#fff", fontSize: d === "⌫" ? 20 : 22, fontWeight: 700, cursor: d === "" ? "default" : "pointer", fontFamily: "'DM Sans', sans-serif", touchAction: "manipulation", transition: "background 0.1s" }}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+
+              <button onClick={confirmPin} disabled={pinInput.length !== 4}
+                style={{ width: "100%", padding: "18px 0", borderRadius: 14, border: "none", background: pinInput.length !== 4 ? "rgba(255,255,255,0.06)" : `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: pinInput.length !== 4 ? "rgba(255,255,255,0.25)" : "#fff", fontSize: 18, fontWeight: 700, cursor: pinInput.length !== 4 ? "default" : "pointer", fontFamily: "'DM Sans', sans-serif", touchAction: "manipulation", transition: "all 0.2s" }}>
+                Confirmar →
+              </button>
+            </>
+          )}
+
+          <button onClick={resetToIdle}
+            style={{ width: "100%", marginTop: 14, padding: "14px 0", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.35)", fontSize: 14, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", touchAction: "manipulation" }}>
+            ← Cambiar matrícula
+          </button>
         </div>
       </div>
     );
