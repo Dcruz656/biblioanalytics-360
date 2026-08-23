@@ -203,14 +203,13 @@ export default function KioscoView() {
         }
       });
 
-      // Auto-liberar expiradas
+      // Auto-liberar cubículos expirados
       setCubiculos(prev => {
         const updated = applyAutoRelease(prev);
         if (updated) {
           updated.forEach((c, i) => {
             if (c === prev[i]) return;
             const old = prev[i];
-            // Guardar en historial antes de liberar
             if (old?.reserva?.expediente) {
               const res = old.reserva;
               const hh = new Date(res.inicio).getHours();
@@ -227,6 +226,35 @@ export default function KioscoView() {
               });
             }
             dbSaveCubiculo(c);
+          });
+          return updated;
+        }
+        return prev;
+      });
+
+      // Auto-liberar computadoras expiradas
+      setComputadoras(prev => {
+        const updated = applyAutoRelease(prev);
+        if (updated) {
+          updated.forEach((c, i) => {
+            if (c === prev[i]) return;
+            const old = prev[i];
+            if (old?.reserva?.expediente) {
+              const res = old.reserva;
+              const hh = new Date(res.inicio).getHours();
+              const turno = hh >= 7 && hh < 14 ? 'Matutino' : hh >= 14 && hh < 20 ? 'Vespertino' : 'Nocturno';
+              dbSaveHistorialReserva({
+                cubicule: old.nombre, tipo: 'computadoras',
+                nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+                duracion: res.duracion, personas: null, piso: null,
+                inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
+                fin: new Date(serverNow()).toISOString(), turno,
+              });
+              dbGetPushSubscription(res.expediente).then(sub => {
+                if (sub) sendPush(sub, '💻 Tu sesión ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Por favor libera la computadora.`);
+              });
+            }
+            dbSaveComputadora(c);
           });
           return updated;
         }

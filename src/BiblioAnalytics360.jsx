@@ -548,6 +548,58 @@ export default function BiblioAnalytics360() {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
+  // Auto-liberar cubículos y computadoras vencidas (cada 30 s)
+  useEffect(() => {
+    const release = () => {
+      setCubiculos(prev => {
+        let changed = false;
+        const next = prev.map(c => {
+          if (c.estado !== "ocupado" || !c.reserva) return c;
+          if (getCubiRemainingMs(c) > 0) return c;
+          changed = true;
+          const hh = new Date(c.reserva.inicio).getHours();
+          const turno = hh >= 7 && hh < 14 ? "Matutino" : hh >= 14 && hh < 20 ? "Vespertino" : "Nocturno";
+          dbSaveHistorialReserva({
+            cubicule: c.nombre, tipo: "cubiculos",
+            nombre: c.reserva.nombre, expediente: c.reserva.expediente, carrera: c.reserva.carrera,
+            duracion: c.reserva.duracion, personas: c.reserva.personas || null, piso: c.piso,
+            inicio: c.reserva.inicio instanceof Date ? c.reserva.inicio.toISOString() : c.reserva.inicio,
+            fin: new Date(serverNow()).toISOString(), turno,
+          });
+          const freed = { ...c, estado: "libre", reserva: null };
+          dbSaveCubiculo(freed);
+          return freed;
+        });
+        return changed ? next : prev;
+      });
+      setComputadoras(prev => {
+        let changed = false;
+        const next = prev.map(c => {
+          if (c.estado !== "ocupado" || !c.reserva) return c;
+          const end = new Date(c.reserva.inicio).getTime() + c.reserva.duracion * 3_600_000;
+          if (Math.max(0, end - serverNow()) > 0) return c;
+          changed = true;
+          const hh = new Date(c.reserva.inicio).getHours();
+          const turno = hh >= 7 && hh < 14 ? "Matutino" : hh >= 14 && hh < 20 ? "Vespertino" : "Nocturno";
+          dbSaveHistorialReserva({
+            cubicule: c.nombre, tipo: "computadoras",
+            nombre: c.reserva.nombre, expediente: c.reserva.expediente, carrera: c.reserva.carrera,
+            duracion: c.reserva.duracion, personas: null, piso: null,
+            inicio: c.reserva.inicio instanceof Date ? c.reserva.inicio.toISOString() : c.reserva.inicio,
+            fin: new Date(serverNow()).toISOString(), turno,
+          });
+          const freed = { ...c, estado: "libre", reserva: null };
+          dbSaveComputadora(freed);
+          return freed;
+        });
+        return changed ? next : prev;
+      });
+    };
+    release();
+    const t = setInterval(release, 30_000);
+    return () => clearInterval(t);
+  }, []);
+
   // Config sync via localStorage (local only, no need for DB)
   useEffect(() => {
     const handler = (e) => {
