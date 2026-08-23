@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
 import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, dbLoadAppConfig, dbSaveAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas } from "./db";
 import { serverNow } from "./serverTime";
+import { sendPush, getOwnSubscription } from "./pushNotifications";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
 import {
@@ -462,6 +463,8 @@ export default function BiblioAnalytics360() {
   useEffect(() => { dbLoadAppConfig().then(cfg => setPinRequired(cfg.pinRequired)); }, []);
   useEffect(() => subscribeAppConfig(cfg => { if (typeof cfg.pinRequired === 'boolean') setPinRequired(cfg.pinRequired); }), []);
   const [syncingSource, setSyncingSource] = useState(null);
+  const [testPushState, setTestPushState] = useState("idle"); // "idle"|"sending"|"ok"|"error"
+  const [testPushMsg, setTestPushMsg] = useState("");
   const [alumnos, setAlumnos] = useState([]);
   // Herramientas — Cubículos
   const [cubiculos, setCubiculos] = useState(createInitCubiculos);
@@ -2134,9 +2137,31 @@ export default function BiblioAnalytics360() {
                   </div>
 
                   <button onClick={() => setNotifications(prev => [{ id: Date.now(), text: "Configuración de alertas guardada", type: "success", time: "Ahora" }, ...prev])}
-                    style={{ width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>
                     Guardar configuración de alertas
                   </button>
+
+                  {/* Botón de prueba push */}
+                  <button
+                    disabled={testPushState === "sending"}
+                    onClick={async () => {
+                      setTestPushState("sending"); setTestPushMsg("");
+                      try {
+                        const sub = await getOwnSubscription();
+                        if (!sub) { setTestPushState("error"); setTestPushMsg("No se pudo obtener suscripción. ¿Notificaciones bloqueadas?"); return; }
+                        const result = await sendPush(sub, "🔔 Prueba de notificación", "Las notificaciones push están funcionando correctamente.");
+                        if (result?.ok) { setTestPushState("ok"); setTestPushMsg("Notificación enviada. ¿La recibiste?"); }
+                        else { setTestPushState("error"); setTestPushMsg(`Error HTTP ${result?.status ?? "?"}: ${result?.text ?? result?.error ?? "sin detalle"}`); }
+                      } catch (e) {
+                        setTestPushState("error"); setTestPushMsg(e.message);
+                      }
+                    }}
+                    style={{ width: "100%", padding: "9px 0", borderRadius: 8, border: `1px solid ${testPushState === "error" ? "#f87171" : testPushState === "ok" ? "#4ade80" : t.teal}40`, background: "transparent", color: testPushState === "error" ? "#f87171" : testPushState === "ok" ? "#4ade80" : t.teal, fontSize: 12, fontWeight: 600, cursor: testPushState === "sending" ? "wait" : "pointer" }}>
+                    {testPushState === "sending" ? "Enviando..." : testPushState === "ok" ? "✓ Enviada" : testPushState === "error" ? "✗ Error" : "🔔 Probar notificación push"}
+                  </button>
+                  {testPushMsg && (
+                    <div style={{ marginTop: 6, fontSize: 10, color: testPushState === "error" ? "#f87171" : "#4ade80", lineHeight: 1.4 }}>{testPushMsg}</div>
+                  )}
                 </div>
 
                 {/* Fuentes de datos */}

@@ -47,7 +47,7 @@ export async function subscribeToPush() {
 
 export async function sendPush(subscription, title, body) {
   try {
-    await fetch(EDGE_FN_URL, {
+    const res = await fetch(EDGE_FN_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,7 +56,35 @@ export async function sendPush(subscription, title, body) {
       },
       body: JSON.stringify({ subscription, title, body }),
     });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.error(`[push] sendPush HTTP ${res.status}:`, text);
+      return { ok: false, status: res.status, text };
+    }
+    console.log('[push] sendPush OK', title);
+    return { ok: true };
   } catch (err) {
-    console.error('[push] sendPush failed:', err);
+    console.error('[push] sendPush network error:', err);
+    return { ok: false, error: err.message };
+  }
+}
+
+export async function getOwnSubscription() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return null;
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    return sub.toJSON();
+  } catch (err) {
+    console.error('[push] getOwnSubscription failed:', err);
+    return null;
   }
 }
