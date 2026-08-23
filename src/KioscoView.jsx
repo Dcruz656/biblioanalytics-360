@@ -272,25 +272,26 @@ export default function KioscoView() {
   }, []);
 
   // Auto-redirigir al inicio cuando expira la reserva activa del alumno
+  // Deps use IDs and raw arrays to avoid TDZ — selectedCubi/selectedCompu are declared below
   useEffect(() => {
-    if (screen === "mi_reserva" && selectedCubi) {
-      if (selectedCubi.estado !== "ocupado") {
-        // Ya liberado por el intervalo (historial ya guardado) — solo regresar al inicio
+    const cubi  = cubiculos.find(c => c.id === selectedId) || null;
+    const compu = computadoras.find(c => c.id === compuSelectedId) || null;
+    if (screen === "mi_reserva" && cubi) {
+      if (cubi.estado !== "ocupado") {
         resetToIdle();
-      } else if (getRemainingMs(selectedCubi) <= 0) {
-        // Aún marcado ocupado pero tiempo vencido — liberar y regresar
+      } else if (getRemainingMs(cubi) <= 0) {
         terminarUso();
       }
     }
-    if (screen === "mi_compu" && selectedCompu) {
-      if (selectedCompu.estado !== "ocupado") {
+    if (screen === "mi_compu" && compu) {
+      if (compu.estado !== "ocupado") {
         resetToIdle();
-      } else if (getRemainingMs(selectedCompu) <= 0) {
+      } else if (getRemainingMs(compu) <= 0) {
         terminarUsoCompu();
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, selectedCubi, selectedCompu]);
+  }, [screen, cubiculos, computadoras, selectedId, compuSelectedId]);
 
   function resetToIdle() {
     setScreen("idle");
