@@ -198,9 +198,6 @@ export function loadAppConfig() { return { ...DEFAULT_APP_CONFIG }; }
 export function saveAppConfig() {}
 export function broadcastAppConfig() {}
 
-// Kept for backward compat — no longer needed
-export function broadcastAppConfig() {}
-
 // ── Historial de reservas ───────────────────────────────────────────────────
 export async function dbSaveHistorialReserva(entry) {
   if (!supabase) return;
