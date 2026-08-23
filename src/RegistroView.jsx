@@ -66,15 +66,24 @@ export default function RegistroView() {
     return e;
   }
 
-  async function handleActivarNotif() {
+  async function handleActivarNotif(matricula) {
+    const mat = matricula ?? savedAccount?.matricula;
+    if (!mat) return;
     if (!("Notification" in window)) { setPushState("unsupported"); return; }
     setPushState("requesting");
     await registerServiceWorker();
     const sub = await subscribeToPush();
     if (!sub) { setPushState("denied"); return; }
-    await dbSavePushSubscription(savedAccount.matricula, sub);
+    await dbSavePushSubscription(mat, sub);
     setPushState("granted");
   }
+
+  // Dispara el diálogo de permiso automáticamente al llegar al éxito
+  useEffect(() => {
+    if (screen === "success" && savedAccount && pushState === "idle") {
+      handleActivarNotif(savedAccount.matricula);
+    }
+  }, [screen, savedAccount]); // eslint-disable-line
 
   function handleSubmit() {
     const e = validate();
@@ -243,27 +252,37 @@ export default function RegistroView() {
             ))}
           </div>
 
-          {/* Push notifications */}
-          {pushState !== "granted" && pushState !== "unsupported" && (
-            <div style={{ width: "100%", maxWidth: 440, marginBottom: 14, borderRadius: 14, border: `1px solid ${TEAL}35`, background: `${TEAL}0a`, padding: isMobile ? "14px 16px" : "16px 20px" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.7)", marginBottom: 5 }}>🔔 Recibe avisos en tu celular</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 12, lineHeight: 1.5 }}>
-                Te avisaremos cuando queden 10 min y cuando venza tu reserva.
+          {/* Push notifications — se activa automáticamente */}
+          {pushState === "idle" || pushState === "requesting" ? (
+            <div style={{ width: "100%", maxWidth: 440, marginBottom: 14, borderRadius: 14, border: `1px solid ${TEAL}40`, background: `${TEAL}10`, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ fontSize: 26, flexShrink: 0, animation: "pulse 1.2s ease-in-out infinite" }}>🔔</div>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 3 }}>Activando notificaciones…</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
+                  Acepta el permiso que aparece en pantalla para recibir avisos cuando venza tu reserva.
+                </div>
               </div>
-              <button
-                onClick={handleActivarNotif}
-                disabled={pushState === "requesting"}
-                style={{ width: "100%", padding: "13px 0", borderRadius: 10, border: "none", background: pushState === "requesting" ? "rgba(255,255,255,0.08)" : TEAL, color: pushState === "requesting" ? "rgba(255,255,255,0.35)" : "#fff", fontSize: 14, fontWeight: 700, cursor: pushState === "requesting" ? "default" : "pointer", fontFamily: "'DM Sans', sans-serif", touchAction: "manipulation" }}>
-                {pushState === "requesting" ? "Activando…" : pushState === "denied" ? "Permiso denegado — intenta de nuevo" : "Activar notificaciones"}
+            </div>
+          ) : pushState === "denied" ? (
+            <div style={{ width: "100%", maxWidth: 440, marginBottom: 14, borderRadius: 14, border: `1px solid ${ROSE}40`, background: `${ROSE}10`, padding: "16px 20px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: ROSE, marginBottom: 6 }}>⚠ Notificaciones bloqueadas</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 12, lineHeight: 1.5 }}>
+                No recibirás avisos cuando tu reserva esté por vencer. Puedes activarlas desde la configuración de tu navegador, o intentar de nuevo.
+              </div>
+              <button onClick={() => handleActivarNotif()}
+                style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: `1px solid ${TEAL}50`, background: "transparent", color: TEAL, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", touchAction: "manipulation" }}>
+                Intentar activar de nuevo
               </button>
             </div>
-          )}
-          {pushState === "granted" && (
-            <div style={{ width: "100%", maxWidth: 440, marginBottom: 14, borderRadius: 14, border: `1px solid ${GREEN}50`, background: `${GREEN}10`, padding: "13px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 18 }}>✓</span>
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", textAlign: "left" }}>Notificaciones activadas — recibirás avisos de tus reservas.</span>
+          ) : pushState === "granted" ? (
+            <div style={{ width: "100%", maxWidth: 440, marginBottom: 14, borderRadius: 14, border: `1px solid ${GREEN}50`, background: `${GREEN}10`, padding: "14px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>🔔✓</span>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 }}>Notificaciones activadas</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>Recibirás un aviso 10 min antes y al vencer tu reserva.</div>
+              </div>
             </div>
-          )}
+          ) : null}
 
           <button onClick={() => window.location.href = "/kiosco"}
             style={{ width: "100%", maxWidth: 440, padding: "16px 0", borderRadius: 14, border: "none", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: "#fff", fontSize: isMobile ? 15 : 17, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 10, touchAction: "manipulation" }}>
