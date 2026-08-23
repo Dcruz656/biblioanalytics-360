@@ -1,4 +1,4 @@
-const CACHE = 'biblio-v1';
+const CACHE = 'biblio-v2';
 const OFFLINE_URL = '/kiosco';
 
 // Instalar: cachear shell de la app
