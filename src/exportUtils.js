@@ -606,3 +606,316 @@ export async function generatePDF(chartImages, data, filters, meta) {
   const periodoSlug = periodos[0] ?? "periodo";
   doc.save(`reporte_biblioanalytics_${campusSlug}_${periodoSlug}.pdf`);
 }
+
+// ─── SERVICE-SPECIFIC EXCEL ──────────────────────────────────────────────────
+
+export function generateServiceExcel(historial, serviceType, periodLabel, meta) {
+  const wb = XLSX.utils.book_new();
+  const serviceName = serviceType === "cubiculos" ? "Cubículos" : "Computadoras";
+
+  const groupBy = (arr, keyFn) =>
+    arr.reduce((acc, r) => { const k = keyFn(r); acc[k] = (acc[k] || 0) + 1; return acc; }, {});
+
+  const total = historial.length;
+  const avgDur = total
+    ? (historial.reduce((a, r) => a + (r.duracion || 1), 0) / total).toFixed(1)
+    : "0";
+  const byCarrera  = groupBy(historial, r => r.carrera  || "—");
+  const byTurno    = groupBy(historial, r => r.turno    || "—");
+  const bySpace    = groupBy(historial, r => r.cubicule || "—");
+  const topCarrera = Object.entries(byCarrera).sort((a, b) => b[1] - a[1])[0] ?? ["—", 0];
+  const topTurno   = Object.entries(byTurno).sort((a, b)   => b[1] - a[1])[0] ?? ["—", 0];
+  const topSpace   = Object.entries(bySpace).sort((a, b)   => b[1] - a[1])[0] ?? ["—", 0];
+  const uniqueAlum = new Set(historial.map(r => r.expediente).filter(Boolean)).size;
+
+  // Hoja 1: Resumen
+  const resumenData = [
+    { Indicador: "Servicio",                             Valor: serviceName },
+    { Indicador: "Periodo",                              Valor: periodLabel },
+    { Indicador: "Total Reservas",                       Valor: total },
+    { Indicador: "Duración Promedio (h)",                Valor: avgDur },
+    { Indicador: "Carrera más frecuente",                Valor: `${topCarrera[0]} (${topCarrera[1]} reservas)` },
+    { Indicador: "Turno más frecuente",                  Valor: `${topTurno[0]} (${topTurno[1]} reservas)` },
+    { Indicador: serviceType === "cubiculos" ? "Cubículo más usado" : "PC más usada",
+      Valor: `${topSpace[0]} (${topSpace[1]} reservas)` },
+    { Indicador: "Estudiantes únicos",                   Valor: uniqueAlum },
+    { Indicador: "Institución",                          Valor: meta.institution },
+    { Indicador: "Fecha de generación",                  Valor: new Date().toLocaleString("es-MX") },
+  ];
+  const wsResumen = XLSX.utils.json_to_sheet(resumenData);
+  wsResumen["!cols"] = [{ wch: 38 }, { wch: 34 }];
+  XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+
+  // Hoja 2: Historial
+  const spaceKey = serviceType === "cubiculos" ? "Cubículo" : "Computadora";
+  const histData = historial.map(r => ({
+    [spaceKey]:       r.cubicule || "—",
+    Nombre:           r.nombre    || "—",
+    Expediente:       r.expediente || "—",
+    Carrera:          r.carrera   || "—",
+    "Duración (h)":   r.duracion  || "—",
+    Turno:            r.turno     || "—",
+    Personas:         r.personas  ?? "—",
+    Piso:             r.piso      ?? "—",
+    Inicio:           r.inicio ? new Date(r.inicio).toLocaleString("es-MX") : "—",
+    Fin:              r.fin    ? new Date(r.fin).toLocaleString("es-MX")    : "—",
+  }));
+  const wsHist = XLSX.utils.json_to_sheet(histData);
+  autoWidth(wsHist, histData.length ? histData : [{ [spaceKey]: "" }]);
+  XLSX.utils.book_append_sheet(wb, wsHist, "Historial");
+
+  // Hoja 3: Por Mes
+  const byMes = {};
+  historial.forEach(r => {
+    if (!r.inicio) return;
+    const d   = new Date(r.inicio);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    byMes[key] = (byMes[key] || 0) + 1;
+  });
+  const mesData = Object.entries(byMes).sort().map(([Mes, Reservas]) => ({ Mes, Reservas }));
+  const wsMes = XLSX.utils.json_to_sheet(mesData.length ? mesData : [{ Mes: "—", Reservas: 0 }]);
+  autoWidth(wsMes, mesData.length ? mesData : [{ Mes: "", Reservas: "" }]);
+  XLSX.utils.book_append_sheet(wb, wsMes, "Por Mes");
+
+  // Hoja 4: Por Carrera
+  const carreraData = Object.entries(byCarrera)
+    .sort((a, b) => b[1] - a[1])
+    .map(([Carrera, Reservas]) => ({ Carrera, Reservas, "% Total": total ? `${Math.round(Reservas / total * 100)}%` : "0%" }));
+  const wsCarrera = XLSX.utils.json_to_sheet(carreraData.length ? carreraData : [{ Carrera: "—", Reservas: 0 }]);
+  autoWidth(wsCarrera, carreraData.length ? carreraData : [{ Carrera: "", Reservas: "" }]);
+  XLSX.utils.book_append_sheet(wb, wsCarrera, "Por Carrera");
+
+  // Hoja 5: Por Turno
+  const turnoData = Object.entries(byTurno)
+    .sort((a, b) => b[1] - a[1])
+    .map(([Turno, Reservas]) => ({ Turno, Reservas, "% Total": total ? `${Math.round(Reservas / total * 100)}%` : "0%" }));
+  const wsTurno = XLSX.utils.json_to_sheet(turnoData.length ? turnoData : [{ Turno: "—", Reservas: 0 }]);
+  autoWidth(wsTurno, turnoData.length ? turnoData : [{ Turno: "", Reservas: "" }]);
+  XLSX.utils.book_append_sheet(wb, wsTurno, "Por Turno");
+
+  // Hoja 6: Por Duración
+  const byDur = groupBy(historial, r => r.duracion ? `${r.duracion}h` : "—");
+  const durData = Object.entries(byDur)
+    .sort()
+    .map(([Duración, Reservas]) => ({ Duración, Reservas }));
+  const wsDur = XLSX.utils.json_to_sheet(durData.length ? durData : [{ Duración: "—", Reservas: 0 }]);
+  autoWidth(wsDur, durData.length ? durData : [{ Duración: "", Reservas: "" }]);
+  XLSX.utils.book_append_sheet(wb, wsDur, "Por Duración");
+
+  // Hoja 7: Por Piso / Zona
+  const byPiso    = groupBy(historial, r => r.piso ? `Piso ${r.piso}` : "—");
+  const pisoLabel = serviceType === "cubiculos" ? "Piso" : "Zona";
+  const pisoData  = Object.entries(byPiso)
+    .sort((a, b) => b[1] - a[1])
+    .map(([p, Reservas]) => ({ [pisoLabel]: p, Reservas }));
+  const wsPiso = XLSX.utils.json_to_sheet(pisoData.length ? pisoData : [{ [pisoLabel]: "—", Reservas: 0 }]);
+  autoWidth(wsPiso, pisoData.length ? pisoData : [{ [pisoLabel]: "", Reservas: "" }]);
+  XLSX.utils.book_append_sheet(wb, wsPiso, `Por ${pisoLabel}`);
+
+  XLSX.writeFile(wb, `reporte_${serviceType}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// ─── SERVICE-SPECIFIC PDF ────────────────────────────────────────────────────
+
+export async function generateServicePDF(chartImage, historial, serviceType, periodLabel, meta) {
+  const { institution } = meta;
+  const serviceName  = serviceType === "cubiculos" ? "Cubículos" : "Computadoras";
+  const serviceColor = serviceType === "cubiculos" ? C.teal : C.blue;
+
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const W = 210, H = 297;
+
+  const groupBy = (arr, keyFn) =>
+    arr.reduce((acc, r) => { const k = keyFn(r); acc[k] = (acc[k] || 0) + 1; return acc; }, {});
+
+  const total    = historial.length;
+  const avgDur   = total
+    ? (historial.reduce((a, r) => a + (r.duracion || 1), 0) / total).toFixed(1)
+    : "0";
+  const byCarrera  = groupBy(historial, r => r.carrera  || "—");
+  const byTurno    = groupBy(historial, r => r.turno    || "—");
+  const bySpace    = groupBy(historial, r => r.cubicule || "—");
+  const topCarrera = Object.entries(byCarrera).sort((a, b) => b[1] - a[1])[0] ?? ["—", 0];
+  const topTurno   = Object.entries(byTurno).sort((a, b)   => b[1] - a[1])[0] ?? ["—", 0];
+  const topSpace   = Object.entries(bySpace).sort((a, b)   => b[1] - a[1])[0] ?? ["—", 0];
+  const uniqueAlum = new Set(historial.map(r => r.expediente).filter(Boolean)).size;
+
+  const dias   = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+  const byDia  = groupBy(historial, r => r.inicio ? dias[new Date(r.inicio).getDay()] : "—");
+  const topDia = Object.entries(byDia).sort((a, b) => b[1] - a[1])[0] ?? ["—", 0];
+
+  const pages   = 4;
+  let pageNum   = 0;
+
+  // ── PÁGINA 1: PORTADA ──
+  pageNum++;
+  setFill(doc, C.navy);
+  doc.rect(0, 0, W, H, "F");
+
+  setFill(doc, serviceColor);
+  doc.rect(0, 0, W, 22, "F");
+  doc.setFontSize(9);
+  doc.setFont(undefined, "bold");
+  setTxt(doc, C.white);
+  doc.text(`REPORTE DE ${serviceName.toUpperCase()}`, W / 2, 13, { align: "center" });
+
+  doc.setFontSize(32);
+  doc.setFont(undefined, "bold");
+  setTxt(doc, C.white);
+  doc.text("BiblioAnalytics 360", W / 2, 80, { align: "center" });
+
+  setStroke(doc, serviceColor);
+  doc.setLineWidth(1.5);
+  doc.line(50, 88, W - 50, 88);
+
+  doc.setFontSize(16);
+  doc.setFont(undefined, "normal");
+  setTxt(doc, C.white);
+  doc.text(institution, W / 2, 100, { align: "center" });
+
+  const portadaMeta = [
+    { label: "Servicio:",            value: serviceName },
+    { label: "Periodo analizado:",   value: periodLabel },
+    { label: "Total de registros:",  value: total.toLocaleString() },
+    { label: "Fecha de generación:", value: new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" }) },
+  ];
+  let my = 125;
+  portadaMeta.forEach(({ label, value }) => {
+    doc.setFontSize(10);
+    doc.setFont(undefined, "bold");
+    setTxt(doc, C.gray);
+    doc.text(label, W / 2 - 5, my, { align: "right" });
+    doc.setFont(undefined, "normal");
+    setTxt(doc, C.tealL);
+    doc.text(value, W / 2 + 5, my);
+    my += 10;
+  });
+
+  doc.setFontSize(8);
+  setTxt(doc, C.gray);
+  doc.text("Generado con BiblioAnalytics 360 · Uso interno y académico", W / 2, H - 16, { align: "center" });
+  pageFooter(doc, pageNum, pages);
+
+  // ── PÁGINA 2: RESUMEN EJECUTIVO ──
+  doc.addPage();
+  pageNum++;
+  setFill(doc, C.light);
+  doc.rect(0, 0, W, H, "F");
+  sectionBand(doc, 0, C.navy, "Resumen Ejecutivo", periodLabel);
+
+  const introText = `Este reporte presenta el análisis operativo del servicio de ${serviceName} de ${institution} para el periodo ${periodLabel}. Se registraron ${total} reservas en total, con una duración promedio de ${avgDur} horas por sesión. La carrera con mayor demanda fue ${topCarrera[0]} con ${topCarrera[1]} reservas, y el turno de mayor actividad fue ${topTurno[0]} con ${topTurno[1]} usos. Se identificaron ${uniqueAlum} estudiantes únicos que utilizaron el servicio durante el periodo analizado.`;
+  const introLines = doc.splitTextToSize(introText, 182);
+  doc.setFontSize(9.5);
+  doc.setFont(undefined, "normal");
+  setTxt(doc, C.grayD);
+  doc.text(introLines, 14, 24);
+
+  const kpiY = 24 + introLines.length * 5.5 + 6;
+  const kpiW = 55, kpiH = 28, kpiGap = 8.5;
+  const kpis = [
+    { v: total.toLocaleString(),        l: "Total Reservas",                                    c: serviceColor },
+    { v: `${avgDur}h`,                  l: "Duración Promedio",                                 c: C.green },
+    { v: String(uniqueAlum),            l: "Estudiantes Únicos",                                c: C.blue },
+    { v: String(topCarrera[1]),         l: `Top: ${topCarrera[0].slice(0, 13)}`,                c: C.purple },
+    { v: topTurno[0].slice(0, 9),      l: "Turno de Mayor Actividad",                          c: C.amber },
+    { v: String(topSpace[1]),           l: `${serviceType === "cubiculos" ? "Cubículo" : "PC"} más usado`, c: C.rose },
+  ];
+  kpis.forEach((k, i) => {
+    const col = i % 3, row = Math.floor(i / 3);
+    kpiBox(doc, 14 + col * (kpiW + kpiGap), kpiY + row * (kpiH + 6), kpiW, kpiH, k.v, k.l, k.c);
+  });
+
+  pageFooter(doc, pageNum, pages);
+
+  // ── PÁGINA 3: ANÁLISIS ──
+  doc.addPage();
+  pageNum++;
+  setFill(doc, C.light);
+  doc.rect(0, 0, W, H, "F");
+  sectionBand(doc, 0, serviceColor, `Análisis de ${serviceName}`, periodLabel);
+
+  let cy = 20;
+  if (chartImage) {
+    try {
+      const imgProps = doc.getImageProperties(chartImage);
+      const imgW    = 182;
+      const imgH    = Math.round((imgProps.height / imgProps.width) * imgW);
+      const clamped = Math.min(imgH, 90);
+      doc.addImage(chartImage, "PNG", 14, cy, imgW, clamped, undefined, "FAST");
+      cy += clamped + 6;
+    } catch (_) {}
+  }
+
+  const pct = (n) => total ? `${Math.round(n / total * 100)}%` : "0%";
+  const narrative = `El servicio de ${serviceName} registró ${total} reservas durante el periodo ${periodLabel}, con un promedio de ${avgDur} horas de uso por sesión. La mayor demanda provino de estudiantes de ${topCarrera[0]} con ${topCarrera[1]} reservas (${pct(topCarrera[1])} del total). En cuanto a la distribución temporal, el turno ${topTurno[0]} concentró ${topTurno[1]} reservas (${pct(topTurno[1])}). El día de mayor afluencia fue ${topDia[0]} con ${topDia[1]} reservas. ${total < 5 ? "Se recomienda continuar el seguimiento conforme se acumulen más datos para identificar patrones estadísticamente significativos." : `El espacio más solicitado fue ${topSpace[0]} con ${topSpace[1]} reservas acumuladas en el periodo.`}`;
+
+  const findings = [
+    `Demanda total: ${total} reservas · Duración promedio: ${avgDur}h`,
+    `Carrera líder: ${topCarrera[0]} (${topCarrera[1]} reservas, ${pct(topCarrera[1])})`,
+    `Turno de mayor actividad: ${topTurno[0]} — día pico: ${topDia[0]}`,
+  ];
+  cy = addNarrativeBox(doc, cy, narrative, findings, serviceColor);
+  pageFooter(doc, pageNum, pages);
+
+  // ── PÁGINA 4: DATOS ──
+  doc.addPage();
+  pageNum++;
+  setFill(doc, C.light);
+  doc.rect(0, 0, W, H, "F");
+  sectionBand(doc, 0, C.navy, "Anexo: Historial de Reservas", "Datos del periodo");
+
+  let tableY = 18;
+
+  // Por Carrera
+  doc.setFontSize(9);
+  doc.setFont(undefined, "bold");
+  setTxt(doc, C.grayD);
+  doc.text("Reservas por Carrera", 14, tableY + 6);
+  tableY += 8;
+  autoTable(doc, {
+    startY: tableY,
+    head: [["Carrera", "Reservas", "% Total"]],
+    body: Object.entries(byCarrera)
+      .sort((a, b) => b[1] - a[1])
+      .map(([car, n]) => [car, n, pct(n)]),
+    theme: "striped",
+    headStyles: { fillColor: serviceColor, textColor: C.white, fontStyle: "bold", fontSize: 8 },
+    bodyStyles: { fontSize: 8, textColor: C.grayD },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 14, right: 14 },
+    tableWidth: 182,
+  });
+  tableY = doc.lastAutoTable.finalY + 8;
+
+  // Detalle de reservas
+  if (tableY < H - 60) {
+    doc.setFontSize(9);
+    doc.setFont(undefined, "bold");
+    setTxt(doc, C.grayD);
+    doc.text("Detalle de Reservas (muestra)", 14, tableY + 6);
+    tableY += 8;
+    const spaceKey = serviceType === "cubiculos" ? "Cubículo" : "PC";
+    autoTable(doc, {
+      startY: tableY,
+      head: [[spaceKey, "Nombre", "Carrera", "Duración", "Turno", "Fecha"]],
+      body: historial.slice(0, 20).map(r => [
+        r.cubicule || "—",
+        (r.nombre  || "—").slice(0, 18),
+        (r.carrera || "—").slice(0, 14),
+        r.duracion ? `${r.duracion}h` : "—",
+        r.turno    || "—",
+        r.inicio ? new Date(r.inicio).toLocaleDateString("es-MX") : "—",
+      ]),
+      theme: "striped",
+      headStyles: { fillColor: serviceColor, textColor: C.white, fontStyle: "bold", fontSize: 7.5 },
+      bodyStyles: { fontSize: 7.5, textColor: C.grayD },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 },
+      tableWidth: 182,
+    });
+  }
+
+  pageFooter(doc, pageNum, pages);
+
+  doc.save(`reporte_${serviceType}_${new Date().toISOString().slice(0, 10)}.pdf`);
+}

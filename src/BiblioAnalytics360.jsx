@@ -4,7 +4,7 @@ import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbL
 import { serverNow } from "./serverTime";
 import { getOwnSubscription } from "./pushNotifications";
 import html2canvas from "html2canvas";
-import { generateExcel, generatePDF } from "./exportUtils";
+import { generateExcel, generatePDF, generateServiceExcel, generateServicePDF } from "./exportUtils";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart,
@@ -801,29 +801,55 @@ export default function BiblioAnalytics360() {
   const handleExport = useCallback(async () => {
     setExportLoading(true);
     try {
-      const exportData = { circulacion, svcMes, svcCarrera, svcTipoUsr, svcTurno, comments, impactoBase, retencionBase, radarBase, colAreas };
-      const exportFilters = { campus: exportCampus, periodos: exportPeriodos, servicios: exportServicios, secciones: exportSecciones };
-      if (exportFormat === "excel") {
-        generateExcel(exportData, exportFilters);
-        setShowExport(false);
-        setNotifications(prev => [{ id: Date.now(), text: "Excel exportado correctamente", type: "success", time: "Ahora" }, ...prev]);
-      } else {
-        setIsExportRendering(true);
-        await new Promise(r => setTimeout(r, 900));
-        const images = {};
-        for (const sec of exportSecciones) {
-          const ref = exportChartRefs[sec]?.current;
+      if (nav === "servicios") {
+        const svcRecs = historialReservas.filter(h => h.tipo === svcService);
+        const serviceName = svcService === "cubiculos" ? "Cubículos" : "Computadoras";
+        const pLabel = ({ dia: "Hoy", semana: "Esta semana", mes: "Este mes", anio: "Este año" })[svcPeriod] || "Todo el periodo";
+        if (exportFormat === "excel") {
+          generateServiceExcel(svcRecs, svcService, pLabel, { institution: "UACJ" });
+          setShowExport(false);
+          setNotifications(prev => [{ id: Date.now(), text: `Excel de ${serviceName} exportado`, type: "success", time: "Ahora" }, ...prev]);
+        } else {
+          setIsExportRendering(true);
+          await new Promise(r => setTimeout(r, 900));
+          let chartImage = null;
+          const ref = exportChartRefs.servicios?.current;
           if (ref) {
             try {
               const canvas = await html2canvas(ref, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
-              images[sec] = canvas.toDataURL("image/png");
+              chartImage = canvas.toDataURL("image/png");
             } catch (_) {}
           }
+          setIsExportRendering(false);
+          await generateServicePDF(chartImage, svcRecs, svcService, pLabel, { institution: "UACJ" });
+          setShowExport(false);
+          setNotifications(prev => [{ id: Date.now(), text: `PDF de ${serviceName} generado`, type: "success", time: "Ahora" }, ...prev]);
         }
-        setIsExportRendering(false);
-        await generatePDF(images, exportData, exportFilters, { institution: "UACJ", predModel, predHorizon });
-        setShowExport(false);
-        setNotifications(prev => [{ id: Date.now(), text: "PDF generado y descargado correctamente", type: "success", time: "Ahora" }, ...prev]);
+      } else {
+        const exportData = { circulacion, svcMes, svcCarrera, svcTipoUsr, svcTurno, comments, impactoBase, retencionBase, radarBase, colAreas };
+        const exportFilters = { campus: exportCampus, periodos: exportPeriodos, servicios: exportServicios, secciones: exportSecciones };
+        if (exportFormat === "excel") {
+          generateExcel(exportData, exportFilters);
+          setShowExport(false);
+          setNotifications(prev => [{ id: Date.now(), text: "Excel exportado correctamente", type: "success", time: "Ahora" }, ...prev]);
+        } else {
+          setIsExportRendering(true);
+          await new Promise(r => setTimeout(r, 900));
+          const images = {};
+          for (const sec of exportSecciones) {
+            const ref = exportChartRefs[sec]?.current;
+            if (ref) {
+              try {
+                const canvas = await html2canvas(ref, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
+                images[sec] = canvas.toDataURL("image/png");
+              } catch (_) {}
+            }
+          }
+          setIsExportRendering(false);
+          await generatePDF(images, exportData, exportFilters, { institution: "UACJ", predModel, predHorizon });
+          setShowExport(false);
+          setNotifications(prev => [{ id: Date.now(), text: "PDF generado y descargado correctamente", type: "success", time: "Ahora" }, ...prev]);
+        }
       }
     } catch (err) {
       console.error("Export error:", err);
@@ -832,7 +858,7 @@ export default function BiblioAnalytics360() {
       setExportLoading(false);
       setIsExportRendering(false);
     }
-  }, [exportFormat, exportCampus, exportPeriodos, exportServicios, exportSecciones, circulacion, svcMes, svcCarrera, svcTipoUsr, svcTurno, comments, predModel, predHorizon]);
+  }, [nav, svcService, svcPeriod, historialReservas, exportFormat, exportCampus, exportPeriodos, exportServicios, exportSecciones, circulacion, svcMes, svcCarrera, svcTipoUsr, svcTurno, comments, predModel, predHorizon]);
 
   const posCount = comments.filter(c => c.sentimiento === "positivo").length;
   const negCount = comments.filter(c => c.sentimiento === "negativo").length;
