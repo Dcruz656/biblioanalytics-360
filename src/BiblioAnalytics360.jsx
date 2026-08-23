@@ -391,6 +391,7 @@ export default function BiblioAnalytics360() {
   const [cubiConfig, setCubiConfig] = useState(() => loadCubiConfig());
   const [cubiConfigDraft, setCubiConfigDraft] = useState(null);
   useEffect(() => { saveCubiConfig(cubiConfig); }, [cubiConfig]);
+  const [cubiNuevoForm, setCubiNuevoForm] = useState({ nombre: "", capacidad: 4, piso: 1 });
 
   // Listen for kiosk reservations made in another tab
   useEffect(() => {
@@ -2072,6 +2073,100 @@ export default function BiblioAnalytics360() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Gestión de Espacios */}
+                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.teal}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Layers size={17} color={t.teal} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Gestión de Espacios</div>
+                      <div style={{ fontSize: 10, color: t.textDim }}>Agregar o quitar cubículos</div>
+                    </div>
+                  </div>
+
+                  {/* Agregar cubículo */}
+                  <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Nuevo cubículo</div>
+
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 10, color: t.textDim, marginBottom: 4 }}>Nombre / Código</div>
+                      <input
+                        value={cubiNuevoForm.nombre}
+                        onChange={e => setCubiNuevoForm(p => ({ ...p, nombre: e.target.value }))}
+                        placeholder={`C-${String(cubiculos.length + 1).padStart(2,"0")}`}
+                        style={{ width: "100%", background: t.card, border: `1px solid ${t.cardBorder}`, borderRadius: 8, padding: "8px 12px", color: t.text, fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "'Space Mono', monospace" }}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 10, color: t.textDim, marginBottom: 4 }}>Capacidad</div>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {[4, 6, 8].map(n => (
+                            <button key={n} onClick={() => setCubiNuevoForm(p => ({ ...p, capacidad: n }))}
+                              style={{ flex: 1, padding: "6px 0", borderRadius: 7, border: `1px solid ${cubiNuevoForm.capacidad === n ? t.teal : t.cardBorder}`, background: cubiNuevoForm.capacidad === n ? `${t.teal}20` : t.card, color: cubiNuevoForm.capacidad === n ? t.teal : t.textDim, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 10, color: t.textDim, marginBottom: 4 }}>Piso</div>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {[1, 2].map(n => (
+                            <button key={n} onClick={() => setCubiNuevoForm(p => ({ ...p, piso: n }))}
+                              style={{ flex: 1, padding: "6px 0", borderRadius: 7, border: `1px solid ${cubiNuevoForm.piso === n ? t.teal : t.cardBorder}`, background: cubiNuevoForm.piso === n ? `${t.teal}20` : t.card, color: cubiNuevoForm.piso === n ? t.teal : t.textDim, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                              Piso {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button onClick={() => {
+                      const nombre = cubiNuevoForm.nombre.trim() || `C-${String(cubiculos.length + 1).padStart(2,"0")}`;
+                      const newId  = Math.max(...cubiculos.map(c => c.id), 0) + 1;
+                      const nuevo  = { id: newId, nombre, capacidad: cubiNuevoForm.capacidad, piso: cubiNuevoForm.piso, estado: "libre", reserva: null };
+                      setCubiculos(prev => [...prev, nuevo]);
+                      setCubiNuevoForm({ nombre: "", capacidad: 4, piso: 1 });
+                      setNotifications(prev => [{ id: Date.now(), text: `Cubículo ${nombre} agregado (Piso ${cubiNuevoForm.piso}, cap. ${cubiNuevoForm.capacidad})`, type: "success", time: "Ahora" }, ...prev]);
+                    }}
+                      style={{ width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      + Agregar
+                    </button>
+                  </div>
+
+                  {/* Lista de cubículos con opción de quitar */}
+                  <div style={{ fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+                    Cubículos actuales ({cubiculos.length})
+                  </div>
+                  <div style={{ overflowY: "auto", maxHeight: 200 }}>
+                    {cubiculos.map(c => {
+                      const isLibre = c.estado === "libre";
+                      return (
+                        <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
+                          <div style={{ width: 8, height: 8, borderRadius: "50%", background: isLibre ? t.green : c.estado === "ocupado" ? t.rose : t.amber, flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 700, color: t.text, fontFamily: "'Space Mono', monospace", minWidth: 40 }}>{c.nombre}</span>
+                          <span style={{ fontSize: 10, color: t.textDim, flex: 1 }}>P{c.piso} · {c.capacidad} pers.</span>
+                          <button
+                            disabled={!isLibre}
+                            title={isLibre ? "Quitar cubículo" : "Solo se pueden quitar cubículos libres"}
+                            onClick={() => {
+                              if (!isLibre) return;
+                              setCubiculos(prev => prev.filter(x => x.id !== c.id));
+                              if (cubiSelectedId === c.id) setCubiSelectedId(null);
+                              setNotifications(prev => [{ id: Date.now(), text: `Cubículo ${c.nombre} eliminado`, type: "info", time: "Ahora" }, ...prev]);
+                            }}
+                            style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${isLibre ? t.rose : t.cardBorder}`, background: isLibre ? `${t.rose}12` : "transparent", color: isLibre ? t.rose : t.textDim, fontSize: 14, cursor: isLibre ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: isLibre ? 1 : 0.4 }}>
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Alumnos registrados */}
