@@ -52,3 +52,21 @@ export function loadCubiConfig() {
 export function saveCubiConfig(cfg) {
   try { localStorage.setItem(CUBI_CONFIG_KEY, JSON.stringify(cfg)); } catch {}
 }
+
+// ── Computadoras ──────────────────────────────────────────
+export const COMPU_STORAGE_KEY = "biblioanalytics_computadoras";
+
+export function loadComputadoras() {
+  try {
+    const s = localStorage.getItem(COMPU_STORAGE_KEY);
+    if (!s) return null;
+    return JSON.parse(s, (k, v) => (k === "inicio" && v ? new Date(v) : v));
+  } catch { return null; }
+}
+
+export function saveComputadoras(data) {
+  try { localStorage.setItem(COMPU_STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+export const compuZonas   = ["Sala General", "Sala Silencio", "Sala Investigación"];
+export const compuSistemas = ["Windows 11", "Ubuntu 22.04"];

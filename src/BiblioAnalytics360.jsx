@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { CUBI_STORAGE_KEY, loadCubiculos, saveCubiculos, loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, loadAccounts } from "./cubiData";
+import { CUBI_STORAGE_KEY, loadCubiculos, saveCubiculos, loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, loadAccounts, loadComputadoras, saveComputadoras, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
 import { serverNow } from "./serverTime";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
@@ -15,7 +15,7 @@ import {
   Download, Activity, AlertTriangle, CheckCircle, Clock, Heart, ThumbsUp,
   ThumbsDown, Minus, Home, FileText, Zap, Target, Award, Brain, BarChart3,
   Filter, Plus, X, Upload, Play, Pause, RefreshCw, Send, Eye, Layers,
-  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench
+  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor
 } from "lucide-react";
 
 // ===== THEME =====
@@ -361,6 +361,28 @@ function getCubiRemainingMs(cubi) {
   return Math.max(0, end - serverNow());
 }
 
+// ===== COMPUTADORAS INITIAL DATA =====
+function createInitComputadoras() {
+  const now = Date.now();
+  return [
+    { id:1,  nombre:"PC-01", zona:"Sala General",       sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Fernanda Rivas",  expediente:"A203111", carrera:"Ing. Software",   inicio:new Date(now-2400000), duracion:2 } },
+    { id:2,  nombre:"PC-02", zona:"Sala General",       sistema:"Windows 11",  estado:"libre",         reserva:null },
+    { id:3,  nombre:"PC-03", zona:"Sala General",       sistema:"Windows 11",  estado:"libre",         reserva:null },
+    { id:4,  nombre:"PC-04", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"mantenimiento", reserva:null },
+    { id:5,  nombre:"PC-05", zona:"Sala General",       sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Omar Castillo",   expediente:"B201555", carrera:"Derecho",          inicio:new Date(now-1800000), duracion:1 } },
+    { id:6,  nombre:"PC-06", zona:"Sala General",       sistema:"Windows 11",  estado:"libre",         reserva:null },
+    { id:7,  nombre:"PC-07", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre",         reserva:null },
+    { id:8,  nombre:"PC-08", zona:"Sala Silencio",      sistema:"Ubuntu 22.04",estado:"ocupado",       reserva:{ nombre:"Valeria Moreno",  expediente:"C202777", carrera:"Medicina",         inicio:new Date(now-900000),  duracion:2 } },
+    { id:9,  nombre:"PC-09", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre",         reserva:null },
+    { id:10, nombre:"PC-10", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre",         reserva:null },
+    { id:11, nombre:"PC-11", zona:"Sala Investigación", sistema:"Ubuntu 22.04",estado:"libre",         reserva:null },
+    { id:12, nombre:"PC-12", zona:"Sala Investigación", sistema:"Windows 11",  estado:"mantenimiento", reserva:null },
+    { id:13, nombre:"PC-13", zona:"Sala Investigación", sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Diego Mendoza",   expediente:"D200888", carrera:"Arquitectura",     inicio:new Date(now-600000),  duracion:1 } },
+    { id:14, nombre:"PC-14", zona:"Sala Investigación", sistema:"Windows 11",  estado:"libre",         reserva:null },
+    { id:15, nombre:"PC-15", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"libre",         reserva:null },
+  ];
+}
+
 // ===== CUBICULOS INITIAL DATA =====
 function createInitCubiculos() {
   const now = Date.now();
@@ -401,6 +423,24 @@ export default function BiblioAnalytics360() {
   const [cubiNuevoForm, setCubiNuevoForm] = useState({ nombre: "", capacidad: 4, piso: 1 });
   const [cubiClock, setCubiClock] = useState(new Date(serverNow()));
   useEffect(() => { const t = setInterval(() => setCubiClock(new Date(serverNow())), 1000); return () => clearInterval(t); }, []);
+
+  // Herramientas — sub-nav
+  const [herrTool, setHerrTool] = useState("cubiculos");
+
+  // Herramientas — Computadoras
+  const [computadoras, setComputadoras] = useState(() => { const s = loadComputadoras(); return (s && s.length > 0) ? s : createInitComputadoras(); });
+  const [compuSelectedId, setCompuSelectedId] = useState(null);
+  const [compuZonaFilter, setCompuZonaFilter] = useState("Todas");
+  const [compuAsignForm, setCompuAsignForm]   = useState({ nombre: "", expediente: "", carrera: cubiCarreras[0], duracion: 1 });
+  const [compuNuevoForm, setCompuNuevoForm]   = useState({ nombre: "", zona: "Sala General", sistema: "Windows 11" });
+  const [compuHistorial, setCompuHistorial]   = useState(() => {
+    const now = Date.now();
+    return [
+      { id:1, pc:"PC-02", nombre:"Laura Jiménez",  expediente:"A200111", carrera:"Psicología",   duracion:2, inicio:new Date(now-86400000*2), estado:"completado" },
+      { id:2, pc:"PC-07", nombre:"Marcos Peña",    expediente:"B199333", carrera:"Contaduría",   duracion:1, inicio:new Date(now-86400000),   estado:"completado" },
+    ];
+  });
+  useEffect(() => { saveComputadoras(computadoras); }, [computadoras]);
 
   // Listen for kiosk reservations made in another tab
   useEffect(() => {
@@ -1782,11 +1822,17 @@ export default function BiblioAnalytics360() {
           {nav === "herramientas" && (
             <div>
               {/* Tool sub-nav */}
-              <div style={{ display: "flex", gap: 8, marginBottom: 20, alignItems: "center" }}>
-                <button style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 10, border: `1px solid ${t.teal}`, background: `${t.teal}15`, color: t.teal, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                  <Layers size={14} /> Cubículos
-                </button>
-                <button style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.textDim, fontSize: 12, fontWeight: 400, cursor: "not-allowed", opacity: 0.5 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 20, alignItems: "center", flexWrap: "wrap" }}>
+                {[
+                  { id: "cubiculos",    icon: Layers,  label: "Cubículos" },
+                  { id: "computadoras", icon: Monitor, label: "Computadoras" },
+                ].map(tab => (
+                  <button key={tab.id} onClick={() => setHerrTool(tab.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 10, border: `1px solid ${herrTool === tab.id ? t.teal : t.cardBorder}`, background: herrTool === tab.id ? `${t.teal}15` : t.inputBg, color: herrTool === tab.id ? t.teal : t.textDim, fontSize: 12, fontWeight: herrTool === tab.id ? 700 : 400, cursor: "pointer" }}>
+                    <tab.icon size={14} /> {tab.label}
+                  </button>
+                ))}
+                <button style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.textDim, fontSize: 12, cursor: "not-allowed", opacity: 0.5 }}>
                   <MessageSquare size={14} /> Encuesta (próximo)
                 </button>
                 <div style={{ marginLeft: "auto" }}>
@@ -1796,6 +1842,8 @@ export default function BiblioAnalytics360() {
                   </button>
                 </div>
               </div>
+
+              {herrTool === "cubiculos" && (<>
 
               {/* KPI row */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 20 }}>
@@ -2265,6 +2313,383 @@ export default function BiblioAnalytics360() {
                   </div>
                 ))}
               </div>
+
+              </>)}
+
+              {/* ===== COMPUTADORAS ===== */}
+              {herrTool === "computadoras" && (<>
+
+                {/* KPI row */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 20 }}>
+                  <StatCard icon={Monitor}     label="Total Equipos"  value={String(computadoras.length)} color={t.teal} t={t} />
+                  <StatCard icon={CheckCircle} label="Disponibles"    value={String(computadoras.filter(c => c.estado === "libre").length)} color={t.green} t={t} />
+                  <StatCard icon={Activity}    label="En Uso"         value={String(computadoras.filter(c => c.estado === "ocupado").length)} color={t.rose} t={t} />
+                  <StatCard icon={Wrench}      label="Mantenimiento"  value={String(computadoras.filter(c => c.estado === "mantenimiento").length)} color={t.amber} t={t} />
+                  <StatCard icon={Target}      label="Tasa de Uso"    value={`${computadoras.length ? Math.round((computadoras.filter(c => c.estado === "ocupado").length / computadoras.length) * 100) : 0}%`} color={t.blue} t={t} />
+                </div>
+
+                {/* Grid + Action panel */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, marginBottom: 20 }}>
+
+                  {/* Computer grid */}
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Sala de Cómputo</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {["Todas", ...compuZonas].map(z => (
+                          <button key={z} onClick={() => setCompuZonaFilter(z)}
+                            style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${compuZonaFilter === z ? t.teal : t.cardBorder}`, background: compuZonaFilter === z ? `${t.teal}15` : t.inputBg, color: compuZonaFilter === z ? t.teal : t.textDim, fontSize: 10, fontWeight: compuZonaFilter === z ? 700 : 400, cursor: "pointer" }}>
+                            {z}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Legend */}
+                    <div style={{ display: "flex", gap: 18, marginBottom: 16 }}>
+                      {[["libre", t.green, "Libre"], ["ocupado", t.rose, "En uso"], ["mantenimiento", t.amber, "Mantenimiento"]].map(([k, c, l]) => (
+                        <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: t.textDim }}>
+                          <div style={{ width: 10, height: 10, borderRadius: 3, background: c }} />{l}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Grid cards */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                      {(compuZonaFilter === "Todas" ? computadoras : computadoras.filter(c => c.zona === compuZonaFilter)).map(pc => {
+                        const cfg = { libre: { color: t.green, bg: `${t.green}12` }, ocupado: { color: t.rose, bg: `${t.rose}12` }, mantenimiento: { color: t.amber, bg: `${t.amber}12` } }[pc.estado] || { color: t.textDim, bg: `${t.text}08` };
+                        const isSelected = compuSelectedId === pc.id;
+                        return (
+                          <button key={pc.id} onClick={() => setCompuSelectedId(isSelected ? null : pc.id)}
+                            style={{ padding: "10px 6px", borderRadius: 10, border: `2px solid ${isSelected ? cfg.color : t.cardBorder}`, background: isSelected ? cfg.bg : `${t.text}03`, cursor: "pointer", textAlign: "center", transition: "all 0.15s", outline: "none" }}>
+                            {pc.estado === "ocupado" && pc.reserva ? (() => {
+                              const total = pc.reserva.duracion * 3_600_000;
+                              const inicio = pc.reserva.inicio instanceof Date ? pc.reserva.inicio : new Date(pc.reserva.inicio);
+                              const rem = Math.max(0, inicio.getTime() + total - serverNow());
+                              const pct = total > 0 ? Math.max(0, rem / total) : 0;
+                              const S = 32, R = 11, CIRC = 2 * Math.PI * R;
+                              const mins = Math.floor(rem / 60000);
+                              const label = mins >= 60 ? `${Math.floor(mins / 60)}h` : `${mins}m`;
+                              return (
+                                <div style={{ position: "relative", width: S, height: S, margin: "0 auto 6px" }}>
+                                  <svg width={S} height={S} style={{ transform: "rotate(-90deg)" }}>
+                                    <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={`${cfg.color}20`} strokeWidth={3} />
+                                    <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={cfg.color} strokeWidth={3}
+                                      strokeDasharray={`${pct * CIRC} ${CIRC}`} strokeLinecap="round"
+                                      style={{ transition: "stroke-dasharray 1s linear" }} />
+                                  </svg>
+                                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 800, color: cfg.color, fontFamily: "'Space Mono', monospace" }}>
+                                    {label}
+                                  </div>
+                                </div>
+                              );
+                            })() : (
+                              <div style={{ width: 28, height: 28, borderRadius: 7, background: cfg.bg, border: `1.5px solid ${cfg.color}50`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px" }}>
+                                {pc.estado === "mantenimiento" ? <Wrench size={12} color={cfg.color} /> : <Monitor size={12} color={cfg.color} />}
+                              </div>
+                            )}
+                            <div style={{ fontSize: 10, fontWeight: 700, color: t.text, lineHeight: 1.2 }}>{pc.nombre}</div>
+                            <div style={{ fontSize: 8, color: cfg.color, fontWeight: 700, textTransform: "uppercase", marginTop: 2, letterSpacing: 0.3 }}>
+                              {pc.estado === "mantenimiento" ? "Mant." : pc.estado === "ocupado" ? "En uso" : "Libre"}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Action panel */}
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                    {!computadoras.find(c => c.id === compuSelectedId) && (
+                      <div style={{ height: "100%", minHeight: 320, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                        <div style={{ width: 52, height: 52, borderRadius: 14, background: `${t.teal}10`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Monitor size={24} color={t.textMuted} />
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: t.textDim }}>Selecciona un equipo</div>
+                        <div style={{ fontSize: 11, color: t.textMuted, textAlign: "center", lineHeight: 1.5 }}>Haz clic en cualquier computadora para ver detalles o asignar un usuario</div>
+                      </div>
+                    )}
+                    {computadoras.find(c => c.id === compuSelectedId) && (() => {
+                      const compuSel = computadoras.find(c => c.id === compuSelectedId);
+                      return (
+                        <div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+                            <div>
+                              <div style={{ fontSize: 22, fontWeight: 800, color: t.text }}>{compuSel.nombre}</div>
+                              <div style={{ fontSize: 11, color: t.textDim, marginTop: 2 }}>{compuSel.zona} · {compuSel.sistema}</div>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                              <span style={{ padding: "4px 12px", borderRadius: 20,
+                                background: compuSel.estado === "libre" ? `${t.green}15` : compuSel.estado === "ocupado" ? `${t.rose}15` : `${t.amber}15`,
+                                color: compuSel.estado === "libre" ? t.green : compuSel.estado === "ocupado" ? t.rose : t.amber,
+                                fontSize: 11, fontWeight: 700 }}>
+                                {compuSel.estado === "libre" ? "Libre" : compuSel.estado === "ocupado" ? "En uso" : "Mantenimiento"}
+                              </span>
+                              <button onClick={() => setCompuSelectedId(null)}
+                                style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${t.cardBorder}`, background: t.inputBg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <X size={12} color={t.textDim} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {compuSel.estado === "libre" && (
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: t.text, marginBottom: 12 }}>Asignar Usuario</div>
+                              {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "expediente", label: "No. Expediente", placeholder: "Ej. A201234" }].map(f => (
+                                <div key={f.key} style={{ marginBottom: 10 }}>
+                                  <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{f.label}</div>
+                                  <input value={compuAsignForm[f.key]} onChange={e => setCompuAsignForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                    placeholder={f.placeholder}
+                                    style={{ width: "100%", background: t.inputBg, border: `1px solid ${t.cardBorder}`, borderRadius: 8, padding: "8px 12px", color: t.text, fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                                </div>
+                              ))}
+                              <div style={{ marginBottom: 10 }}>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>Carrera</div>
+                                <select value={compuAsignForm.carrera} onChange={e => setCompuAsignForm(prev => ({ ...prev, carrera: e.target.value }))}
+                                  style={{ width: "100%", background: t.inputBg, border: `1px solid ${t.cardBorder}`, borderRadius: 8, padding: "8px 12px", color: t.text, fontSize: 12, outline: "none" }}>
+                                  {cubiCarreras.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                              </div>
+                              <div style={{ marginBottom: 14 }}>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 }}>Duración</div>
+                                <div style={{ display: "flex", gap: 6 }}>
+                                  {[1, 2].map(h => (
+                                    <button key={h} onClick={() => setCompuAsignForm(prev => ({ ...prev, duracion: h }))}
+                                      style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${compuAsignForm.duracion === h ? t.teal : t.cardBorder}`, background: compuAsignForm.duracion === h ? `${t.teal}15` : t.inputBg, color: compuAsignForm.duracion === h ? t.teal : t.textDim, fontSize: 13, fontWeight: compuAsignForm.duracion === h ? 700 : 400, cursor: "pointer" }}>
+                                      {h}h
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button onClick={() => {
+                                  if (!compuAsignForm.nombre.trim() || !compuAsignForm.expediente.trim()) return;
+                                  const nombre = compuSel.nombre;
+                                  setComputadoras(prev => prev.map(c => c.id === compuSelectedId
+                                    ? { ...c, estado: "ocupado", reserva: { ...compuAsignForm, inicio: new Date(serverNow()) } }
+                                    : c));
+                                  setCompuHistorial(prev => [{ id: Date.now(), pc: nombre, ...compuAsignForm, inicio: new Date(serverNow()), estado: "activo" }, ...prev]);
+                                  setCompuAsignForm({ nombre: "", expediente: "", carrera: cubiCarreras[0], duracion: 1 });
+                                  setCompuSelectedId(null);
+                                  setNotifications(prev => [{ id: Date.now(), text: `${nombre} asignada a ${compuAsignForm.nombre}`, type: "success", time: "Ahora" }, ...prev]);
+                                }}
+                                  style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                                  Asignar
+                                </button>
+                                <button onClick={() => {
+                                  const nombre = compuSel.nombre;
+                                  setComputadoras(prev => prev.map(c => c.id === compuSelectedId
+                                    ? { ...c, estado: "mantenimiento", reserva: null }
+                                    : c));
+                                  setCompuSelectedId(null);
+                                  setNotifications(prev => [{ id: Date.now(), text: `${nombre} puesta en mantenimiento`, type: "info", time: "Ahora" }, ...prev]);
+                                }}
+                                  style={{ padding: "11px 14px", borderRadius: 10, border: `1.5px solid ${t.amber}`, background: `${t.amber}10`, color: t.amber, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                                  Mant.
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {compuSel.estado === "ocupado" && compuSel.reserva && (
+                            <div>
+                              <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+                                {[
+                                  ["Usuario", compuSel.reserva.nombre],
+                                  ["Expediente", compuSel.reserva.expediente],
+                                  ["Carrera", compuSel.reserva.carrera],
+                                  ["Duración", `${compuSel.reserva.duracion}h`],
+                                  ["Sistema", compuSel.sistema],
+                                  ["Entrada", (() => {
+                                    const d = compuSel.reserva.inicio instanceof Date ? compuSel.reserva.inicio : new Date(compuSel.reserva.inicio);
+                                    return d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+                                  })()],
+                                ].map(([k, v]) => (
+                                  <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
+                                    <span style={{ fontSize: 11, color: t.textDim }}>{k}</span>
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{v}</span>
+                                  </div>
+                                ))}
+                                {(() => {
+                                  const inicio = compuSel.reserva.inicio instanceof Date ? compuSel.reserva.inicio : new Date(compuSel.reserva.inicio);
+                                  const elapsed = Math.floor((serverNow() - inicio.getTime()) / 60000);
+                                  const total = compuSel.reserva.duracion * 60;
+                                  const remaining = Math.max(0, total - elapsed);
+                                  const pct = Math.min(100, (elapsed / total) * 100);
+                                  return (
+                                    <div style={{ marginTop: 10 }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                                        <span style={{ fontSize: 10, color: t.textDim }}>Tiempo</span>
+                                        <span style={{ fontSize: 10, fontWeight: 700, color: remaining < 15 ? t.rose : t.green }}>
+                                          {remaining > 0 ? `${remaining} min restantes` : "Tiempo vencido"}
+                                        </span>
+                                      </div>
+                                      <div style={{ width: "100%", height: 6, borderRadius: 3, background: `${t.text}08` }}>
+                                        <div style={{ width: `${pct}%`, height: "100%", borderRadius: 3, background: remaining < 15 ? t.rose : t.teal, transition: "width 0.5s" }} />
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              <button onClick={() => {
+                                const nombre = compuSel.nombre;
+                                const completed = { id: Date.now(), pc: nombre, ...compuSel.reserva, estado: "completado" };
+                                setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? { ...c, estado: "libre", reserva: null } : c));
+                                setCompuHistorial(prev => [completed, ...prev]);
+                                setCompuSelectedId(null);
+                                setNotifications(prev => [{ id: Date.now(), text: `${nombre} liberada`, type: "info", time: "Ahora" }, ...prev]);
+                              }}
+                                style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: `1.5px solid ${t.rose}`, background: `${t.rose}10`, color: t.rose, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                                Liberar Equipo
+                              </button>
+                            </div>
+                          )}
+
+                          {compuSel.estado === "mantenimiento" && (
+                            <div>
+                              <div style={{ background: `${t.amber}10`, borderRadius: 12, padding: 16, marginBottom: 16, border: `1px solid ${t.amber}30` }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <Wrench size={18} color={t.amber} />
+                                  <div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: t.amber }}>En mantenimiento</div>
+                                    <div style={{ fontSize: 11, color: t.textDim, marginTop: 2 }}>{compuSel.nombre} no disponible para uso</div>
+                                  </div>
+                                </div>
+                              </div>
+                              <button onClick={() => {
+                                const nombre = compuSel.nombre;
+                                setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? { ...c, estado: "libre", reserva: null } : c));
+                                setCompuSelectedId(null);
+                                setNotifications(prev => [{ id: Date.now(), text: `${nombre} marcada como disponible`, type: "success", time: "Ahora" }, ...prev]);
+                              }}
+                                style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${t.green}, ${t.teal})`, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                                Marcar como Disponible
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Gestión de equipos + Historial */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+
+                  {/* Agregar/Quitar equipos */}
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.teal}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Monitor size={17} color={t.teal} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Gestión de Equipos</div>
+                        <div style={{ fontSize: 10, color: t.textDim }}>Agregar o quitar computadoras</div>
+                      </div>
+                    </div>
+
+                    <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Nueva computadora</div>
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, color: t.textDim, marginBottom: 4 }}>Nombre / Código</div>
+                        <input value={compuNuevoForm.nombre} onChange={e => setCompuNuevoForm(p => ({ ...p, nombre: e.target.value }))}
+                          placeholder={`PC-${String(computadoras.length + 1).padStart(2, "0")}`}
+                          style={{ width: "100%", background: t.card, border: `1px solid ${t.cardBorder}`, borderRadius: 8, padding: "8px 12px", color: t.text, fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "'Space Mono', monospace" }} />
+                      </div>
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, color: t.textDim, marginBottom: 4 }}>Zona</div>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          {compuZonas.map(z => (
+                            <button key={z} onClick={() => setCompuNuevoForm(p => ({ ...p, zona: z }))}
+                              style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${compuNuevoForm.zona === z ? t.teal : t.cardBorder}`, background: compuNuevoForm.zona === z ? `${t.teal}20` : t.card, color: compuNuevoForm.zona === z ? t.teal : t.textDim, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
+                              {z}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: 14 }}>
+                        <div style={{ fontSize: 10, color: t.textDim, marginBottom: 4 }}>Sistema Operativo</div>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {compuSistemas.map(s => (
+                            <button key={s} onClick={() => setCompuNuevoForm(p => ({ ...p, sistema: s }))}
+                              style={{ flex: 1, padding: "5px 0", borderRadius: 7, border: `1px solid ${compuNuevoForm.sistema === s ? t.purple : t.cardBorder}`, background: compuNuevoForm.sistema === s ? `${t.purple}20` : t.card, color: compuNuevoForm.sistema === s ? t.purple : t.textDim, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <button onClick={() => {
+                        const nombre = compuNuevoForm.nombre.trim() || `PC-${String(computadoras.length + 1).padStart(2, "0")}`;
+                        const newId = Math.max(...computadoras.map(c => c.id), 0) + 1;
+                        setComputadoras(prev => [...prev, { id: newId, nombre, zona: compuNuevoForm.zona, sistema: compuNuevoForm.sistema, estado: "libre", reserva: null }]);
+                        setCompuNuevoForm({ nombre: "", zona: "Sala General", sistema: "Windows 11" });
+                        setNotifications(prev => [{ id: Date.now(), text: `${nombre} agregada a ${compuNuevoForm.zona}`, type: "success", time: "Ahora" }, ...prev]);
+                      }}
+                        style={{ width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        + Agregar
+                      </button>
+                    </div>
+
+                    <div style={{ fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+                      Equipos actuales ({computadoras.length})
+                    </div>
+                    <div style={{ overflowY: "auto", maxHeight: 200 }}>
+                      {computadoras.map(pc => {
+                        const isLibre = pc.estado === "libre";
+                        const dotColor = { libre: t.green, ocupado: t.rose, mantenimiento: t.amber }[pc.estado] || t.textDim;
+                        return (
+                          <div key={pc.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: t.text, fontFamily: "'Space Mono', monospace", minWidth: 50 }}>{pc.nombre}</span>
+                            <span style={{ fontSize: 10, color: t.textDim, flex: 1 }}>{pc.zona}</span>
+                            <button disabled={!isLibre}
+                              title={isLibre ? "Quitar equipo" : "Solo se pueden quitar equipos libres"}
+                              onClick={() => {
+                                if (!isLibre) return;
+                                setComputadoras(prev => prev.filter(x => x.id !== pc.id));
+                                if (compuSelectedId === pc.id) setCompuSelectedId(null);
+                                setNotifications(prev => [{ id: Date.now(), text: `${pc.nombre} eliminada`, type: "info", time: "Ahora" }, ...prev]);
+                              }}
+                              style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${isLibre ? t.rose : t.cardBorder}`, background: isLibre ? `${t.rose}12` : "transparent", color: isLibre ? t.rose : t.textDim, fontSize: 14, cursor: isLibre ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: isLibre ? 1 : 0.4 }}>
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Historial computadoras */}
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Historial Reciente</div>
+                    {compuHistorial.length === 0 && (
+                      <div style={{ textAlign: "center", padding: "16px 0", color: t.textDim, fontSize: 12 }}>Sin historial aún</div>
+                    )}
+                    {compuHistorial.slice(0, 10).map(h => (
+                      <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.teal}12`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Monitor size={15} color={t.teal} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{h.pc} — {h.nombre}</div>
+                          <div style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>{h.expediente} · {h.carrera} · {h.duracion}h</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: h.estado === "completado" ? `${t.green}15` : `${t.teal}15`, color: h.estado === "completado" ? t.green : t.teal }}>
+                            {h.estado === "completado" ? "Completado" : "Activo"}
+                          </span>
+                          <div style={{ fontSize: 9, color: t.textMuted, marginTop: 3 }}>
+                            {timeAgo(h.inicio instanceof Date ? h.inicio : new Date(h.inicio))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                </div>
+
+              </>)}
+
             </div>
           )}
 
