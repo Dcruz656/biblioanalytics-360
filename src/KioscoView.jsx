@@ -3,6 +3,7 @@ import {
   loadCubiculos, saveCubiculos, CUBI_STORAGE_KEY,
   findAccount, loadCubiConfig, CUBI_CONFIG_KEY,
 } from "./cubiData";
+import { serverNow } from "./serverTime";
 
 const NAVY_DEEP = "#060d1b";
 const NAVY      = "#0e1629";
@@ -27,7 +28,7 @@ function initials(name) { return name.split(" ").map(w => w[0]).join("").slice(0
 function getRemainingMs(cubi) {
   if (!cubi?.reserva?.inicio) return 0;
   const end = new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000;
-  return Math.max(0, end - Date.now());
+  return Math.max(0, end - serverNow());
 }
 
 function fmtRemaining(ms) {
@@ -55,7 +56,7 @@ function applyAutoRelease(cubiList) {
     if (c.estado !== "ocupado" || !c.reserva) return c;
     if (getRemainingMs(c) > 0) return c;
     changed = true;
-    if (c.nextReserva) return { ...c, reserva: { ...c.nextReserva, inicio: new Date() }, nextReserva: null };
+    if (c.nextReserva) return { ...c, reserva: { ...c.nextReserva, inicio: new Date(serverNow()) }, nextReserva: null };
     return { ...c, estado: "libre", reserva: null };
   });
   return changed ? result : null;
@@ -93,7 +94,7 @@ function TopBar({ onBack, title, clock }) {
 export default function KioscoView() {
   // screens: idle | matricula | mi_reserva | proxima_reserva | bienvenido | browse | duration | success
   const [screen,          setScreen]          = useState("idle");
-  const [clock,           setClock]           = useState(new Date());
+  const [clock,           setClock]           = useState(new Date(serverNow()));
   const [cubiculos,       setCubiculos]       = useState([]);
   const [cubiConfig,      setCubiConfig]      = useState({ minPersonas: 3, maxPersonas: 5 });
   const [matriculaInput,  setMatriculaInput]  = useState("");
@@ -110,7 +111,7 @@ export default function KioscoView() {
   const [confirmTerminar, setConfirmTerminar] = useState(false);
 
   useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
+    const t = setInterval(() => setClock(new Date(serverNow())), 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -195,7 +196,7 @@ export default function KioscoView() {
   function terminarUso() {
     const updated = cubiculos.map(c => {
       if (c.id !== selectedId) return c;
-      if (c.nextReserva) return { ...c, reserva: { ...c.nextReserva, inicio: new Date() }, nextReserva: null };
+      if (c.nextReserva) return { ...c, reserva: { ...c.nextReserva, inicio: new Date(serverNow()) }, nextReserva: null };
       return { ...c, estado: "libre", reserva: null };
     });
     setCubiculos(updated);
@@ -226,7 +227,7 @@ export default function KioscoView() {
       // Reserva normal
       updated = cubiculos.map(c =>
         c.id === selectedId
-          ? { ...c, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas, inicio: new Date() } }
+          ? { ...c, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas, inicio: new Date(serverNow()) } }
           : c
       );
     }

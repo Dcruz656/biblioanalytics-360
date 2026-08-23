@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { CUBI_STORAGE_KEY, loadCubiculos, saveCubiculos, loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, loadAccounts } from "./cubiData";
+import { serverNow } from "./serverTime";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF } from "./exportUtils";
 import {
@@ -357,7 +358,7 @@ function buildTableRows(mesSvc, carreraSvc, tipoSvc, turnoSvc) {
 function getCubiRemainingMs(cubi) {
   if (!cubi?.reserva?.inicio) return 0;
   const end = new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000;
-  return Math.max(0, end - Date.now());
+  return Math.max(0, end - serverNow());
 }
 
 // ===== CUBICULOS INITIAL DATA =====
@@ -398,8 +399,8 @@ export default function BiblioAnalytics360() {
   const [cubiConfigDraft, setCubiConfigDraft] = useState(null);
   useEffect(() => { saveCubiConfig(cubiConfig); }, [cubiConfig]);
   const [cubiNuevoForm, setCubiNuevoForm] = useState({ nombre: "", capacidad: 4, piso: 1 });
-  const [cubiClock, setCubiClock] = useState(new Date());
-  useEffect(() => { const t = setInterval(() => setCubiClock(new Date()), 1000); return () => clearInterval(t); }, []);
+  const [cubiClock, setCubiClock] = useState(new Date(serverNow()));
+  useEffect(() => { const t = setInterval(() => setCubiClock(new Date(serverNow())), 1000); return () => clearInterval(t); }, []);
 
   // Listen for kiosk reservations made in another tab
   useEffect(() => {
@@ -1938,9 +1939,9 @@ export default function BiblioAnalytics360() {
                             if (!cubiReservaForm.nombre.trim() || !cubiReservaForm.expediente.trim()) return;
                             const nombre = cubiSelected.nombre;
                             setCubiculos(prev => prev.map(c => c.id === cubiSelectedId
-                              ? { ...c, estado: "ocupado", reserva: { ...cubiReservaForm, inicio: new Date() } }
+                              ? { ...c, estado: "ocupado", reserva: { ...cubiReservaForm, inicio: new Date(serverNow()) } }
                               : c));
-                            setCubiHistorial(prev => [{ id: Date.now(), cubicule: nombre, ...cubiReservaForm, inicio: new Date(), estado: "activo" }, ...prev]);
+                            setCubiHistorial(prev => [{ id: Date.now(), cubicule: nombre, ...cubiReservaForm, inicio: new Date(serverNow()), estado: "activo" }, ...prev]);
                             setCubiReservaForm({ nombre: "", expediente: "", carrera: "Ing. Software", duracion: 2 });
                             setCubiSelectedId(null);
                             setNotifications(prev => [{ id: Date.now(), text: `Cubículo ${nombre} asignado a ${cubiReservaForm.nombre}`, type: "success", time: "Ahora" }, ...prev]);
@@ -1970,7 +1971,7 @@ export default function BiblioAnalytics360() {
                               </div>
                             ))}
                             {cubiSelected.reserva.inicio instanceof Date && (() => {
-                              const elapsed  = Math.floor((Date.now() - cubiSelected.reserva.inicio.getTime()) / 60000);
+                              const elapsed  = Math.floor((serverNow() - cubiSelected.reserva.inicio.getTime()) / 60000);
                               const total    = cubiSelected.reserva.duracion * 60;
                               const remaining = Math.max(0, total - elapsed);
                               const pct      = Math.min(100, (elapsed / total) * 100);
