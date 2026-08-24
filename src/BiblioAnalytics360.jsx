@@ -1078,6 +1078,92 @@ export default function BiblioAnalytics360() {
               .sort((a,b) => new Date(b.fin||b.inicio) - new Date(a.fin||a.inicio))
               .slice(0, 8);
 
+            // ── Retención
+            const alumnoUsage    = Object.values(alumnoMap);
+            const nuevosUsers    = alumnoUsage.filter(u => u.count === 1).length;
+            const recurUsers     = alumnoUsage.filter(u => u.count >= 2 && u.count < 5).length;
+            const frecuUsers     = alumnoUsage.filter(u => u.count >= 5).length;
+            const totalUniqU     = nuevosUsers + recurUsers + frecuUsers;
+            const retData = [
+              { name:'Nuevos (1 reserva)',    value:nuevosUsers, color:t.blue   },
+              { name:'Recurrentes (2–4)',     value:recurUsers,  color:t.teal   },
+              { name:'Frecuentes (5+)',       value:frecuUsers,  color:t.purple },
+            ];
+
+            // ── Nuevos usuarios por semana (últimas 8 semanas)
+            const sortedH = [...historialReservas].sort((a,b) => new Date(a.inicio||a.fin) - new Date(b.inicio||b.fin));
+            const firstSeen = {};
+            sortedH.forEach(h => { if (h.expediente && !firstSeen[h.expediente]) firstSeen[h.expediente] = new Date(h.inicio||h.fin); });
+            const weeklyNew = Array.from({length:8}, (_, i) => {
+              const wEnd   = new Date(nowD.getTime() - (7-i-1)*7*86400000);
+              const wStart = new Date(wEnd.getTime() - 7*86400000);
+              return { semana:`S-${7-i}`, nuevos: Object.values(firstSeen).filter(d => d>=wStart && d<wEnd).length };
+            });
+
+            // ── Heatmap turno × día de semana
+            const TURNOS_F = ['Matutino','Vespertino','Nocturno'];
+            const heatData = DIAS.map((dia, di) => {
+              const row = { dia };
+              TURNOS_F.forEach(t2 => { row[t2] = historialReservas.filter(h => new Date(h.fin||h.inicio).getDay()===di && h.turno===t2).length; });
+              return row;
+            });
+            const heatMax = Math.max(...heatData.flatMap(r => TURNOS_F.map(t2 => r[t2])), 1);
+
+            // ── Carrera × Servicio
+            const crossData = topCarreras.slice(0,6).map(({carrera}) => ({
+              carrera: carrera.length > 14 ? carrera.slice(0,14)+'…' : carrera,
+              cubiculos:    cubiH.filter(h  => h.carrera === carrera).length,
+              computadoras: compuH.filter(h => h.carrera === carrera).length,
+            }));
+
+            // ── Rotación por espacio
+            const cubiRot  = cubiculos.map(c => ({
+              nombre:c.nombre, piso:c.piso,
+              total: cubiH.filter(h => h.cubicule===c.nombre || h.cubicule===c.id).length,
+            })).sort((a,b)=>b.total-a.total);
+            const compuRot = computadoras.map(c => ({
+              nombre:c.nombre, zona:c.zona,
+              total: compuH.filter(h => h.pc===c.nombre || h.pc===c.id).length,
+            })).sort((a,b)=>b.total-a.total);
+            const maxRotC  = Math.max(...cubiRot.map(c=>c.total),  1);
+            const maxRotP  = Math.max(...compuRot.map(c=>c.total), 1);
+
+            // ── RFM Segmentation
+            const rfmData = Object.entries(alumnoMap).map(([exp,{nombre,carrera,count}]) => {
+              const recs    = historialReservas.filter(h => h.expediente===exp);
+              const lastD   = new Date(Math.max(...recs.map(h=>new Date(h.fin||h.inicio))));
+              const days    = Math.floor((nowD-lastD)/86400000);
+              const segment = (days<=30&&count>=5)?'Frecuente': days<=30?'Activo': days<=60?'En riesgo':'Inactivo';
+              return { exp, nombre, carrera, count, days, segment };
+            });
+            const segColors = { Frecuente:t.teal, Activo:t.green, 'En riesgo':t.amber, Inactivo:t.rose };
+            const segCounts = ['Frecuente','Activo','En riesgo','Inactivo'].map(s=>({
+              s, count:rfmData.filter(u=>u.segment===s).length, color:segColors[s],
+            }));
+
+            // ── Score de salud (0–100)
+            const s1h = Math.min(35, tasaActual<=60 ? (tasaActual/60)*35 : Math.max(0,35-((tasaActual-60)/40)*35));
+            const s2h = ((Math.min(50,Math.max(-50,tend7Pct))+50)/100)*25;
+            const s3h = totalUniqU>0 ? (((recurUsers+frecuUsers)/totalUniqU)*25) : 12.5;
+            const tSum = turnoData.reduce((a,d)=>a+d.reservas,0);
+            const tBal = tSum>0 ? Math.max(0,1-(Math.max(...turnoData.map(d=>d.reservas))/tSum-1/3)*2) : 0.5;
+            const s4h = tBal*15;
+            const healthScore = Math.round(s1h+s2h+s3h+s4h);
+            const healthLabel = healthScore>=75?'Óptimo':healthScore>=50?'Normal':healthScore>=30?'Atención':'Crítico';
+            const healthColor = healthScore>=75?t.green:healthScore>=50?t.teal:healthScore>=30?t.amber:t.rose;
+
+            // ── Alertas automáticas
+            const alerts = [];
+            if (tasaActual>=80)       alerts.push({type:'warn', msg:`Alta demanda: ${tasaActual}% de capacidad ocupada`});
+            if (tend7Pct<=-20)        alerts.push({type:'warn', msg:`Caída de uso: ${tend7Pct}% vs semana anterior`});
+            if (last7.length===0&&historialReservas.length>0) alerts.push({type:'warn', msg:'Sin reservas en los últimos 7 días'});
+            const enRiesgo = rfmData.filter(u=>u.segment==='En riesgo').length;
+            if (enRiesgo>0)           alerts.push({type:'warn', msg:`${enRiesgo} alumno${enRiesgo>1?'s':''} en riesgo de abandono (+60d sin actividad)`});
+            if (tend7Pct>=20)         alerts.push({type:'ok',   msg:`Crecimiento saludable: +${tend7Pct}% esta semana`});
+            if (frecuUsers>0)         alerts.push({type:'ok',   msg:`${frecuUsers} alumno${frecuUsers>1?'s':''} frecuentes (5+ reservas)`});
+            if (tasaActual===0&&totalDisp>0) alerts.push({type:'info', msg:'Todos los espacios disponibles ahora'});
+            if (alerts.length===0)    alerts.push({type:'ok',   msg:'Todos los indicadores en rango normal'});
+
             const CH         = 180;
             const PC         = [t.teal, t.blue, t.purple, t.amber, t.rose, '#059669'];
             const stColor    = e => e==='libre'?t.green:e==='ocupado'?t.rose:t.amber;
@@ -1300,6 +1386,222 @@ export default function BiblioAnalytics360() {
                     </ResponsiveContainer>
                   )}
                 </div>
+
+                {/* Score de salud + Alertas */}
+                <div style={{display:'grid',gridTemplateColumns:'220px 1fr',gap:14,marginBottom:14}}>
+                  {/* Score */}
+                  <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8}}>
+                    <div style={{fontSize:10,color:t.textDim,fontWeight:700,textTransform:'uppercase',letterSpacing:.9}}>Score de Salud</div>
+                    <div style={{position:'relative',width:110,height:110}}>
+                      <svg viewBox="0 0 110 110" width="110" height="110">
+                        <circle cx="55" cy="55" r="46" fill="none" stroke={`${t.text}0c`} strokeWidth="10"/>
+                        <circle cx="55" cy="55" r="46" fill="none" stroke={healthColor} strokeWidth="10"
+                          strokeDasharray={`${2*Math.PI*46*healthScore/100} ${2*Math.PI*46}`}
+                          strokeLinecap="round" transform="rotate(-90 55 55)" style={{transition:'stroke-dasharray .6s ease'}}/>
+                      </svg>
+                      <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+                        <div style={{fontSize:26,fontWeight:800,color:healthColor,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{healthScore}</div>
+                        <div style={{fontSize:9,color:t.textDim}}>/ 100</div>
+                      </div>
+                    </div>
+                    <div style={{fontSize:13,fontWeight:700,color:healthColor}}>{healthLabel}</div>
+                    <div style={{fontSize:9,color:t.textDim,textAlign:'center',lineHeight:1.5}}>
+                      Basado en ocupación, tendencia,<br/>retención y equilibrio de turnos
+                    </div>
+                  </div>
+                  {/* Alertas */}
+                  <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
+                    <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Alertas inteligentes</div>
+                    <div style={{fontSize:10,color:t.textDim,marginBottom:14}}>Detección automática de condiciones relevantes</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                      {alerts.map((a,i)=>{
+                        const col = a.type==='warn'?t.amber:a.type==='ok'?t.green:t.blue;
+                        const bg  = a.type==='warn'?`${t.amber}12`:a.type==='ok'?`${t.green}12`:`${t.blue}12`;
+                        return (
+                          <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,background:bg,border:`1px solid ${col}30`}}>
+                            <div style={{width:7,height:7,borderRadius:'50%',background:col,flexShrink:0}}/>
+                            <span style={{fontSize:11,color:t.text}}>{a.msg}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Retención + Nuevos usuarios por semana */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+                  {cc('Retención de usuarios', '% de alumnos que regresaron más de una vez',
+                    <div>
+                      <div style={{display:'flex',gap:20,marginBottom:16,justifyContent:'center'}}>
+                        {retData.map(d=>(
+                          <div key={d.name} style={{textAlign:'center'}}>
+                            <div style={{fontSize:22,fontWeight:800,color:d.color,fontFamily:"'Space Mono',monospace"}}>{d.value}</div>
+                            <div style={{fontSize:9,color:t.textDim,marginTop:2}}>{d.name}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <ResponsiveContainer width="100%" height={CH-20}>
+                        <BarChart data={retData} layout="vertical" margin={{left:8,right:28}}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} horizontal={false}/>
+                          <XAxis type="number" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                          <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} width={90}/>
+                          <Tooltip content={<CTooltip t={t}/>}/>
+                          <Bar dataKey="value" name="Alumnos" radius={[0,5,5,0]}>
+                            {retData.map((d,i)=><Cell key={i} fill={d.color}/>)}
+                            <LabelList dataKey="value" position="right" style={{fontSize:10,fill:t.textDim,fontWeight:700}}/>
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {cc('Nuevos usuarios por semana', 'Alumnos que aparecen por primera vez en historial',
+                    <ResponsiveContainer width="100%" height={CH+20}>
+                      <AreaChart data={weeklyNew}>
+                        <defs>
+                          <linearGradient id="ovGN" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={t.purple} stopOpacity={.28}/><stop offset="100%" stopColor={t.purple} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                        <XAxis dataKey="semana" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                        <Tooltip content={<CTooltip t={t}/>}/>
+                        <Area type="monotone" dataKey="nuevos" name="Nuevos alumnos" stroke={t.purple} fill="url(#ovGN)" strokeWidth={2}
+                          activeDot={{r:4,fill:t.purple,stroke:'#fff',strokeWidth:2}}/>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+
+                {/* Heatmap turno × día + Carrera × Servicio */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+                  {cc('Heatmap turno × día de semana', 'Intensidad de uso por combinación turno–día',
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'separate',borderSpacing:4}}>
+                        <thead>
+                          <tr>
+                            <th style={{width:70,fontSize:9,color:t.textDim,fontWeight:600,textAlign:'left',paddingBottom:4}}/>
+                            {TURNOS_F.map(t2=>(
+                              <th key={t2} style={{fontSize:10,color:t.textDim,fontWeight:600,textAlign:'center',paddingBottom:6,whiteSpace:'nowrap'}}>{t2.slice(0,3)}.</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {heatData.map(row=>(
+                            <tr key={row.dia}>
+                              <td style={{fontSize:10,color:t.textDim,fontWeight:600,paddingRight:4,paddingTop:3}}>{row.dia}</td>
+                              {TURNOS_F.map(t2=>{
+                                const v   = row[t2];
+                                const pct = v/heatMax;
+                                const bg  = pct===0?`${t.text}08`:`${t.teal}`;
+                                return (
+                                  <td key={t2} style={{padding:0}}>
+                                    <div style={{
+                                      height:34,borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',
+                                      background:pct===0?`${t.text}08`:`${t.teal}`,
+                                      opacity:pct===0?1:Math.max(0.12,pct),
+                                      border:`1px solid ${t.cardBorder}`,
+                                    }}>
+                                      <span style={{fontSize:10,fontWeight:700,color:pct>0.5?'#fff':t.text,fontFamily:"'Space Mono',monospace"}}>{v||''}</span>
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {cc('Carrera × Servicio', 'Preferencia de uso por tipo de espacio (top 6 carreras)',
+                    crossData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={CH+60}>
+                        <BarChart data={crossData} layout="vertical" margin={{left:4,right:24}}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} horizontal={false}/>
+                          <XAxis type="number" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                          <YAxis type="category" dataKey="carrera" tick={{fontSize:8,fill:t.textDim}} axisLine={false} tickLine={false} width={76}/>
+                          <Tooltip content={<CTooltip t={t}/>}/>
+                          <Bar dataKey="cubiculos"    name="Cubículos"    radius={[0,3,3,0]} fill={t.teal}/>
+                          <Bar dataKey="computadoras" name="Computadoras" radius={[0,3,3,0]} fill={t.blue}/>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : <div style={{height:CH+60,display:'flex',alignItems:'center',justifyContent:'center',color:t.textMuted,fontSize:12}}>Sin datos</div>
+                  )}
+                </div>
+
+                {/* Rotación por espacio */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+                  {cc('Rotación — Cubículos', 'Número total de reservas por espacio (de mayor a menor)',
+                    <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                      {cubiRot.map((c,i)=>(
+                        <div key={c.nombre} style={{display:'flex',alignItems:'center',gap:8}}>
+                          <div style={{width:36,fontSize:9,color:t.textDim,fontWeight:600,flexShrink:0,fontFamily:"'Space Mono',monospace"}}>{c.nombre}</div>
+                          <div style={{flex:1,height:14,borderRadius:4,background:`${t.text}09`,overflow:'hidden'}}>
+                            <div style={{height:'100%',borderRadius:4,background:i===0?t.teal:i===1?t.blue:i===cubiRot.length-1?t.rose:`${t.teal}80`,width:`${(c.total/maxRotC)*100}%`,transition:'width .4s'}}/>
+                          </div>
+                          <div style={{width:20,fontSize:10,fontWeight:700,color:t.text,textAlign:'right',fontFamily:"'Space Mono',monospace",flexShrink:0}}>{c.total}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {cc('Rotación — Computadoras', 'Número total de reservas por equipo (de mayor a menor)',
+                    <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                      {compuRot.map((c,i)=>(
+                        <div key={c.nombre} style={{display:'flex',alignItems:'center',gap:8}}>
+                          <div style={{width:36,fontSize:9,color:t.textDim,fontWeight:600,flexShrink:0,fontFamily:"'Space Mono',monospace"}}>{c.nombre}</div>
+                          <div style={{flex:1,height:14,borderRadius:4,background:`${t.text}09`,overflow:'hidden'}}>
+                            <div style={{height:'100%',borderRadius:4,background:i===0?t.blue:i===1?t.teal:i===compuRot.length-1?t.rose:`${t.blue}80`,width:`${(c.total/maxRotP)*100}%`,transition:'width .4s'}}/>
+                          </div>
+                          <div style={{width:20,fontSize:10,fontWeight:700,color:t.text,textAlign:'right',fontFamily:"'Space Mono',monospace",flexShrink:0}}>{c.total}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* RFM Segmentación de usuarios */}
+                {cc('Segmentación de usuarios (RFM)', 'Clasificación por recencia, frecuencia y actividad — base para acciones de retención',
+                  <div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+                      {segCounts.map(({s,count,color})=>(
+                        <div key={s} style={{borderRadius:12,padding:'14px 12px',background:`${color}10`,border:`1px solid ${color}30`,textAlign:'center'}}>
+                          <div style={{fontSize:22,fontWeight:800,color,fontFamily:"'Space Mono',monospace"}}>{count}</div>
+                          <div style={{fontSize:10,fontWeight:700,color,marginTop:4}}>{s}</div>
+                          <div style={{fontSize:9,color:t.textDim,marginTop:3,lineHeight:1.4}}>
+                            {s==='Frecuente'?'5+ reservas, activos<30d':s==='Activo'?'activos últimos 30d':s==='En riesgo'?'31–60d sin actividad':'+60d sin actividad'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {rfmData.filter(u=>u.segment!=='Inactivo').length>0 && (
+                      <div style={{overflowX:'auto'}}>
+                        <table style={{width:'100%',borderCollapse:'collapse',fontSize:10}}>
+                          <thead>
+                            <tr>{['Alumno','Carrera','Reservas','Último uso','Segmento'].map(h=>(
+                              <th key={h} style={{textAlign:'left',color:t.textDim,fontWeight:600,paddingBottom:6,borderBottom:`1px solid ${t.cardBorder}`,paddingRight:10}}>{h}</th>
+                            ))}</tr>
+                          </thead>
+                          <tbody>
+                            {rfmData.filter(u=>u.segment!=='Inactivo').sort((a,b)=>b.count-a.count).slice(0,8).map((u,i)=>(
+                              <tr key={i} style={{borderBottom:`1px solid ${t.cardBorder}40`}}>
+                                <td style={{padding:'5px 10px 5px 0',color:t.text,maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.nombre}</td>
+                                <td style={{color:t.textDim,paddingRight:10,maxWidth:100,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.carrera}</td>
+                                <td style={{color:t.text,fontFamily:"'Space Mono',monospace",paddingRight:10,fontWeight:700}}>{u.count}</td>
+                                <td style={{color:t.textDim,paddingRight:10,whiteSpace:'nowrap'}}>{u.days===0?'hoy':u.days===1?'ayer':`hace ${u.days}d`}</td>
+                                <td>
+                                  <span style={{fontSize:9,padding:'2px 8px',borderRadius:10,fontWeight:700,background:`${segColors[u.segment]}18`,color:segColors[u.segment]}}>
+                                    {u.segment}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>,
+                  {marginBottom:14}
+                )}
 
                 {/* Bottom: top alumnos + últimas reservas */}
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
