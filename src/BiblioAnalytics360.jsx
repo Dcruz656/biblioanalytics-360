@@ -999,81 +999,363 @@ export default function BiblioAnalytics360() {
         <div style={{ padding: "0 28px 28px" }}>
 
           {/* ===== OVERVIEW ===== */}
-          {nav === "overview" && (
-            <div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
-                <StatCard icon={BookOpen} label="Préstamos (último mes)" value={lastPrestamos.toLocaleString()} change="+25.5%" changeType="up" color={t.teal} t={t} />
-                <StatCard icon={Users} label="Visitas este periodo" value="3,942" change="+21.8%" changeType="up" color={t.blue} t={t} />
-                <StatCard icon={Heart} label="Satisfacción NLP" value={`${satPct}%`} change="+3.8pp" changeType="up" color={t.purple} t={t} onClick={() => setNav("sentimiento")} />
-                <StatCard icon={GraduationCap} label="Correlación r=" value="0.73" color={t.amber} t={t} onClick={() => setNav("impacto")} />
-              </div>
+          {nav === "overview" && (() => {
+            const nowD  = new Date();
+            const d7ago  = new Date(nowD.getTime() -  7 * 86400000);
+            const d14ago = new Date(nowD.getTime() - 14 * 86400000);
+            const d30ago = new Date(nowD.getTime() - 30 * 86400000);
+            const MESES  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const DIAS   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 20 }}>
-                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+            const cubiH  = historialReservas.filter(h => h.tipo === 'cubiculos');
+            const compuH = historialReservas.filter(h => h.tipo === 'computadoras');
+            const last7  = historialReservas.filter(h => new Date(h.fin||h.inicio) >= d7ago);
+            const prev7  = historialReservas.filter(h => { const d = new Date(h.fin||h.inicio); return d >= d14ago && d < d7ago; });
+
+            const cubiLibresN  = cubiculos.filter(c => c.estado === 'libre').length;
+            const cubiOcupN    = cubiculos.filter(c => c.estado === 'ocupado').length;
+            const cubiResvN    = cubiculos.filter(c => c.estado === 'reservado').length;
+            const compuLibresN = computadoras.filter(c => c.estado === 'libre').length;
+            const compuOcupN   = computadoras.filter(c => c.estado === 'ocupado').length;
+            const totalDisp    = cubiculos.length + computadoras.length;
+            const totalOcup    = cubiOcupN + compuOcupN;
+            const tasaActual   = totalDisp > 0 ? Math.round((totalOcup / totalDisp) * 100) : 0;
+
+            const totalReservas = historialReservas.length;
+            const uniqueAlmn    = new Set(historialReservas.map(h => h.expediente).filter(Boolean)).size;
+            const tend7Pct      = prev7.length > 0 ? Math.round(((last7.length - prev7.length) / prev7.length) * 100) : (last7.length > 0 ? 100 : 0);
+            const tend7Color    = tend7Pct >= 0 ? t.green : t.rose;
+            const avgDur        = historialReservas.length > 0
+              ? (historialReservas.reduce((a, h) => a + (h.duracion || 0), 0) / historialReservas.length).toFixed(1)
+              : '0';
+
+            const hourCounts = Array.from({length:24}, (_, h) =>
+              historialReservas.filter(r => new Date(r.inicio||r.fin).getHours() === h).length);
+            const maxH      = Math.max(...hourCounts, 0);
+            const peakHour  = historialReservas.length > 0 ? `${String(hourCounts.indexOf(maxH)).padStart(2,'0')}:00` : '—';
+
+            const carreraMap  = {};
+            historialReservas.forEach(h => { const c = h.carrera||'Otra'; carreraMap[c] = (carreraMap[c]||0)+1; });
+            const topCarreras = Object.entries(carreraMap).sort((a,b)=>b[1]-a[1]).slice(0,8)
+              .map(([carrera, total]) => ({ carrera: carrera.replace('Ing. ','Ing.'), total }));
+            const topCarreraName = topCarreras[0]?.carrera || '—';
+
+            const trend30 = Array.from({length:30}, (_, i) => {
+              const d  = new Date(d30ago.getTime() + i * 86400000);
+              const ds = d.toDateString();
+              return {
+                label:       i % 5 === 0 ? `${d.getDate()}/${d.getMonth()+1}` : '',
+                cubiculos:   cubiH.filter(h  => new Date(h.fin||h.inicio).toDateString() === ds).length,
+                computadoras: compuH.filter(h => new Date(h.fin||h.inicio).toDateString() === ds).length,
+              };
+            });
+
+            const turnoData = ['Matutino','Vespertino','Nocturno'].map(turno => ({
+              turno: turno.slice(0,3), reservas: historialReservas.filter(h => h.turno === turno).length,
+            }));
+            const horaData  = Array.from({length:24}, (_, h) => ({
+              hora: h % 4 === 0 ? `${String(h).padStart(2,'0')}h` : '', reservas: hourCounts[h],
+            }));
+            const diasData  = DIAS.map((d, i) => ({
+              dia: d, reservas: historialReservas.filter(h => new Date(h.fin||h.inicio).getDay() === i).length,
+            }));
+            const durData   = [1,2,3].map(d => ({
+              dur: `${d}h`, reservas: historialReservas.filter(h => h.duracion === d).length,
+            }));
+            const splitData = [
+              { name: 'Cubículos',    value: cubiH.length  },
+              { name: 'Computadoras', value: compuH.length },
+            ];
+
+            const alumnoMap  = {};
+            historialReservas.forEach(h => {
+              if (!h.expediente) return;
+              if (!alumnoMap[h.expediente]) alumnoMap[h.expediente] = { nombre: h.nombre||h.expediente, carrera: h.carrera||'—', count: 0 };
+              alumnoMap[h.expediente].count++;
+            });
+            const topAlumnos = Object.values(alumnoMap).sort((a,b) => b.count - a.count).slice(0,5);
+            const recentRecs = [...historialReservas]
+              .sort((a,b) => new Date(b.fin||b.inicio) - new Date(a.fin||a.inicio))
+              .slice(0, 8);
+
+            const CH         = 180;
+            const PC         = [t.teal, t.blue, t.purple, t.amber, t.rose, '#059669'];
+            const stColor    = e => e==='libre'?t.green:e==='ocupado'?t.rose:t.amber;
+            const cc         = (title, sub, children, sx={}) => (
+              <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,...sx}}>
+                <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>{title}</div>
+                <div style={{fontSize:10,color:t.textDim,marginBottom:14}}>{sub}</div>
+                {children}
+              </div>
+            );
+
+            return (
+              <div>
+                {/* Hero KPIs */}
+                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:14}}>
+                  {[
+                    {label:'Total reservas',   value:totalReservas.toLocaleString(),           sub:'historial completo',                 color:t.teal,   Ic:Activity},
+                    {label:'Alumnos únicos',   value:uniqueAlmn.toLocaleString(),               sub:`de ${alumnos.length} registrados`,    color:t.blue,   Ic:Users},
+                    {label:'Ocupación actual', value:`${tasaActual}%`,                          sub:`${totalOcup} / ${totalDisp} espacios`, color:t.purple, Ic:Target},
+                    {label:'Duración prom.',   value:`${avgDur}h`,                              sub:'por sesión · todos los servicios',   color:t.amber,  Ic:Clock},
+                  ].map(({label,value,sub,color,Ic})=>(
+                    <div key={label} style={{background:t.card,borderRadius:14,padding:'18px 20px',border:`1px solid ${t.cardBorder}`}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                        <div style={{width:32,height:32,borderRadius:10,background:`${color}18`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                          <Ic size={14} color={color}/>
+                        </div>
+                        <span style={{fontSize:9,color:t.textDim,fontWeight:700,textTransform:'uppercase',letterSpacing:.9}}>{label}</span>
+                      </div>
+                      <div style={{fontSize:26,fontWeight:800,color:t.text,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{value}</div>
+                      <div style={{fontSize:9,color:t.textDim,marginTop:5}}>{sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Mini KPIs */}
+                <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:16}}>
+                  {[
+                    {label:'Cubículos libres',     value:`${cubiLibresN} / ${cubiculos.length}`,     sub:'disponibles ahora',         color:t.green,  Ic:Layers},
+                    {label:'Computadoras libres',  value:`${compuLibresN} / ${computadoras.length}`, sub:'disponibles ahora',         color:t.teal,   Ic:Monitor},
+                    {label:'Hora pico',            value:peakHour,                                   sub:'mayor demanda histórica',   color:t.purple, Ic:Zap},
+                    {label:'Tendencia 7 días',     value:last7.length===0&&prev7.length===0?'—':`${tend7Pct>0?'+':''}${tend7Pct}%`, sub:'vs semana anterior', color:tend7Color, Ic:TrendingUp},
+                    {label:'Carrera top',          value:topCarreraName.length>13?topCarreraName.slice(0,13)+'…':topCarreraName, sub:'más reservas históricas', color:t.amber, Ic:Award},
+                  ].map(({label,value,sub,color,Ic})=>(
+                    <div key={label} style={{background:t.card,borderRadius:12,padding:'12px 16px',border:`1px solid ${t.cardBorder}`,display:'flex',alignItems:'center',gap:12}}>
+                      <div style={{width:34,height:34,borderRadius:10,background:`${color}18`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                        <Ic size={15} color={color}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:9,color:t.textDim,textTransform:'uppercase',letterSpacing:.8,fontWeight:600}}>{label}</div>
+                        <div style={{fontSize:15,fontWeight:800,fontFamily:"'Space Mono',monospace",color:t.text,lineHeight:1.2,marginTop:2}}>{value}</div>
+                        <div style={{fontSize:9,color:t.textDim,marginTop:2}}>{sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Estado en tiempo real */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+                  {cc('Estado actual — Cubículos', `${cubiOcupN} ocupados · ${cubiLibresN} libres · ${cubiResvN} reservados`,
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Circulación de Colecciones</div>
-                      <div style={{ fontSize: 10, color: t.textDim }}>Datos filtrados por: {campus === "todos" ? "Todos" : campus.charAt(0).toUpperCase() + campus.slice(1)} · {periodo}</div>
+                      <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6}}>
+                        {cubiculos.map(c=>{
+                          const col = stColor(c.estado);
+                          return (
+                            <div key={c.id} style={{borderRadius:8,padding:'7px 4px',textAlign:'center',background:`${col}14`,border:`1.5px solid ${col}45`}}>
+                              <div style={{fontSize:8,fontWeight:700,color:col,fontFamily:"'Space Mono',monospace"}}>{c.nombre}</div>
+                              <div style={{width:8,height:8,borderRadius:'50%',background:col,margin:'4px auto 0'}}/>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{display:'flex',gap:16,marginTop:10,justifyContent:'center'}}>
+                        {[{l:'Libre',c:t.green},{l:'Ocupado',c:t.rose},{l:'Reservado',c:t.amber}].map(({l,c})=>(
+                          <div key={l} style={{display:'flex',alignItems:'center',gap:5,fontSize:9,color:t.textDim}}>
+                            <div style={{width:8,height:8,borderRadius:'50%',background:c}}/>{l}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div style={{ display: "flex", gap: 14, fontSize: 10, alignItems: "center" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 4, borderRadius: 2, background: t.teal, display: "inline-block" }} /> Préstamos</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 4, borderRadius: 2, background: t.blue, display: "inline-block" }} /> Devoluciones</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 4, borderRadius: 2, background: t.amber, display: "inline-block", borderStyle: "dashed", borderWidth: 1 }} /> Predicción</span>
+                  )}
+                  {cc('Estado actual — Computadoras', `${compuOcupN} ocupadas · ${compuLibresN} libres de ${computadoras.length} totales`,
+                    <div>
+                      {compuZonas.map(zona=>{
+                        const zc  = computadoras.filter(c => c.zona === zona);
+                        const occ = zc.filter(c => c.estado === 'ocupado').length;
+                        const pct = zc.length > 0 ? Math.round((occ / zc.length) * 100) : 0;
+                        return (
+                          <div key={zona} style={{marginBottom:12}}>
+                            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                              <span style={{fontSize:11,fontWeight:600,color:t.text}}>{zona}</span>
+                              <span style={{fontSize:10,color:t.textDim,fontFamily:"'Space Mono',monospace"}}>{occ}/{zc.length} · {pct}%</span>
+                            </div>
+                            <div style={{height:7,borderRadius:4,background:`${t.text}10`,overflow:'hidden'}}>
+                              <div style={{height:'100%',borderRadius:4,background:pct>75?t.rose:pct>40?t.amber:t.green,width:`${pct}%`,transition:'width .4s'}}/>
+                            </div>
+                            <div style={{display:'flex',gap:3,marginTop:5,flexWrap:'wrap'}}>
+                              {zc.map(c=><div key={c.id} title={c.nombre} style={{width:10,height:10,borderRadius:2,background:stColor(c.estado)}}/>)}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <AreaChart data={circulacion} animationDuration={900}>
+                  )}
+                </div>
+
+                {/* Tendencia 30 días */}
+                {cc('Tendencia de reservas — últimos 30 días', 'Actividad diaria por servicio',
+                  <ResponsiveContainer width="100%" height={CH+20}>
+                    <AreaChart data={trend30}>
                       <defs>
-                        <linearGradient id="gT" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={t.teal} stopOpacity={0.3} />
-                          <stop offset="40%" stopColor={t.teal} stopOpacity={0.12} />
-                          <stop offset="100%" stopColor={t.teal} stopOpacity={0} />
+                        <linearGradient id="ovGT" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={t.teal} stopOpacity={.28}/><stop offset="100%" stopColor={t.teal} stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="ovGB" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={t.blue} stopOpacity={.22}/><stop offset="100%" stopColor={t.blue} stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                      <XAxis dataKey="mes" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-                      <Tooltip content={<CTooltip />} />
-                      <ReferenceLine y={circAvg} stroke={t.textDim} strokeDasharray="5 4" strokeWidth={1.5} label={{ value: `Prom. ${fmtK(circAvg)}`, position: "insideTopRight", fontSize: 9, fill: t.textDim, dy: -6 }} />
-                      <Area type="monotone" dataKey="prestamos" name="Préstamos" stroke={t.teal} fill="url(#gT)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={900} animationEasing="ease-out" />
-                      <Area type="monotone" dataKey="devoluciones" name="Devoluciones" stroke={t.blue} fill="none" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 6, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={1000} animationEasing="ease-out" />
-                      <Area type="monotone" dataKey="prediccion" name="Predicción ML" stroke={t.amber} fill="none" strokeWidth={2.5} strokeDasharray="8 4" dot={{ r: 4, fill: t.amber, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 7, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={1100} animationEasing="ease-out" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                      <XAxis dataKey="label" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                      <Tooltip content={<CTooltip t={t}/>}/>
+                      <Area type="monotone" dataKey="cubiculos"    name="Cubículos"    stroke={t.teal} fill="url(#ovGT)" strokeWidth={2} stackId="a" activeDot={{r:4,fill:t.teal,stroke:'#fff',strokeWidth:2}}/>
+                      <Area type="monotone" dataKey="computadoras" name="Computadoras" stroke={t.blue} fill="url(#ovGB)" strokeWidth={2} stackId="a" activeDot={{r:4,fill:t.blue,stroke:'#fff',strokeWidth:2}}/>
                     </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Distribución por Área</div>
-                  <div style={{ fontSize: 10, color: t.textDim, marginBottom: 12 }}>Préstamos por campo</div>
-                  <ResponsiveContainer width="100%" height={170}>
-                    <PieChart>
-                      <Pie data={colAreas} dataKey="v" nameKey="area" cx="50%" cy="50%" innerRadius={42} outerRadius={66} paddingAngle={3} cornerRadius={3}
-                        activeIndex={pieActiveIdx} activeShape={PieActiveShape}
-                        onMouseEnter={(_, idx) => setPieActiveIdx(idx)} onMouseLeave={() => setPieActiveIdx(null)}
-                        animationDuration={800} animationEasing="ease-out">
-                        {colAreas.map((_, i) => <Cell key={i} fill={pieColors[i]} />)}
-                      </Pie>
-                      <Tooltip content={<CTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 10px", marginTop: 8 }}>
-                    {colAreas.map((c, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10 }}>
-                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: pieColors[i], flexShrink: 0 }} />
-                        <span style={{ color: t.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.area}</span>
-                        <span style={{ fontWeight: 700, marginLeft: "auto", color: t.text }}>{c.pct}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                  </ResponsiveContainer>,
+                  {marginBottom:14}
+                )}
 
-              <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Monitoreo de Iniciativas</div>
-                <div style={{ fontSize: 10, color: t.textDim, marginBottom: 12 }}>Seguimiento de proyectos estratégicos activos</div>
-                {iniciativasBase.map((item, i) => <ProgressRow key={i} item={item} t={t} />)}
+                {/* Fila charts: carrera + turno + split */}
+                <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:14,marginBottom:14}}>
+                  {cc('Reservas por carrera', 'Top 8 programas académicos (histórico)',
+                    topCarreras.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={CH+60}>
+                        <BarChart data={topCarreras} layout="vertical" margin={{left:4,right:24}}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} horizontal={false}/>
+                          <XAxis type="number" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                          <YAxis type="category" dataKey="carrera" tick={{fontSize:8,fill:t.textDim}} axisLine={false} tickLine={false} width={68}/>
+                          <Tooltip content={<CTooltip t={t}/>}/>
+                          <Bar dataKey="total" name="Reservas" radius={[0,5,5,0]}>
+                            {topCarreras.map((_,i)=><Cell key={i} fill={PC[i%PC.length]}/>)}
+                            <LabelList dataKey="total" position="right" style={{fontSize:9,fill:t.textDim}}/>
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : <div style={{height:CH+60,display:'flex',alignItems:'center',justifyContent:'center',color:t.textMuted,fontSize:12}}>Sin datos</div>
+                  )}
+                  {cc('Por turno', 'Distribución histórica',
+                    <ResponsiveContainer width="100%" height={CH+60}>
+                      <BarChart data={turnoData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                        <XAxis dataKey="turno" tick={{fontSize:10,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                        <Tooltip content={<CTooltip t={t}/>}/>
+                        <Bar dataKey="reservas" name="Reservas" radius={[6,6,0,0]}>
+                          {turnoData.map((_,i)=><Cell key={i} fill={[t.amber,t.teal,t.purple][i]}/>)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                  {cc('Cubi vs Computadoras', 'Split de uso por servicio',
+                    <div>
+                      <ResponsiveContainer width="100%" height={140}>
+                        <PieChart>
+                          <Pie data={splitData} dataKey="value" cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={3} cornerRadius={4} animationDuration={800}>
+                            {splitData.map((_,i)=><Cell key={i} fill={[t.teal,t.blue][i]}/>)}
+                          </Pie>
+                          <Tooltip content={<CTooltip t={t}/>}/>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div style={{display:'flex',flexDirection:'column',gap:7,marginTop:6}}>
+                        {splitData.map((d,i)=>(
+                          <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:10}}>
+                            <div style={{display:'flex',alignItems:'center',gap:6}}>
+                              <div style={{width:8,height:8,borderRadius:'50%',background:[t.teal,t.blue][i]}}/>
+                              <span style={{color:t.textDim}}>{d.name}</span>
+                            </div>
+                            <span style={{fontWeight:700,color:t.text,fontFamily:"'Space Mono',monospace"}}>{d.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Fila charts: hora + día semana + duración */}
+                <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:14,marginBottom:14}}>
+                  {cc('Actividad por hora del día', 'Reservas totales por franja horaria (0–23h)',
+                    <ResponsiveContainer width="100%" height={CH}>
+                      <BarChart data={horaData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                        <XAxis dataKey="hora" tick={{fontSize:8,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                        <Tooltip content={<CTooltip t={t}/>}/>
+                        <Bar dataKey="reservas" name="Reservas" radius={[3,3,0,0]} fill={t.purple}/>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                  {cc('Por día de semana', 'Patrón semanal histórico',
+                    <ResponsiveContainer width="100%" height={CH}>
+                      <BarChart data={diasData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                        <XAxis dataKey="dia" tick={{fontSize:10,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                        <Tooltip content={<CTooltip t={t}/>}/>
+                        <Bar dataKey="reservas" name="Reservas" radius={[5,5,0,0]} fill={t.green}/>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                  {cc('Por duración de sesión', 'Sesiones de 1h, 2h y 3h',
+                    <ResponsiveContainer width="100%" height={CH}>
+                      <BarChart data={durData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`}/>
+                        <XAxis dataKey="dur" tick={{fontSize:12,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                        <Tooltip content={<CTooltip t={t}/>}/>
+                        <Bar dataKey="reservas" name="Reservas" radius={[6,6,0,0]}>
+                          {durData.map((_,i)=><Cell key={i} fill={[t.teal,t.blue,t.purple][i]}/>)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+
+                {/* Bottom: top alumnos + últimas reservas */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+                  {cc('Top 5 alumnos más activos', 'Por número de reservas históricas totales',
+                    topAlumnos.length > 0 ? (
+                      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                        {topAlumnos.map((a,i)=>(
+                          <div key={a.exp||i} style={{display:'flex',alignItems:'center',gap:12,padding:'8px 12px',borderRadius:10,background:`${t.text}04`}}>
+                            <div style={{width:26,height:26,borderRadius:'50%',background:`${PC[i%PC.length]}1a`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:PC[i%PC.length],flexShrink:0}}>{i+1}</div>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:11,fontWeight:600,color:t.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.nombre}</div>
+                              <div style={{fontSize:9,color:t.textDim}}>{a.carrera}</div>
+                            </div>
+                            <div style={{fontSize:14,fontWeight:800,color:t.teal,fontFamily:"'Space Mono',monospace",flexShrink:0}}>{a.count}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <div style={{color:t.textMuted,fontSize:12,textAlign:'center',padding:'24px 0'}}>Sin datos registrados aún</div>
+                  )}
+                  {cc('Últimas reservas', 'Actividad reciente de todos los servicios',
+                    recentRecs.length > 0 ? (
+                      <div style={{overflowX:'auto'}}>
+                        <table style={{width:'100%',borderCollapse:'collapse',fontSize:10}}>
+                          <thead>
+                            <tr>{['Tipo','Alumno','Carrera','Dur.','Fin'].map(h=>(
+                              <th key={h} style={{textAlign:'left',color:t.textDim,fontWeight:600,paddingBottom:7,borderBottom:`1px solid ${t.cardBorder}`,paddingRight:8,whiteSpace:'nowrap'}}>{h}</th>
+                            ))}</tr>
+                          </thead>
+                          <tbody>
+                            {recentRecs.map((r,i)=>{
+                              const fin = r.fin ? new Date(r.fin) : null;
+                              return (
+                                <tr key={i} style={{borderBottom:`1px solid ${t.cardBorder}40`}}>
+                                  <td style={{padding:'5px 8px 5px 0'}}>
+                                    <span style={{fontSize:9,padding:'2px 6px',borderRadius:4,fontWeight:600,
+                                      background:r.tipo==='cubiculos'?`${t.teal}18`:`${t.blue}18`,
+                                      color:r.tipo==='cubiculos'?t.teal:t.blue}}>
+                                      {r.tipo==='cubiculos'?'Cubi':'PC'}
+                                    </span>
+                                  </td>
+                                  <td style={{color:t.text,maxWidth:90,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:8}}>{r.nombre||'—'}</td>
+                                  <td style={{color:t.textDim,maxWidth:80,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:8}}>{r.carrera||'—'}</td>
+                                  <td style={{color:t.text,fontFamily:"'Space Mono',monospace",paddingRight:8}}>{r.duracion||'—'}h</td>
+                                  <td style={{color:t.textDim,whiteSpace:'nowrap'}}>{fin?`${String(fin.getHours()).padStart(2,'0')}:${String(fin.getMinutes()).padStart(2,'0')}`:'—'}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : <div style={{color:t.textMuted,fontSize:12,textAlign:'center',padding:'24px 0'}}>Sin reservas registradas aún</div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ===== SERVICIOS ===== */}
           {nav === "servicios" && (() => {
