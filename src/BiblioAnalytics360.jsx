@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
-import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, dbLoadAppConfig, dbSaveAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas } from "./db";
+import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, dbLoadAppConfig, dbSaveAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas, subscribeHistorialReservas } from "./db";
 import { serverNow } from "./serverTime";
 import { getOwnSubscription } from "./pushNotifications";
 import html2canvas from "html2canvas";
@@ -681,6 +681,12 @@ export default function BiblioAnalytics360() {
   // Historial de reservas reales
   const [historialReservas, setHistorialReservas] = useState([]);
   useEffect(() => { dbLoadHistorialReservas().then(d => setHistorialReservas(d)); }, []);
+  useEffect(() => {
+    const unsub = subscribeHistorialReservas(() => {
+      dbLoadHistorialReservas().then(d => setHistorialReservas(d));
+    });
+    return unsub;
+  }, []);
 
   // Servicios state
   const [svcView, setSvcView] = useState("realtime"); // kept for export compat

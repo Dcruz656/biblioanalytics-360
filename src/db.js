@@ -216,6 +216,15 @@ export async function dbLoadHistorialReservas(limit = 1000) {
   return data ?? [];
 }
 
+export function subscribeHistorialReservas(onChange) {
+  if (!supabase) return () => {};
+  const channel = supabase
+    .channel('historial_reservas_changes')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'historial_reservas' }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(channel);
+}
+
 // ── Push Subscriptions (multi-dispositivo: unique by endpoint) ───────────────
 export async function dbSavePushSubscription(matricula, subscription) {
   if (!supabase) return;
