@@ -26,6 +26,38 @@ const AMBER     = "#d97706";
 
 const ADVANCE_MS = 30 * 60 * 1000; // ventana de 30 min para reserva anticipada
 
+// Ícono de cubículo (vista superior con 4 puestos y sillas)
+function CubiIcon({ size = 54, color = "white" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill={color} xmlns="http://www.w3.org/2000/svg">
+      {/* Divisores centrales */}
+      <rect x="46" y="0" width="8" height="100"/>
+      <rect x="0" y="46" width="100" height="8"/>
+      <circle cx="50" cy="50" r="7"/>
+      {/* Cubículo sup-izq: escritorio arriba, silla abajo */}
+      <rect x="6" y="4" width="34" height="12" rx="2"/>
+      <circle cx="22" cy="32" r="8"/>
+      <rect x="5"  y="28" width="5" height="9" rx="2"/>
+      <rect x="33" y="28" width="5" height="9" rx="2"/>
+      {/* Cubículo sup-der: escritorio arriba, silla abajo */}
+      <rect x="60" y="4" width="34" height="12" rx="2"/>
+      <circle cx="78" cy="32" r="8"/>
+      <rect x="61" y="28" width="5" height="9" rx="2"/>
+      <rect x="89" y="28" width="5" height="9" rx="2"/>
+      {/* Cubículo inf-izq: silla arriba, escritorio abajo */}
+      <circle cx="22" cy="68" r="8"/>
+      <rect x="5"  y="64" width="5" height="9" rx="2"/>
+      <rect x="33" y="64" width="5" height="9" rx="2"/>
+      <rect x="6" y="84" width="34" height="12" rx="2"/>
+      {/* Cubículo inf-der: silla arriba, escritorio abajo */}
+      <circle cx="78" cy="68" r="8"/>
+      <rect x="61" y="64" width="5" height="9" rx="2"/>
+      <rect x="89" y="64" width="5" height="9" rx="2"/>
+      <rect x="60" y="84" width="34" height="12" rx="2"/>
+    </svg>
+  );
+}
+
 // ── Helpers ──────────────────────────────────────────────
 function generateFolio() {
   const d = new Date(), pad = n => String(n).padStart(2, "0");
@@ -878,7 +910,7 @@ export default function KioscoView() {
             {/* Cubículos */}
             <button onClick={() => { setServicio("cubiculos"); setScreen("personas"); }}
               style={{ flex: 1, padding: "32px 20px", borderRadius: 20, border: `2px solid ${TEAL}50`, background: `${TEAL}12`, cursor: "pointer", textAlign: "center", fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s" }}>
-              <div style={{ fontSize: 44, marginBottom: 14 }}>🚪</div>
+              <div style={{ display:"flex", justifyContent:"center", marginBottom: 14 }}><CubiIcon size={52} color="#fff"/></div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Cubículos</div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 16, lineHeight: 1.5 }}>Espacios de estudio grupal e individual</div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20, background: `${GREEN}20`, border: `1px solid ${GREEN}40` }}>
@@ -917,7 +949,7 @@ export default function KioscoView() {
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={() => setScreen("bienvenido")} title="Cubículos" clock={clock} />
         <div style={{ maxWidth: 540, margin: "0 auto", padding: "52px 28px", textAlign: "center" }}>
-          <div style={{ fontSize: 44, marginBottom: 16 }}>🚪</div>
+          <div style={{ display:"flex", justifyContent:"center", marginBottom: 16 }}><CubiIcon size={52} color="#fff"/></div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", marginBottom: 6 }}>¿Cuántas personas?</div>
           <div style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginBottom: 40 }}>Mínimo {min} · Máximo {max} personas por cubículo</div>
 
