@@ -483,7 +483,7 @@ export default function KioscoView() {
           </div>
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 32px", textAlign: "center" }}>
-          <div style={{ width: 110, height: 110, borderRadius: 30, background: `linear-gradient(135deg, ${TEAL}25, ${TEAL_L}10)`, border: `2px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 54, marginBottom: 28 }}>🚪</div>
+          <div style={{ width: 110, height: 110, borderRadius: 30, background: `linear-gradient(135deg, ${TEAL}25, ${TEAL_L}10)`, border: `2px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 54, marginBottom: 28 }}>📚</div>
           <div style={{ fontSize: 46, fontWeight: 800, color: "#fff", letterSpacing: -1, marginBottom: 10 }}>Biblioteca Central</div>
           <div style={{ fontSize: 18, color: "rgba(255,255,255,0.4)", marginBottom: 44 }}>Reserva cubículos y computadoras</div>
           {(cubiculos.length > 0 || computadoras.length > 0) && (
