@@ -3,6 +3,29 @@ import { cubiCarreras } from "./cubiData";
 import { dbFindAlumno, dbSaveAlumno, dbSavePushSubscription } from "./db";
 import { registerServiceWorker, subscribeToPush } from "./pushNotifications";
 
+function LibraryIcon({ size = 68 }) {
+  const linesL = [230, 252, 274, 296, 318, 340];
+  return (
+    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <line x1="82"  y1="432" x2="430" y2="432" stroke="#B0AFC0" strokeWidth="9" strokeLinecap="round"/>
+      <line x1="105" y1="450" x2="407" y2="450" stroke="#B0AFC0" strokeWidth="9" strokeLinecap="round"/>
+      <rect x="54" y="384" width="404" height="38" rx="19" fill="#D97706"/>
+      <rect x="54" y="370" width="404" height="38" rx="19" fill="#FCA326" stroke="#3C3580" strokeWidth="7"/>
+      <rect x="76"  y="188" width="70" height="186" rx="5" fill="#7090E8" stroke="#3C3580" strokeWidth="6"/>
+      <rect x="366" y="188" width="70" height="186" rx="5" fill="#7090E8" stroke="#3C3580" strokeWidth="6"/>
+      <rect x="160" y="188" width="44" height="186" rx="4" fill="#5ACFE8" stroke="#3C3580" strokeWidth="6"/>
+      <rect x="308" y="188" width="44" height="186" rx="4" fill="#5ACFE8" stroke="#3C3580" strokeWidth="6"/>
+      <rect x="240" y="188" width="32" height="178" rx="4" fill="#5ACFE8" stroke="#3C3580" strokeWidth="5"/>
+      <path d="M165,206 Q200,198 240,214 L240,364 Q200,356 165,362 Z" fill="#CCCAD8" stroke="#3C3580" strokeWidth="5"/>
+      <path d="M272,214 Q312,198 347,206 L347,362 Q312,356 272,364 Z" fill="#CCCAD8" stroke="#3C3580" strokeWidth="5"/>
+      {linesL.map((y, i) => <line key={"l"+i} x1="180" y1={y} x2="234" y2={y-2} stroke="#3C3580" strokeWidth="6" strokeLinecap="round"/>)}
+      {linesL.map((y, i) => <line key={"r"+i} x1="278" y1={y-2} x2="332" y2={y} stroke="#3C3580" strokeWidth="6" strokeLinecap="round"/>)}
+      <polygon points="48,202 256,60 464,202" fill="#D97706" stroke="#3C3580" strokeWidth="7" strokeLinejoin="round"/>
+      <polygon points="48,192 256,50 464,192" fill="#FCA326" stroke="#3C3580" strokeWidth="7" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 // ── Palette ──────────────────────────────────────────────
 const NAVY_DEEP = "#060d1b";
 const NAVY      = "#0e1629";
@@ -138,7 +161,7 @@ export default function RegistroView() {
 
           {/* Hero */}
           <div style={{ textAlign: "center", marginBottom: isMobile ? 28 : 40 }}>
-            <div style={{ width: isMobile ? 60 : 72, height: isMobile ? 60 : 72, borderRadius: 18, background: `${TEAL}18`, border: `1.5px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 28 : 34, margin: "0 auto 16px" }}>📚</div>
+            <div style={{ margin: "0 auto 16px", display:"flex", justifyContent:"center" }}><LibraryIcon size={isMobile ? 64 : 78}/></div>
             <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Crea tu cuenta</div>
             <div style={{ fontSize: isMobile ? 14 : 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
               Regístrate una vez y usa el kiosco con solo tu matrícula.

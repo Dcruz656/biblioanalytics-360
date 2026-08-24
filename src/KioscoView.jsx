@@ -26,6 +26,42 @@ const AMBER     = "#d97706";
 
 const ADVANCE_MS = 30 * 60 * 1000; // ventana de 30 min para reserva anticipada
 
+// Ícono de biblioteca (edificio con columnas y libro)
+function LibraryIcon({ size = 64 }) {
+  const linesL = [230, 252, 274, 296, 318, 340];
+  return (
+    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      {/* Líneas de suelo */}
+      <line x1="82"  y1="432" x2="430" y2="432" stroke="#B0AFC0" strokeWidth="9" strokeLinecap="round"/>
+      <line x1="105" y1="450" x2="407" y2="450" stroke="#B0AFC0" strokeWidth="9" strokeLinecap="round"/>
+      {/* Base — sombra */}
+      <rect x="54" y="384" width="404" height="38" rx="19" fill="#D97706"/>
+      {/* Base — principal */}
+      <rect x="54" y="370" width="404" height="38" rx="19" fill="#FCA326" stroke="#3C3580" strokeWidth="7"/>
+      {/* Columnas azules (anchas) */}
+      <rect x="76"  y="188" width="70" height="186" rx="5" fill="#7090E8" stroke="#3C3580" strokeWidth="6"/>
+      <rect x="366" y="188" width="70" height="186" rx="5" fill="#7090E8" stroke="#3C3580" strokeWidth="6"/>
+      {/* Columnas cian (estrechas) */}
+      <rect x="160" y="188" width="44" height="186" rx="4" fill="#5ACFE8" stroke="#3C3580" strokeWidth="6"/>
+      <rect x="308" y="188" width="44" height="186" rx="4" fill="#5ACFE8" stroke="#3C3580" strokeWidth="6"/>
+      {/* Lomo del libro (cian) */}
+      <rect x="240" y="188" width="32" height="178" rx="4" fill="#5ACFE8" stroke="#3C3580" strokeWidth="5"/>
+      {/* Página izquierda */}
+      <path d="M165,206 Q200,198 240,214 L240,364 Q200,356 165,362 Z" fill="#CCCAD8" stroke="#3C3580" strokeWidth="5"/>
+      {/* Página derecha */}
+      <path d="M272,214 Q312,198 347,206 L347,362 Q312,356 272,364 Z" fill="#CCCAD8" stroke="#3C3580" strokeWidth="5"/>
+      {/* Líneas página izquierda */}
+      {linesL.map((y, i) => <line key={i} x1="180" y1={y} x2="234" y2={y - 2} stroke="#3C3580" strokeWidth="6" strokeLinecap="round"/>)}
+      {/* Líneas página derecha */}
+      {linesL.map((y, i) => <line key={i} x1="278" y1={y - 2} x2="332" y2={y} stroke="#3C3580" strokeWidth="6" strokeLinecap="round"/>)}
+      {/* Tejado — sombra */}
+      <polygon points="48,202 256,60 464,202" fill="#D97706" stroke="#3C3580" strokeWidth="7" strokeLinejoin="round"/>
+      {/* Tejado — principal */}
+      <polygon points="48,192 256,50 464,192" fill="#FCA326" stroke="#3C3580" strokeWidth="7" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 // Ícono de cubículo (vista superior con 4 puestos y sillas)
 function CubiIcon({ size = 54, color = "white" }) {
   return (
@@ -515,7 +551,7 @@ export default function KioscoView() {
           </div>
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 32px", textAlign: "center" }}>
-          <div style={{ width: 110, height: 110, borderRadius: 30, background: `linear-gradient(135deg, ${TEAL}25, ${TEAL_L}10)`, border: `2px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 54, marginBottom: 28 }}>📚</div>
+          <div style={{ marginBottom: 28 }}><LibraryIcon size={110}/></div>
           <div style={{ fontSize: 46, fontWeight: 800, color: "#fff", letterSpacing: -1, marginBottom: 10 }}>Biblioteca Central</div>
           <div style={{ fontSize: 18, color: "rgba(255,255,255,0.4)", marginBottom: 44 }}>Reserva cubículos y computadoras</div>
           {(cubiculos.length > 0 || computadoras.length > 0) && (
