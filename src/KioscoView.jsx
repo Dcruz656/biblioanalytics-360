@@ -1063,8 +1063,12 @@ export default function KioscoView() {
             {cubisFiltrados.map(cubi => {
               const isLibre        = cubi.estado === "libre";
               const isOcupado      = cubi.estado === "ocupado";
+              const isPending      = cubi.estado === "reservado" && !!cubi.reserva?.pendingCheckin;
               const isSuficiente   = cubi.capacidad >= personas;
               const rem            = isOcupado ? getRemainingMs(cubi) : 0;
+              const pendingRemMs   = isPending && cubi.reserva?.reservedAt
+                ? Math.max(0, 5 * 60 * 1000 - (Date.now() - new Date(cubi.reserva.reservedAt).getTime()))
+                : 0;
               const endTime        = isOcupado && cubi.reserva?.inicio
                 ? new Date(new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000)
                 : null;
@@ -1075,6 +1079,7 @@ export default function KioscoView() {
               let color, icon, label, sublabel;
               if (isLibre && isSuficiente)       { color = GREEN; icon = "✅"; label = "Disponible"; sublabel = null; }
               else if (isLibre && !isSuficiente) { color = "rgba(255,255,255,0.22)"; icon = "👥"; label = `Solo ${cubi.capacidad} pers.`; sublabel = "Capacidad insuficiente"; }
+              else if (isPending)                { color = AMBER; icon = "🟡"; label = "Reservado"; sublabel = `Check-in en ${fmtRemaining(pendingRemMs)}`; }
               else if (canAdvance)               { color = AMBER; icon = "⏱️"; label = `Libre a las ${endTime ? fmtTime(endTime) : "—"}`; sublabel = `Faltan ${fmtRemaining(rem)}`; }
               else if (hasNextReserva)           { color = AMBER; icon = "⏱️"; label = "Siguiente turno reservado"; sublabel = endTime ? `Libre a las ${fmtTime(endTime)}` : null; }
               else                               { color = ROSE;  icon = "🔴"; label = "En uso"; sublabel = endTime ? `Libre aprox. ${fmtTime(endTime)}` : null; }
@@ -1084,12 +1089,12 @@ export default function KioscoView() {
                   onClick={() => { if (!clickable) return; setSelectedId(cubi.id); setScreen("duration"); }}
                   style={{ padding: "22px 14px", borderRadius: 18, border: `2px solid ${clickable ? `${color}65` : `${color}22`}`, background: `${color}${clickable ? "10" : "06"}`, cursor: clickable ? "pointer" : "default", textAlign: "center", outline: "none", fontFamily: "'DM Sans', sans-serif", opacity: isLibre && !isSuficiente ? 0.5 : 1, transition: "border-color 0.2s" }}>
                   {/* Ícono o dona de cuenta regresiva */}
-                  {isOcupado && cubi.reserva ? (() => {
-                    const total = cubi.reserva.duracion * 3_600_000;
-                    const remaining = getRemainingMs(cubi);
-                    const pct = total > 0 ? Math.max(0, remaining / total) : 0;
+                  {(isOcupado && cubi.reserva) || isPending ? (() => {
+                    const total     = isPending ? 5 * 60 * 1000 : cubi.reserva.duracion * 3_600_000;
+                    const remaining = isPending ? pendingRemMs : getRemainingMs(cubi);
+                    const pct       = total > 0 ? Math.max(0, remaining / total) : 0;
                     const SIZE = 56, R = 22, CIRC = 2 * Math.PI * R;
-                    const ringColor = canAdvance ? AMBER : ROSE;
+                    const ringColor = isPending ? AMBER : canAdvance ? AMBER : ROSE;
                     return (
                       <div style={{ position: "relative", width: SIZE, height: SIZE, margin: "0 auto 8px" }}>
                         <svg width={SIZE} height={SIZE} style={{ transform: "rotate(-90deg)" }}>
