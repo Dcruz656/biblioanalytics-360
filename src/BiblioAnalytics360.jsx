@@ -8,7 +8,7 @@ import { generateExcel, generatePDF, generateServiceExcel, generateServicePDF } 
 import { QRCodeSVG } from "qrcode.react";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart,
+  ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart,
   Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ScatterChart, Scatter,
   ReferenceLine, LabelList, Sector
 } from "recharts";
@@ -263,8 +263,6 @@ const navMain = [
   { id: "overview", icon: Home, label: "Vista General" },
   { id: "servicios", icon: BarChart3, label: "Estadísticas" },
   { id: "predictivo", icon: TrendingUp, label: "Mod. Predictivo" },
-  { id: "sentimiento", icon: Heart, label: "Mod. Sentimiento" },
-  { id: "impacto", icon: GraduationCap, label: "Mod. Impacto" },
   { id: "datos", icon: Database, label: "Datos & Upload" },
   { id: "herramientas", icon: LayoutGrid, label: "Servicios" },
   { id: "configuracion", icon: Settings, label: "Configuración" },
@@ -691,14 +689,10 @@ export default function BiblioAnalytics360() {
   const [newComment, setNewComment] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [predHorizon, setPredHorizon] = useState(3);
-  const [predModel, setPredModel] = useState("rf");
+  const [predService, setPredService] = useState("ambos");
   const [uploadedFile, setUploadedFile] = useState(null);
   const [dataRows, setDataRows] = useState(15247);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Predicción Oct actualizada: 1,950 préstamos esperados", type: "info", time: "Hace 2h" },
-    { id: 2, text: "Alerta: Sala de Cómputo con 35% de progreso (en riesgo)", type: "warn", time: "Hace 5h" },
-    { id: 3, text: "3 nuevos comentarios analizados por NLP", type: "success", time: "Hace 8h" },
-  ]);
+  const [notifications, setNotifications] = useState([]);
 
   const seed = campus === "todos" ? 0 : campus === "central" ? 1 : campus === "norte" ? 2 : 3;
   const circulacion = useMemo(() => genCirculacion(seed, campus, periodo), [seed, campus, periodo]);
@@ -2081,70 +2075,132 @@ export default function BiblioAnalytics360() {
           })()}
 
           {/* ===== PREDICTIVO ===== */}
-          {nav === "predictivo" && (
+          {nav === "predictivo" && (() => {
+            const MESES_P = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const nowP = new Date();
+            const baseH = predService === 'ambos' ? historialReservas : historialReservas.filter(h => h.tipo === predService);
+
+            // Historical: last 12 months
+            const histMonths = Array.from({length: 12}, (_, i) => {
+              const d = new Date(nowP.getFullYear(), nowP.getMonth() - 11 + i, 1);
+              const y = d.getFullYear(), m = d.getMonth();
+              const count = baseH.filter(h => { const hd = new Date(h.fin || h.inicio); return hd.getFullYear() === y && hd.getMonth() === m; }).length;
+              return { mes: `${MESES_P[m]} ${String(y).slice(2)}`, count, idx: i };
+            });
+
+            // Linear regression on historical data
+            const n = histMonths.length;
+            const xbar = (n - 1) / 2;
+            const ybar = histMonths.reduce((a, d) => a + d.count, 0) / n;
+            const ssxx = histMonths.reduce((a, _, i) => a + (i - xbar) ** 2, 0);
+            const ssxy = histMonths.reduce((a, d, i) => a + (i - xbar) * (d.count - ybar), 0);
+            const slope = ssxx > 0 ? ssxy / ssxx : 0;
+            const intercept = ybar - slope * xbar;
+            const predict = idx => Math.max(0, Math.round(intercept + slope * idx));
+
+            const avgHist   = Math.round(ybar);
+            const nextProj  = predict(12);
+            const trendPct  = avgHist > 0 ? Math.round((slope / avgHist) * 100) : 0;
+            const trendColor = trendPct >= 0 ? t.green : t.rose;
+
+            const projMonths = Array.from({length: predHorizon}, (_, i) => {
+              const d = new Date(nowP.getFullYear(), nowP.getMonth() + 1 + i, 1);
+              return { mes: `${MESES_P[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`, proyeccion: predict(12 + i) };
+            });
+
+            const chartData = [
+              ...histMonths.map(d => ({ mes: d.mes, reservas: d.count, proyeccion: undefined })),
+              ...projMonths.map(d => ({ mes: d.mes, reservas: undefined, proyeccion: d.proyeccion })),
+            ];
+
+            return (
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
-                <StatCard icon={Target} label="Precisión del modelo" value={predModel === "rf" ? "94.2%" : predModel === "prophet" ? "91.8%" : "88.5%"} change="+1.3%" changeType="up" color={t.teal} t={t} />
-                <StatCard icon={Brain} label="Modelo activo" value={predModel === "rf" ? "Random Forest" : predModel === "prophet" ? "Prophet" : "Regresión"} color={t.blue} t={t} />
-                <StatCard icon={Zap} label={`Predicción +${predHorizon} meses`} value={predHorizon <= 2 ? "1,950" : predHorizon <= 4 ? "2,100" : "1,680"} color={t.purple} t={t} />
-                <StatCard icon={Activity} label="RMSE (Error)" value={predModel === "rf" ? "48.3" : predModel === "prophet" ? "52.1" : "67.4"} change="-12.7%" changeType="up" color={t.amber} t={t} />
+                <StatCard icon={Database} label="Registros analizados" value={baseH.length.toLocaleString()} sub="historial real" color={t.teal} t={t} />
+                <StatCard icon={Activity} label="Promedio mensual" value={String(avgHist)} sub="últimos 12 meses" color={t.blue} t={t} />
+                <StatCard icon={Zap} label="Proyección próx. mes" value={String(nextProj)} sub="tendencia lineal" color={t.purple} t={t} />
+                <StatCard icon={TrendingUp} label="Tendencia mensual" value={`${trendPct > 0 ? "+" : ""}${trendPct}%`} sub="crecimiento / mes" color={trendColor} t={t} />
               </div>
 
-              {/* Controls panel */}
+              {/* Controls */}
               <div style={{ background: t.card, borderRadius: 16, padding: 20, border: `1px solid ${t.cardBorder}`, marginBottom: 20, display: "flex", gap: 28, alignItems: "center", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Sliders size={14} color={t.teal} />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: t.text }}>Controles del Modelo</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: t.text }}>Filtros de proyección</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 10, color: t.textDim }}>Algoritmo</label>
+                  <label style={{ fontSize: 10, color: t.textDim }}>Servicio</label>
                   <div style={{ display: "flex", gap: 4 }}>
-                    {[{ v: "rf", l: "Random Forest" }, { v: "prophet", l: "Prophet" }, { v: "reg", l: "Regresión" }].map(m => (
-                      <button key={m.v} onClick={() => setPredModel(m.v)}
-                        style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${predModel === m.v ? t.teal : t.cardBorder}`, background: predModel === m.v ? `${t.teal}15` : "transparent", color: predModel === m.v ? t.teal : t.textDim, fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
-                        {m.l}
+                    {[{ v: "ambos", l: "Ambos" }, { v: "cubiculos", l: "Cubículos" }, { v: "computadoras", l: "Computadoras" }].map(s => (
+                      <button key={s.v} onClick={() => setPredService(s.v)}
+                        style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${predService === s.v ? t.teal : t.cardBorder}`, background: predService === s.v ? `${t.teal}15` : "transparent", color: predService === s.v ? t.teal : t.textDim, fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
+                        {s.l}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 10, color: t.textDim }}>Horizonte de predicción: {predHorizon} meses</label>
+                  <label style={{ fontSize: 10, color: t.textDim }}>Horizonte: {predHorizon} {predHorizon === 1 ? "mes" : "meses"}</label>
                   <input type="range" min={1} max={6} value={predHorizon} onChange={e => setPredHorizon(+e.target.value)}
                     style={{ width: 180, accentColor: t.teal }} />
                 </div>
               </div>
 
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Pronóstico de Circulación</div>
-                <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16 }}>
-                  Modelo: {predModel === "rf" ? "Random Forest" : predModel === "prophet" ? "Prophet (Meta)" : "Regresión Lineal"} · Horizonte: {predHorizon} meses · Campus: {campus === "todos" ? "Todos" : campus}
+                <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>Historial y Proyección de Reservas</div>
+                <div style={{ fontSize: 10, color: t.textDim, marginBottom: 16, display: "flex", gap: 18, alignItems: "center" }}>
+                  <span>Servicio: {predService === "ambos" ? "Cubículos + Computadoras" : predService === "cubiculos" ? "Cubículos" : "Computadoras"}</span>
+                  <span>·</span>
+                  <span>Proyección: +{predHorizon} {predHorizon === 1 ? "mes" : "meses"} · tendencia lineal sobre datos reales</span>
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 14 }}>
+                    {[{ color: t.teal, label: "Historial real" }, { color: t.amber, label: "Proyección" }].map(l => (
+                      <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: t.textDim }}>
+                        <div style={{ width: 14, height: 3, borderRadius: 2, background: l.color }} />{l.label}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={circulacion}>
-                    <defs>
-                      <linearGradient id="pG1" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={t.teal} stopOpacity={0.3} />
-                        <stop offset="40%" stopColor={t.teal} stopOpacity={0.12} />
-                        <stop offset="100%" stopColor={t.teal} stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="pG2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={t.amber} stopOpacity={0.25} />
-                        <stop offset="40%" stopColor={t.amber} stopOpacity={0.1} />
-                        <stop offset="100%" stopColor={t.amber} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
-                    <XAxis dataKey="mes" tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-                    <Tooltip content={<CTooltip />} />
-                    <ReferenceLine y={circAvg} stroke={t.textDim} strokeDasharray="5 4" strokeWidth={1.5} label={{ value: `Prom. ${fmtK(circAvg)}`, position: "insideTopRight", fontSize: 9, fill: t.textDim, dy: -6 }} />
-                    <Area type="monotone" dataKey="prestamos" name="Real" stroke={t.teal} fill="url(#pG1)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 7, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={900} animationEasing="ease-out" />
-                    <Area type="monotone" dataKey="prediccion" name="Predicción" stroke={t.amber} fill="url(#pG2)" strokeWidth={2.5} strokeDasharray="8 4" dot={{ r: 4, fill: t.amber, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 7, strokeWidth: 2.5, stroke: "#fff" }} animationDuration={1100} animationEasing="ease-out" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {baseH.length === 0 ? (
+                  <div style={{ height: 300, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                    <Database size={32} color={t.textMuted} />
+                    <div style={{ fontSize: 13, color: t.textDim }}>Sin datos de historial aún</div>
+                    <div style={{ fontSize: 11, color: t.textMuted }}>Las reservas completadas aparecerán aquí automáticamente.</div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <ComposedChart data={chartData}>
+                      <defs>
+                        <linearGradient id="predG1" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={t.teal} stopOpacity={0.28} />
+                          <stop offset="100%" stopColor={t.teal} stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="predG2" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={t.amber} stopOpacity={0.22} />
+                          <stop offset="100%" stopColor={t.amber} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke={`${t.text}08`} />
+                      <XAxis dataKey="mes" tick={{ fontSize: 9, fill: t.textDim }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: t.textDim }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
+                      <Tooltip content={<CTooltip />} />
+                      {avgHist > 0 && (
+                        <ReferenceLine y={avgHist} stroke={t.textDim} strokeDasharray="5 4" strokeWidth={1.5}
+                          label={{ value: `Prom. ${avgHist}`, position: "insideTopRight", fontSize: 9, fill: t.textDim, dy: -6 }} />
+                      )}
+                      <Area type="monotone" dataKey="reservas" name="Historial" stroke={t.teal} fill="url(#predG1)" strokeWidth={2.5}
+                        dot={{ r: 3, fill: t.teal }} activeDot={{ r: 7, strokeWidth: 2.5, stroke: "#fff" }} connectNulls={false}
+                        animationDuration={900} animationEasing="ease-out" />
+                      <Area type="monotone" dataKey="proyeccion" name="Proyección" stroke={t.amber} fill="url(#predG2)" strokeWidth={2.5}
+                        strokeDasharray="8 4" dot={{ r: 4, fill: t.amber, stroke: "#fff", strokeWidth: 2 }}
+                        activeDot={{ r: 7, strokeWidth: 2.5, stroke: "#fff" }} connectNulls={false}
+                        animationDuration={1100} animationEasing="ease-out" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ===== SENTIMIENTO ===== */}
           {nav === "sentimiento" && (
@@ -2345,7 +2401,7 @@ export default function BiblioAnalytics360() {
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
                 <StatCard icon={Database} label="Registros en BD" value={dataRows.toLocaleString()} color={t.teal} t={t} />
-                <StatCard icon={FileText} label="Fuentes conectadas" value="3" color={t.blue} t={t} />
+                <StatCard icon={FileText} label="Fuentes conectadas" value="2" color={t.blue} t={t} />
                 <StatCard icon={CheckCircle} label="Calidad de datos" value="96.8%" color={t.green} t={t} />
                 <StatCard icon={Clock} label="Última actualización" value="Hace 2h" color={t.amber} t={t} />
               </div>
