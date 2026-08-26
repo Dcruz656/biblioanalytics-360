@@ -2733,18 +2733,18 @@ export default function BiblioAnalytics360() {
                     <Shield size={18} color={t.rose} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Seguridad del Kiosco</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Seguridad del Panel de Servicios</div>
                     <div style={{ fontSize: 10, color: t.textDim }}>Control de autenticación en terminales de autoservicio</div>
                   </div>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 12, background: t.inputBg, border: `1px solid ${pinRequired ? t.teal + "40" : t.cardBorder}` }}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: t.text, marginBottom: 2 }}>Requerir PIN en el kiosco</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: t.text, marginBottom: 2 }}>Requerir PIN en el Panel de Servicios</div>
                     <div style={{ fontSize: 11, color: t.textDim, lineHeight: 1.5 }}>
                       {pinRequired
                         ? "Los alumnos deben ingresar su PIN de 4 dígitos para confirmar su identidad."
-                        : "El kiosco acepta cualquier matrícula registrada sin solicitar PIN."}
+                        : "El Panel de Servicios acepta cualquier matrícula registrada sin solicitar PIN."}
                     </div>
                   </div>
                   <button
@@ -2753,7 +2753,7 @@ export default function BiblioAnalytics360() {
                       setPinRequired(next);
                       const cfg = { ...loadAppConfig(), pinRequired: next };
                       dbSaveAppConfig(cfg);
-                      setNotifications(prev => [{ id: Date.now(), text: `PIN en kiosco ${next ? "habilitado" : "deshabilitado"}`, type: next ? "success" : "info", time: "Ahora" }, ...prev]);
+                      setNotifications(prev => [{ id: Date.now(), text: `PIN en Panel de Servicios ${next ? "habilitado" : "deshabilitado"}`, type: next ? "success" : "info", time: "Ahora" }, ...prev]);
                     }}
                     style={{ width: 46, height: 24, borderRadius: 12, border: "none", background: pinRequired ? t.teal : `${t.text}20`, cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0, marginLeft: 20 }}>
                     <div style={{ position: "absolute", top: 2, left: pinRequired ? 24 : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />

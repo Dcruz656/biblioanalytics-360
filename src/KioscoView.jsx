@@ -646,7 +646,7 @@ export default function KioscoView() {
                 </div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 20 }}>
                   Escanea el código QR con la cámara de tu teléfono,<br />
-                  crea tu cuenta y regresa al kiosco.
+                  crea tu cuenta y regresa al Panel de Servicios.
                 </div>
 
                 {/* URL label */}
@@ -937,7 +937,7 @@ export default function KioscoView() {
           </div>
 
           <div style={{ padding: "14px 18px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", marginBottom: 24, fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
-            Regresa a este kiosco cuando el cubículo esté libre e ingresa tu matrícula para confirmar tu acceso.
+            Regresa al Panel de Servicios cuando el cubículo esté libre e ingresa tu matrícula para confirmar tu acceso.
           </div>
 
           <button onClick={cancelarProximaReserva}

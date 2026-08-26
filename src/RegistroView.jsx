@@ -164,16 +164,16 @@ export default function RegistroView() {
             <div style={{ margin: "0 auto 16px", display:"flex", justifyContent:"center" }}><LibraryIcon size={isMobile ? 64 : 78}/></div>
             <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Crea tu cuenta</div>
             <div style={{ fontSize: isMobile ? 14 : 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
-              Regístrate una vez y usa el kiosco con solo tu matrícula.
+              Regístrate una vez y usa el Panel de Servicios con solo tu matrícula.
             </div>
           </div>
 
           {/* Benefits */}
           <div style={{ background: `${TEAL}08`, border: `1px solid ${TEAL}25`, borderRadius: 14, padding: isMobile ? "14px 16px" : "16px 20px", marginBottom: isMobile ? 28 : 36 }}>
             {[
-              "Reserva cubículos en segundos desde el kiosco",
+              "Reserva cubículos en segundos desde el Panel de Servicios",
               "Solo ingresa tu matrícula — sin contraseñas",
-              "Registro único, válido en todos los kioscos",
+              "Registro único, válido en todos los paneles de servicios",
             ].map((b, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
                 <span style={{ color: TEAL, marginTop: 2, flexShrink: 0, fontSize: 13 }}>✓</span>
@@ -224,7 +224,7 @@ export default function RegistroView() {
 
           <div style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 18 }}>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
-              🔒 El kiosco pedirá este PIN para confirmar que eres tú. Solo tú lo sabes.
+              🔒 El Panel de Servicios pedirá este PIN para confirmar que eres tú. Solo tú lo sabes.
             </div>
           </div>
 
@@ -268,7 +268,7 @@ export default function RegistroView() {
           </button>
 
           <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
-            ¿Ya tienes cuenta? Ve al kiosco e ingresa tu matrícula.
+            ¿Ya tienes cuenta? Ve al Panel de Servicios e ingresa tu matrícula.
           </div>
         </div>
       </div>
@@ -288,7 +288,7 @@ export default function RegistroView() {
 
           <div style={{ fontSize: isMobile ? 26 : 32, fontWeight: 800, color: "#fff", marginBottom: 6 }}>¡Cuenta creada!</div>
           <div style={{ fontSize: isMobile ? 14 : 15, color: "rgba(255,255,255,0.45)", marginBottom: isMobile ? 24 : 32, lineHeight: 1.6 }}>
-            Ya puedes usar el kiosco de la biblioteca<br />ingresando solo tu matrícula.
+            Ya puedes usar el Panel de Servicios de la biblioteca<br />ingresando solo tu matrícula.
           </div>
 
           {/* Account card */}
@@ -306,9 +306,9 @@ export default function RegistroView() {
 
           {/* Instructions */}
           <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: isMobile ? "14px 16px" : "18px 22px", marginBottom: isMobile ? 16 : 24, maxWidth: 440, width: "100%", textAlign: "left" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Cómo usar el kiosco</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Cómo usar el Panel de Servicios</div>
             {[
-              "Ve al kiosco de la biblioteca",
+              "Ve al Panel de Servicios de la biblioteca",
               "Toca la pantalla para comenzar",
               "Ingresa tu matrícula",
               "Selecciona cubículo y duración",
@@ -354,7 +354,7 @@ export default function RegistroView() {
 
           <button onClick={() => window.location.href = "/kiosco"}
             style={{ width: "100%", maxWidth: 440, padding: "16px 0", borderRadius: 14, border: "none", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: "#fff", fontSize: isMobile ? 15 : 17, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 10, touchAction: "manipulation" }}>
-            Ir al kiosco →
+            Ir al Panel de Servicios →
           </button>
 
           <button
