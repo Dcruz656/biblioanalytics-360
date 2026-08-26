@@ -1119,7 +1119,7 @@ export default function KioscoView() {
                   {isOcupado && cubi.reserva && (
                     <div style={{ marginTop: 10, padding: "8px 10px", borderRadius: 8, background: "rgba(0,0,0,0.25)", textAlign: "left" }}>
                       <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
-                        <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>{cubi.reserva.nombre?.split(" ")[0]}</span>
+                        <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.75)", fontFamily: "'Space Mono', monospace" }}>{cubi.reserva.matricula}</span>
                         <br />{cubi.reserva.carrera}
                         <br />{cubi.reserva.personas} pers. · {cubi.reserva.duracion}h
                       </div>
@@ -1310,7 +1310,8 @@ export default function KioscoView() {
                   {pc.estado === "ocupado" && pc.reserva && (
                     <div style={{ marginTop: 8, padding: "6px 8px", borderRadius: 7, background: "rgba(0,0,0,0.25)" }}>
                       <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
-                        <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.65)" }}>{pc.reserva.nombre?.split(" ")[0]}</span><br />
+                        <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.7)", fontFamily: "'Space Mono', monospace" }}>{pc.reserva.matricula}</span><br />
+                        {pc.reserva.carrera}<br />
                         {pc.reserva.duracion}h · {pc.sistema}
                       </div>
                     </div>

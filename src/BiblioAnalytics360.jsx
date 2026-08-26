@@ -3035,11 +3035,13 @@ export default function BiblioAnalytics360() {
                           <div style={{ fontSize: 10, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{cubi.estado === "libre" ? "Libre" : "Ocupado"}</div>
                           {cubi.reserva && (() => {
                             const isPending = cubi.estado === "reservado" && cubi.reserva.pendingCheckin;
-                            const firstName = (cubi.reserva.nombre || "").split(" ")[0];
+                            const mat = cubi.reserva.matricula || "—";
+                            const car = cubi.reserva.carrera || "";
                             if (isPending || !cubi.reserva.inicio) {
                               return (
                                 <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 6, marginTop: 2 }}>
-                                  <div style={{ fontSize: 11, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "'Space Mono', monospace" }}>{mat}</div>
+                                  <div style={{ fontSize: 9, color: t.textDim, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{car}</div>
                                   <div style={{ fontSize: 10, color: cfg.color, marginTop: 2 }}>En camino…</div>
                                 </div>
                               );
@@ -3048,7 +3050,8 @@ export default function BiblioAnalytics360() {
                             const fin = new Date(new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000);
                             return (
                               <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 6, marginTop: 2 }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "'Space Mono', monospace" }}>{mat}</div>
+                                <div style={{ fontSize: 9, color: t.textDim, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{car}</div>
                                 <div style={{ fontSize: 10, color: t.textDim, fontFamily: "'Space Mono', monospace", marginTop: 2 }}>{fmtT(cubi.reserva.inicio)}–{fmtT(fin)}</div>
                               </div>
                             );
@@ -3199,7 +3202,6 @@ export default function BiblioAnalytics360() {
                         <div>
                           <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
                             {[
-                              ["Usuario",     cubiSelected.reserva.nombre],
                               ["Matrícula",  cubiSelected.reserva.matricula],
                               ["Carrera",     cubiSelected.reserva.carrera],
                               ["Duración",    `${cubiSelected.reserva.duracion}h`],
@@ -3271,7 +3273,7 @@ export default function BiblioAnalytics360() {
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr>
-                          {["Cubículo", "Usuario", "Matrícula", "Carrera", "Duración", "Estado", ""].map(h => (
+                          {["Cubículo", "Matrícula", "Carrera", "Duración", "Estado", ""].map(h => (
                             <th key={h} style={{ textAlign: "left", fontSize: 10, fontWeight: 700, color: t.textDim, padding: "6px 14px", textTransform: "uppercase", letterSpacing: 0.8, borderBottom: `1px solid ${t.cardBorder}` }}>{h}</th>
                           ))}
                         </tr>
@@ -3283,7 +3285,6 @@ export default function BiblioAnalytics360() {
                           return (
                             <tr key={c.id} style={{ borderBottom: `1px solid ${t.cardBorder}` }}>
                               <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: t.teal }}>{c.nombre}</td>
-                              <td style={{ padding: "10px 14px", fontSize: 12, color: t.text }}>{c.reserva.nombre}</td>
                               <td style={{ padding: "10px 14px", fontSize: 11, color: t.textDim, fontFamily: "'Space Mono', monospace" }}>{c.reserva.matricula}</td>
                               <td style={{ padding: "10px 14px", fontSize: 11, color: t.textDim }}>{c.reserva.carrera}</td>
                               <td style={{ padding: "10px 14px", fontSize: 11, color: t.text, fontWeight: 600 }}>{c.reserva.duracion}h</td>
@@ -3602,10 +3603,10 @@ export default function BiblioAnalytics360() {
                             {pc.estado === "ocupado" && pc.reserva && (() => {
                               const fmtT = d => new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
                               const fin = new Date(new Date(pc.reserva.inicio).getTime() + pc.reserva.duracion * 3_600_000);
-                              const firstName = (pc.reserva.nombre || "").split(" ")[0];
                               return (
                                 <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 5 }}>
-                                  <div style={{ fontSize: 11, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "'Space Mono', monospace" }}>{pc.reserva.matricula || "—"}</div>
+                                  <div style={{ fontSize: 9, color: t.textDim, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{pc.reserva.carrera || ""}</div>
                                   <div style={{ fontSize: 10, color: t.textDim, fontFamily: "'Space Mono', monospace", marginTop: 2 }}>{fmtT(pc.reserva.inicio)}–{fmtT(fin)}</div>
                                 </div>
                               );
@@ -3713,7 +3714,6 @@ export default function BiblioAnalytics360() {
                             <div>
                               <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
                                 {[
-                                  ["Usuario", compuSel.reserva.nombre],
                                   ["Matrícula", compuSel.reserva.matricula],
                                   ["Carrera", compuSel.reserva.carrera],
                                   ["Duración", `${compuSel.reserva.duracion}h`],
