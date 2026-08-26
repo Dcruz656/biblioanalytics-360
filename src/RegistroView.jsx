@@ -172,7 +172,7 @@ export default function RegistroView() {
           <div style={{ background: `${TEAL}08`, border: `1px solid ${TEAL}25`, borderRadius: 14, padding: isMobile ? "14px 16px" : "16px 20px", marginBottom: isMobile ? 28 : 36 }}>
             {[
               "Reserva cubículos en segundos desde el Panel de Servicios",
-              "Solo ingresa tu matrícula — sin contraseñas",
+              "Usa tu matrícula + PIN de 4 dígitos — rápido y seguro",
               "Registro único, válido en todos los paneles de servicios",
             ].map((b, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
@@ -288,7 +288,7 @@ export default function RegistroView() {
 
           <div style={{ fontSize: isMobile ? 26 : 32, fontWeight: 800, color: "#fff", marginBottom: 6 }}>¡Cuenta creada!</div>
           <div style={{ fontSize: isMobile ? 14 : 15, color: "rgba(255,255,255,0.45)", marginBottom: isMobile ? 24 : 32, lineHeight: 1.6 }}>
-            Ya puedes usar el Panel de Servicios de la biblioteca<br />ingresando solo tu matrícula.
+            Ya puedes usar el Panel de Servicios de la biblioteca<br />con tu matrícula y PIN de 4 dígitos.
           </div>
 
           {/* Account card */}
@@ -310,8 +310,8 @@ export default function RegistroView() {
             {[
               "Ve al Panel de Servicios de la biblioteca",
               "Toca la pantalla para comenzar",
-              "Ingresa tu matrícula",
-              "Selecciona cubículo y duración",
+              "Ingresa tu matrícula y tu PIN de 4 dígitos",
+              "Selecciona cubículo o computadora y duración",
             ].map((step, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: i < 3 ? 9 : 0 }}>
                 <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${TEAL}20`, border: `1px solid ${TEAL}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: TEAL, flexShrink: 0 }}>{i + 1}</div>
