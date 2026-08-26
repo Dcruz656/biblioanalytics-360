@@ -562,6 +562,15 @@ export default function BiblioAnalytics360() {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
+  // Heartbeat: recarga completa cada 30s para mantener datos frescos si Realtime se duerme
+  useEffect(() => {
+    const hb = setInterval(() => {
+      dbLoadCubiculos().then(data => { if (data && data.length > 0) setCubiculos(data); });
+      dbLoadComputadoras().then(data => { if (data && data.length > 0) setComputadoras(data); });
+    }, 30_000);
+    return () => clearInterval(hb);
+  }, []);
+
   // Auto-liberar cubículos y computadoras vencidas (cada 30 s)
   useEffect(() => {
     const release = () => {
