@@ -205,11 +205,11 @@ export default function CubiQRView({ cubiId }) {
 
   // ── handlers: flujo específico ───────────────────────────────────────────
   async function handleCheckin() {
-    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu expediente.'); return; }
+    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu matrícula.'); return; }
     setLoading(true); setErrorMsg('');
     const res = cubiculo.reserva;
     if (String(res?.expediente).toLowerCase() !== checkExpe.trim().toLowerCase()) {
-      setErrorMsg('El expediente no coincide con la reserva de este cubículo.');
+      setErrorMsg('La matrícula no coincide con la reserva de este cubículo.');
       setLoading(false); return;
     }
     const inicio = serverNow();
@@ -219,11 +219,11 @@ export default function CubiQRView({ cubiId }) {
   }
 
   async function handleCheckout() {
-    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu expediente para confirmar.'); return; }
+    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu matrícula para confirmar.'); return; }
     setLoading(true); setErrorMsg('');
     const res = cubiculo.reserva;
     if (String(res?.expediente).toLowerCase() !== checkExpe.trim().toLowerCase()) {
-      setErrorMsg('El expediente no coincide. Solo quien hizo Check-In puede hacer Check-Out.');
+      setErrorMsg('La matrícula no coincide. Solo quien hizo Check-In puede hacer Check-Out.');
       setLoading(false); return;
     }
     const finNow = serverNow();
@@ -255,7 +255,7 @@ export default function CubiQRView({ cubiId }) {
     <div style={P}>
       <Header subtitle="Reserva un cubículo de estudio"/>
       <div style={CRD}>
-        <label style={LBL}>Número de expediente</label>
+        <label style={LBL}>Número de matrícula</label>
         <input style={INP} placeholder="Ej. 190123" value={expediente}
           onChange={e=>{setExpediente(e.target.value);setErrorMsg('');}}
           onKeyDown={e=>e.key==='Enter'&&!loading&&handleLogin()}/>
@@ -273,7 +273,7 @@ export default function CubiQRView({ cubiId }) {
       <Header subtitle="Crear cuenta"/>
       <div style={CRD}>
         <div style={{background:'rgba(13,148,136,0.12)',border:'1px solid rgba(13,148,136,0.3)',borderRadius:12,padding:'10px 14px',marginBottom:18,fontSize:12,color:'rgba(255,255,255,0.7)'}}>
-          No encontramos el expediente <strong style={{color:'#5eead4',fontFamily:"'Space Mono',monospace"}}>{expediente}</strong>. Regístrate para continuar.
+          No encontramos la matrícula <strong style={{color:'#5eead4',fontFamily:"'Space Mono',monospace"}}>{expediente}</strong>. Regístrate para continuar.
         </div>
         <label style={LBL}>Nombre completo</label>
         <input style={{...INP,marginBottom:14,fontFamily:'inherit'}} placeholder="Tu nombre" value={draft.nombre}
@@ -288,7 +288,7 @@ export default function CubiQRView({ cubiId }) {
           {loading ? 'Registrando…' : 'Crear cuenta y continuar →'}
         </button>
         <div style={{marginTop:10}}/>
-        <button style={SEC} onClick={()=>{setExpediente('');setScreen('login');}}>← Cambiar expediente</button>
+        <button style={SEC} onClick={()=>{setExpediente('');setScreen('login');}}>← Cambiar matrícula</button>
       </div>
     </div>
   );
@@ -478,7 +478,7 @@ export default function CubiQRView({ cubiId }) {
           </div>
           <div style={DIV}/>
 
-          <label style={LBL}>Confirma con tu expediente</label>
+          <label style={LBL}>Confirma con tu matrícula</label>
           <input style={INP} placeholder={`Ej. ${res?.expediente?.toString().slice(0,3)||'190'}***`}
             value={checkExpe} onChange={e=>{setCheckExpe(e.target.value);setErrorMsg('');}}
             onKeyDown={e=>e.key==='Enter'&&!loading&&handleCheckin()}/>
@@ -519,8 +519,8 @@ export default function CubiQRView({ cubiId }) {
           )}
           <div style={DIV}/>
 
-          <label style={LBL}>Tu expediente para confirmar Check-Out</label>
-          <input style={INP} placeholder="Tu expediente" value={checkExpe}
+          <label style={LBL}>Tu matrícula para confirmar Check-Out</label>
+          <input style={INP} placeholder="Tu matrícula" value={checkExpe}
             onChange={e=>{setCheckExpe(e.target.value);setErrorMsg('');}}
             onKeyDown={e=>e.key==='Enter'&&!loading&&handleCheckout()}/>
           {errorMsg && <div style={ERR}>{errorMsg}</div>}

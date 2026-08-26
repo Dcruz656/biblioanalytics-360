@@ -618,7 +618,7 @@ export default function BiblioAnalytics360() {
       });
     };
     release();
-    const t = setInterval(release, 30_000);
+    const t = setInterval(release, 10_000);
     return () => clearInterval(t);
   }, []);
 
@@ -1910,7 +1910,7 @@ export default function BiblioAnalytics360() {
                 {[
                   {label:'Hora pico',      value:peakLabel, sub:'más reservas en el periodo'},
                   {label:svcService==='cubiculos'?'Cubículo más usado':'PC más usada', value:topSpace?topSpace[0]:'—', sub:topSpace?`${topSpace[1]} reservas`:'sin datos'},
-                  {label:'Alumnos únicos', value:uniqueAlmn, sub:'expedientes distintos'},
+                  {label:'Alumnos únicos', value:uniqueAlmn, sub:'matrículas distintas'},
                 ].map(({label,value,sub})=>(
                   <div key={label} style={{background:t.card,borderRadius:12,padding:'12px 16px',border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,display:'flex',alignItems:'center',gap:14}}>
                     <div>
@@ -2060,7 +2060,7 @@ export default function BiblioAnalytics360() {
                   <div style={{overflowX:'auto'}}>
                     <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
                       <thead>
-                        <tr>{['Espacio','Alumno','Expediente','Carrera','Duración','Turno','Fecha'].map(h=>(
+                        <tr>{['Espacio','Alumno','Matrícula','Carrera','Duración','Turno','Fecha'].map(h=>(
                           <th key={h} style={{padding:'6px 12px',textAlign:'left',fontSize:9,fontWeight:600,color:t.textDim,textTransform:'uppercase',letterSpacing:.8,borderBottom:`1px solid ${t.cardBorder}`}}>{h}</th>
                         ))}</tr>
                       </thead>
@@ -3137,7 +3137,7 @@ export default function BiblioAnalytics360() {
                       {!cubiEditMode && cubiSelected.estado === "libre" && (
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: t.text, marginBottom: 12 }}>Nueva Reserva</div>
-                          {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "expediente", label: "No. Expediente", placeholder: "Ej. A201234" }].map(f => (
+                          {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "expediente", label: "No. Matrícula", placeholder: "Ej. A201234" }].map(f => (
                             <div key={f.key} style={{ marginBottom: 10 }}>
                               <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{f.label}</div>
                               <input value={cubiReservaForm[f.key]} onChange={e => setCubiReservaForm(prev => ({ ...prev, [f.key]: e.target.value }))}
@@ -3186,7 +3186,7 @@ export default function BiblioAnalytics360() {
                           <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
                             {[
                               ["Usuario",     cubiSelected.reserva.nombre],
-                              ["Expediente",  cubiSelected.reserva.expediente],
+                              ["Matrícula",  cubiSelected.reserva.expediente],
                               ["Carrera",     cubiSelected.reserva.carrera],
                               ["Duración",    `${cubiSelected.reserva.duracion}h`],
                               ["Entrada",     cubiSelected.reserva.inicio instanceof Date
@@ -3257,7 +3257,7 @@ export default function BiblioAnalytics360() {
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr>
-                          {["Cubículo", "Usuario", "Expediente", "Carrera", "Duración", "Estado", ""].map(h => (
+                          {["Cubículo", "Usuario", "Matrícula", "Carrera", "Duración", "Estado", ""].map(h => (
                             <th key={h} style={{ textAlign: "left", fontSize: 10, fontWeight: 700, color: t.textDim, padding: "6px 14px", textTransform: "uppercase", letterSpacing: 0.8, borderBottom: `1px solid ${t.cardBorder}` }}>{h}</th>
                           ))}
                         </tr>
@@ -3639,7 +3639,7 @@ export default function BiblioAnalytics360() {
                           {compuSel.estado === "libre" && (
                             <div>
                               <div style={{ fontSize: 12, fontWeight: 700, color: t.text, marginBottom: 12 }}>Asignar Usuario</div>
-                              {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "expediente", label: "No. Expediente", placeholder: "Ej. A201234" }].map(f => (
+                              {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "expediente", label: "No. Matrícula", placeholder: "Ej. A201234" }].map(f => (
                                 <div key={f.key} style={{ marginBottom: 10 }}>
                                   <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{f.label}</div>
                                   <input value={compuAsignForm[f.key]} onChange={e => setCompuAsignForm(prev => ({ ...prev, [f.key]: e.target.value }))}
@@ -3700,7 +3700,7 @@ export default function BiblioAnalytics360() {
                               <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
                                 {[
                                   ["Usuario", compuSel.reserva.nombre],
-                                  ["Expediente", compuSel.reserva.expediente],
+                                  ["Matrícula", compuSel.reserva.expediente],
                                   ["Carrera", compuSel.reserva.carrera],
                                   ["Duración", `${compuSel.reserva.duracion}h`],
                                   ["Sistema", compuSel.sistema],
