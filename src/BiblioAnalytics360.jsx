@@ -2945,7 +2945,7 @@ export default function BiblioAnalytics360() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 20 }}>
                 <StatCard icon={Layers}       label="Total Cubículos"  value={String(cubiculos.length)} color={t.teal}  t={t} />
                 <StatCard icon={CheckCircle}  label="Disponibles"      value={String(cubiLibres)}        color={t.green} t={t} />
-                <StatCard icon={Activity}     label="En Uso"           value={String(cubiOcupados)}      color={t.rose}  t={t} />
+                <StatCard icon={Activity}     label="Ocupado"           value={String(cubiOcupados)}      color={t.rose}  t={t} />
                 <StatCard icon={Clock}        label="Reservados"       value={String(cubiReservados)}    color={t.amber} t={t} />
                 <StatCard icon={Target}       label="Tasa de Uso"      value={`${cubiTasaUso}%`}         color={t.blue}  t={t} />
               </div>
@@ -2969,7 +2969,7 @@ export default function BiblioAnalytics360() {
 
                   {/* Legend */}
                   <div style={{ display: "flex", gap: 18, marginBottom: 16 }}>
-                    {[["libre", t.green, "Libre"], ["ocupado", t.rose, "En uso"], ["reservado", t.amber, "Reservado"]].map(([k, c, l]) => (
+                    {[["libre", t.green, "Libre"], ["ocupado", t.rose, "Ocupado"], ["reservado", t.amber, "Reservado"]].map(([k, c, l]) => (
                       <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: t.textDim }}>
                         <div style={{ width: 10, height: 10, borderRadius: 3, background: c }} />{l}
                       </div>
@@ -3052,7 +3052,7 @@ export default function BiblioAnalytics360() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ padding: "4px 12px", borderRadius: 20, background: cubiSelected.estado === "libre" ? `${t.green}15` : cubiSelected.estado === "ocupado" ? `${t.rose}15` : `${t.amber}15`, color: cubiSelected.estado === "libre" ? t.green : cubiSelected.estado === "ocupado" ? t.rose : t.amber, fontSize: 11, fontWeight: 700 }}>
-                            {cubiSelected.estado === "libre" ? "Libre" : cubiSelected.estado === "ocupado" ? "En uso" : "Reservado"}
+                            {cubiSelected.estado === "libre" ? "Libre" : cubiSelected.estado === "ocupado" ? "Ocupado" : "Reservado"}
                           </span>
                           <button
                             onClick={() => { setCubiEditMode(true); setCubiEditDraft({ nombre: cubiSelected.nombre, capacidad: cubiSelected.capacidad, piso: cubiSelected.piso }); }}
@@ -3250,7 +3250,7 @@ export default function BiblioAnalytics360() {
                       <tbody>
                         {cubiActivas.map(c => {
                           const eColor = c.estado === "ocupado" ? t.rose : t.amber;
-                          const eLabel = c.estado === "ocupado" ? "En uso" : "Reservado";
+                          const eLabel = c.estado === "ocupado" ? "Ocupado" : "Reservado";
                           return (
                             <tr key={c.id} style={{ borderBottom: `1px solid ${t.cardBorder}` }}>
                               <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: t.teal }}>{c.nombre}</td>
@@ -3500,7 +3500,7 @@ export default function BiblioAnalytics360() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 20 }}>
                   <StatCard icon={Monitor}     label="Total Equipos"  value={String(computadoras.length)} color={t.teal} t={t} />
                   <StatCard icon={CheckCircle} label="Disponibles"    value={String(computadoras.filter(c => c.estado === "libre").length)} color={t.green} t={t} />
-                  <StatCard icon={Activity}    label="En Uso"         value={String(computadoras.filter(c => c.estado === "ocupado").length)} color={t.rose} t={t} />
+                  <StatCard icon={Activity}    label="Ocupado"         value={String(computadoras.filter(c => c.estado === "ocupado").length)} color={t.rose} t={t} />
                   <StatCard icon={Wrench}      label="Mantenimiento"  value={String(computadoras.filter(c => c.estado === "mantenimiento").length)} color={t.amber} t={t} />
                   <StatCard icon={Target}      label="Tasa de Uso"    value={`${computadoras.length ? Math.round((computadoras.filter(c => c.estado === "ocupado").length / computadoras.length) * 100) : 0}%`} color={t.blue} t={t} />
                 </div>
@@ -3524,7 +3524,7 @@ export default function BiblioAnalytics360() {
 
                     {/* Legend */}
                     <div style={{ display: "flex", gap: 18, marginBottom: 16 }}>
-                      {[["libre", t.green, "Libre"], ["ocupado", t.rose, "En uso"], ["mantenimiento", t.amber, "Mantenimiento"]].map(([k, c, l]) => (
+                      {[["libre", t.green, "Libre"], ["ocupado", t.rose, "Ocupado"], ["mantenimiento", t.amber, "Mantenimiento"]].map(([k, c, l]) => (
                         <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: t.textDim }}>
                           <div style={{ width: 10, height: 10, borderRadius: 3, background: c }} />{l}
                         </div>
@@ -3568,7 +3568,7 @@ export default function BiblioAnalytics360() {
                             )}
                             <div style={{ fontSize: 10, fontWeight: 700, color: t.text, lineHeight: 1.2 }}>{pc.nombre}</div>
                             <div style={{ fontSize: 8, color: cfg.color, fontWeight: 700, textTransform: "uppercase", marginTop: 2, letterSpacing: 0.3, marginBottom: 3 }}>
-                              {pc.estado === "mantenimiento" ? "Mant." : pc.estado === "ocupado" ? "En uso" : "Libre"}
+                              {pc.estado === "mantenimiento" ? "Mant." : pc.estado === "ocupado" ? "Ocupado" : "Libre"}
                             </div>
                             {pc.estado === "ocupado" && pc.reserva && (() => {
                               const fmtT = d => new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
@@ -3612,7 +3612,7 @@ export default function BiblioAnalytics360() {
                                 background: compuSel.estado === "libre" ? `${t.green}15` : compuSel.estado === "ocupado" ? `${t.rose}15` : `${t.amber}15`,
                                 color: compuSel.estado === "libre" ? t.green : compuSel.estado === "ocupado" ? t.rose : t.amber,
                                 fontSize: 11, fontWeight: 700 }}>
-                                {compuSel.estado === "libre" ? "Libre" : compuSel.estado === "ocupado" ? "En uso" : "Mantenimiento"}
+                                {compuSel.estado === "libre" ? "Libre" : compuSel.estado === "ocupado" ? "Ocupado" : "Mantenimiento"}
                               </span>
                               <button onClick={() => setCompuSelectedId(null)}
                                 style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${t.cardBorder}`, background: t.inputBg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>

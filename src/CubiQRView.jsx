@@ -512,7 +512,7 @@ export default function CubiQRView({ cubiId }) {
 
           {res && (
             <div style={{background:'rgba(255,255,255,0.05)',borderRadius:12,padding:'12px 14px',marginBottom:16,fontSize:12,lineHeight:1.7}}>
-              <div style={{color:'rgba(255,255,255,0.6)'}}>En uso por <strong style={{color:'#fff'}}>{res.nombre}</strong></div>
+              <div style={{color:'rgba(255,255,255,0.6)'}}>Ocupado por <strong style={{color:'#fff'}}>{res.nombre}</strong></div>
               {finExp && <div style={{color:'rgba(255,255,255,0.45)'}}>Reservado hasta <strong style={{color:'#5eead4'}}>{fmtHM(finExp)}</strong> (auto-libera al vencer)</div>}
               <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,marginTop:4}}>Check-Out voluntario libera el espacio antes de tiempo</div>
             </div>

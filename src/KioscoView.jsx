@@ -568,7 +568,7 @@ export default function KioscoView() {
               {[
                 { n: libresCount,   label: "Cubículos libres",  color: GREEN },
                 { n: compuLibres,   label: "PCs libres",        color: TEAL  },
-                { n: cubiculos.filter(c=>c.estado==="ocupado").length + computadoras.filter(c=>c.estado==="ocupado").length, label: "En uso", color: ROSE },
+                { n: cubiculos.filter(c=>c.estado==="ocupado").length + computadoras.filter(c=>c.estado==="ocupado").length, label: "Ocupado", color: ROSE },
               ].map(({ n, label, color }) => (
                 <div key={label} style={{ padding: "14px 28px", borderRadius: 16, background: `${color}12`, border: `1px solid ${color}30`, textAlign: "center", minWidth: 110 }}>
                   <div style={{ fontSize: 38, fontWeight: 800, color, fontFamily: "'Space Mono', monospace" }}>{n}</div>
@@ -1053,7 +1053,7 @@ export default function KioscoView() {
               </button>
             ))}
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-              {[["🟢", GREEN, "Disponible"], ["🟡", AMBER, "Reservar turno"], ["🔴", ROSE, "En uso"]].map(([ico, c, l]) => (
+              {[["🟢", GREEN, "Disponible"], ["🟡", AMBER, "Reservar turno"], ["🔴", ROSE, "Ocupado"]].map(([ico, c, l]) => (
                 <div key={l} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.4)" }}><span>{ico}</span>{l}</div>
               ))}
             </div>
@@ -1082,7 +1082,7 @@ export default function KioscoView() {
               else if (isPending)                { color = AMBER; icon = "🟡"; label = "Reservado"; sublabel = `Check-in en ${fmtRemaining(pendingRemMs)}`; }
               else if (canAdvance)               { color = AMBER; icon = "⏱️"; label = `Libre a las ${endTime ? fmtTime(endTime) : "—"}`; sublabel = `Faltan ${fmtRemaining(rem)}`; }
               else if (hasNextReserva)           { color = AMBER; icon = "⏱️"; label = "Siguiente turno reservado"; sublabel = endTime ? `Libre a las ${fmtTime(endTime)}` : null; }
-              else                               { color = ROSE;  icon = "🔴"; label = "En uso"; sublabel = endTime ? `Libre aprox. ${fmtTime(endTime)}` : null; }
+              else                               { color = ROSE;  icon = "🔴"; label = "Ocupado"; sublabel = endTime ? `Libre aprox. ${fmtTime(endTime)}` : null; }
 
               return (
                 <button key={cubi.id}
@@ -1262,7 +1262,7 @@ export default function KioscoView() {
               </button>
             ))}
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
-              {[["🟢", GREEN, "Disponible"], ["🔴", ROSE, "En uso"], ["🟡", AMBER, "Mantenimiento"]].map(([ico, c, l]) => (
+              {[["🟢", GREEN, "Disponible"], ["🔴", ROSE, "Ocupado"], ["🟡", AMBER, "Mantenimiento"]].map(([ico, c, l]) => (
                 <div key={l} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.4)" }}><span>{ico}</span>{l}</div>
               ))}
             </div>
@@ -1305,7 +1305,7 @@ export default function KioscoView() {
                   <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginBottom: 3 }}>{pc.nombre}</div>
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>{pc.zona.replace("Sala ", "")}</div>
                   <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    {isLibre ? "Disponible" : isMant ? "Mantenimiento" : "En uso"}
+                    {isLibre ? "Disponible" : isMant ? "Mantenimiento" : "Ocupado"}
                   </div>
                   {pc.estado === "ocupado" && pc.reserva && (
                     <div style={{ marginTop: 8, padding: "6px 8px", borderRadius: 7, background: "rgba(0,0,0,0.25)" }}>
