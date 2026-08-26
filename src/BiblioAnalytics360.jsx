@@ -664,10 +664,9 @@ export default function BiblioAnalytics360() {
   // Export state
   const [showExport, setShowExport] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
-  const [exportPeriodos, setExportPeriodos] = useState(["2024-2"]);
-  const [exportCampus, setExportCampus] = useState("todos");
-  const [exportServicios, setExportServicios] = useState(["prestamos","computo","formacion","espacios"]);
-  const [exportSecciones, setExportSecciones] = useState(["overview","servicios","predictivo","sentimiento","impacto"]);
+  const [exportServicio, setExportServicio] = useState("ambos"); // "ambos"|"cubiculos"|"computadoras"
+  const [exportDateFrom2, setExportDateFrom2] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
+  const [exportDateTo2, setExportDateTo2] = useState(new Date().toISOString().slice(0,10));
   const [exportFormat, setExportFormat] = useState("pdf");
   const [isExportRendering, setIsExportRendering] = useState(false);
   const exportChartRefs = { overview: useRef(null), servicios: useRef(null), predictivo: useRef(null), sentimiento: useRef(null), impacto: useRef(null) };
@@ -838,62 +837,43 @@ export default function BiblioAnalytics360() {
   const handleExport = useCallback(async () => {
     setExportLoading(true);
     try {
-      if (nav === "servicios") {
-        const expFromDate = new Date(svcDateFrom);
-        const expToDate   = new Date(svcDateTo + 'T23:59:59');
-        const svcRecs = historialReservas
-          .filter(h => h.tipo === svcService)
-          .filter(h => { const d = new Date(h.fin||h.inicio); return d >= expFromDate && d <= expToDate; })
-          .filter(h => !svcCarreraFilter || h.carrera === svcCarreraFilter)
-          .filter(h => !svcTurnoFilter   || h.turno   === svcTurnoFilter)
-          .filter(h => svcDurFilter == null || h.duracion === svcDurFilter);
-        const serviceName = svcService === "cubiculos" ? "Cubículos" : "Computadoras";
-        const pLabel = `${svcDateFrom} – ${svcDateTo}`;
-        if (exportFormat === "excel") {
-          generateServiceExcel(svcRecs, svcService, pLabel, { institution: "UACJ" });
-          setShowExport(false);
-          setNotifications(prev => [{ id: Date.now(), text: `Excel de ${serviceName} exportado`, type: "success", time: "Ahora" }, ...prev]);
-        } else {
-          setIsExportRendering(true);
-          await new Promise(r => setTimeout(r, 900));
-          let chartImage = null;
-          const ref = exportChartRefs.servicios?.current;
-          if (ref) {
-            try {
-              const canvas = await html2canvas(ref, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
-              chartImage = canvas.toDataURL("image/png");
-            } catch (_) {}
-          }
-          setIsExportRendering(false);
-          await generateServicePDF(chartImage, svcRecs, svcService, pLabel, { institution: "UACJ" });
-          setShowExport(false);
-          setNotifications(prev => [{ id: Date.now(), text: `PDF de ${serviceName} generado`, type: "success", time: "Ahora" }, ...prev]);
-        }
+      const fromD  = new Date(exportDateFrom2 + "T00:00:00");
+      const toD    = new Date(exportDateTo2   + "T23:59:59");
+      const pLabel = `${exportDateFrom2} – ${exportDateTo2}`;
+      const meta   = { institution: "Biblioteca de ICB · UACJ" };
+
+      const filterRecs = (tipo) =>
+        historialReservas.filter(h =>
+          h.tipo === tipo &&
+          (!h.inicio || (new Date(h.inicio) >= fromD && new Date(h.inicio) <= toD))
+        );
+
+      const cubiRecs  = exportServicio !== "computadoras" ? filterRecs("cubiculos")    : null;
+      const compuRecs = exportServicio !== "cubiculos"    ? filterRecs("computadoras") : null;
+      const label     = exportServicio === "ambos" ? "Cubículos y Computadoras"
+                      : exportServicio === "cubiculos" ? "Cubículos" : "Computadoras";
+
+      if (exportFormat === "excel") {
+        if (cubiRecs)  generateServiceExcel(cubiRecs,  "cubiculos",    pLabel, meta);
+        if (compuRecs) generateServiceExcel(compuRecs, "computadoras", pLabel, meta);
+        setShowExport(false);
+        setNotifications(prev => [{ id: Date.now(), text: `Excel de ${label} exportado`, type: "success", time: "Ahora" }, ...prev]);
       } else {
-        const exportData = { circulacion, svcMes, svcCarrera, svcTipoUsr, svcTurno, comments, impactoBase, retencionBase, radarBase, colAreas };
-        const exportFilters = { campus: exportCampus, periodos: exportPeriodos, servicios: exportServicios, secciones: exportSecciones };
-        if (exportFormat === "excel") {
-          generateExcel(exportData, exportFilters);
-          setShowExport(false);
-          setNotifications(prev => [{ id: Date.now(), text: "Excel exportado correctamente", type: "success", time: "Ahora" }, ...prev]);
-        } else {
-          setIsExportRendering(true);
-          await new Promise(r => setTimeout(r, 900));
-          const images = {};
-          for (const sec of exportSecciones) {
-            const ref = exportChartRefs[sec]?.current;
-            if (ref) {
-              try {
-                const canvas = await html2canvas(ref, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
-                images[sec] = canvas.toDataURL("image/png");
-              } catch (_) {}
-            }
-          }
-          setIsExportRendering(false);
-          await generatePDF(images, exportData, exportFilters, { institution: "UACJ", predModel, predHorizon });
-          setShowExport(false);
-          setNotifications(prev => [{ id: Date.now(), text: "PDF generado y descargado correctamente", type: "success", time: "Ahora" }, ...prev]);
+        setIsExportRendering(true);
+        await new Promise(r => setTimeout(r, 900));
+        let chartImage = null;
+        const ref = exportChartRefs.servicios?.current;
+        if (ref) {
+          try {
+            const canvas = await html2canvas(ref, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
+            chartImage = canvas.toDataURL("image/png");
+          } catch (_) {}
         }
+        setIsExportRendering(false);
+        if (cubiRecs)  await generateServicePDF(chartImage, cubiRecs,  "cubiculos",    pLabel, meta);
+        if (compuRecs) await generateServicePDF(chartImage, compuRecs, "computadoras", pLabel, meta);
+        setShowExport(false);
+        setNotifications(prev => [{ id: Date.now(), text: `PDF de ${label} generado`, type: "success", time: "Ahora" }, ...prev]);
       }
     } catch (err) {
       console.error("Export error:", err);
@@ -902,7 +882,7 @@ export default function BiblioAnalytics360() {
       setExportLoading(false);
       setIsExportRendering(false);
     }
-  }, [nav, svcService, svcDateFrom, svcDateTo, svcCarreraFilter, svcTurnoFilter, svcDurFilter, historialReservas, exportFormat, exportCampus, exportPeriodos, exportServicios, exportSecciones, circulacion, svcMes, svcCarrera, svcTipoUsr, svcTurno, comments, predModel, predHorizon]);
+  }, [exportServicio, exportDateFrom2, exportDateTo2, exportFormat, historialReservas]);
 
   const posCount = comments.filter(c => c.sentimiento === "positivo").length;
   const negCount = comments.filter(c => c.sentimiento === "negativo").length;
@@ -4037,43 +4017,19 @@ export default function BiblioAnalytics360() {
             <div style={{ marginBottom: 18 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: t.teal, textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 }}>Filtros</div>
 
-              {/* Periodo */}
+              {/* Servicio */}
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: t.text, marginBottom: 8 }}>Periodo(s)</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {[{ v: "2024-1", l: "Ene – Jul 2024" }, { v: "2024-2", l: "Ago 2024 – Ene 2025" }, { v: "2025-1", l: "Feb – Jul 2025" }].map(p => {
-                    const on = exportPeriodos.includes(p.v);
+                <div style={{ fontSize: 11, fontWeight: 600, color: t.text, marginBottom: 8 }}>Servicio</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {[
+                    { v: "ambos",        l: "Ambos",         color: t.teal },
+                    { v: "cubiculos",    l: "Cubículos",     color: t.teal },
+                    { v: "computadoras", l: "Computadoras",  color: t.blue },
+                  ].map(s => {
+                    const on = exportServicio === s.v;
                     return (
-                      <button key={p.v} onClick={() => setExportPeriodos(prev => on && prev.length === 1 ? prev : on ? prev.filter(x => x !== p.v) : [...prev, p.v])}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${on ? t.teal : t.cardBorder}`, background: on ? `${t.teal}15` : t.inputBg, color: on ? t.teal : t.textDim, fontSize: 11, fontWeight: on ? 700 : 400, cursor: "pointer" }}>
-                        {p.l}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Campus */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: t.text, marginBottom: 8 }}>Campus</div>
-                <select value={exportCampus} onChange={e => setExportCampus(e.target.value)}
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 12, outline: "none" }}>
-                  <option value="todos">Todos los Campus</option>
-                  <option value="central">Campus Central</option>
-                  <option value="norte">Campus Norte</option>
-                  <option value="sur">Campus Sur</option>
-                </select>
-              </div>
-
-              {/* Servicios */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: t.text, marginBottom: 8 }}>Servicios</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {[{ v: "prestamos", l: "Préstamos" }, { v: "computo", l: "Cómputo" }, { v: "formacion", l: "Formación" }, { v: "espacios", l: "Espacios" }].map(s => {
-                    const on = exportServicios.includes(s.v);
-                    return (
-                      <button key={s.v} onClick={() => setExportServicios(prev => on && prev.length === 1 ? prev : on ? prev.filter(x => x !== s.v) : [...prev, s.v])}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${on ? t.blue : t.cardBorder}`, background: on ? `${t.blue}15` : t.inputBg, color: on ? t.blue : t.textDim, fontSize: 11, fontWeight: on ? 700 : 400, cursor: "pointer" }}>
+                      <button key={s.v} onClick={() => setExportServicio(s.v)}
+                        style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${on ? s.color : t.cardBorder}`, background: on ? `${s.color}18` : t.inputBg, color: on ? s.color : t.textDim, fontSize: 11, fontWeight: on ? 700 : 400, cursor: "pointer" }}>
                         {s.l}
                       </button>
                     );
@@ -4081,20 +4037,27 @@ export default function BiblioAnalytics360() {
                 </div>
               </div>
 
-              {/* Secciones */}
+              {/* Rango de fechas */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: t.text, marginBottom: 8 }}>Módulos del reporte</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {[{ v: "overview", l: "Vista General" }, { v: "servicios", l: "Servicios" }, { v: "predictivo", l: "Predictivo" }, { v: "sentimiento", l: "Sentimiento" }, { v: "impacto", l: "Impacto" }].map(s => {
-                    const on = exportSecciones.includes(s.v);
-                    return (
-                      <button key={s.v} onClick={() => setExportSecciones(prev => on && prev.length === 1 ? prev : on ? prev.filter(x => x !== s.v) : [...prev, s.v])}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${on ? t.purple : t.cardBorder}`, background: on ? `${t.purple}15` : t.inputBg, color: on ? t.purple : t.textDim, fontSize: 11, fontWeight: on ? 700 : 400, cursor: "pointer" }}>
-                        {s.l}
-                      </button>
-                    );
-                  })}
+                <div style={{ fontSize: 11, fontWeight: 600, color: t.text, marginBottom: 8 }}>Rango de fechas</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input type="date" value={exportDateFrom2} onChange={e => setExportDateFrom2(e.target.value)}
+                    style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 12, outline: "none" }} />
+                  <span style={{ color: t.textDim, fontSize: 11 }}>–</span>
+                  <input type="date" value={exportDateTo2} onChange={e => setExportDateTo2(e.target.value)}
+                    style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 12, outline: "none" }} />
                 </div>
+                {(() => {
+                  const tipos = exportServicio === "ambos" ? ["cubiculos","computadoras"] : [exportServicio];
+                  const fromD = new Date(exportDateFrom2 + "T00:00:00");
+                  const toD   = new Date(exportDateTo2   + "T23:59:59");
+                  const count = historialReservas.filter(h => tipos.includes(h.tipo) && (!h.inicio || (new Date(h.inicio) >= fromD && new Date(h.inicio) <= toD))).length;
+                  return (
+                    <div style={{ marginTop: 6, fontSize: 11, color: t.textDim }}>
+                      {count} registro{count !== 1 ? "s" : ""} en el rango seleccionado
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -4133,8 +4096,8 @@ export default function BiblioAnalytics360() {
                 Cancelar
               </button>
               <button onClick={handleExport}
-                disabled={exportLoading || exportPeriodos.length === 0 || exportServicios.length === 0 || exportSecciones.length === 0}
-                style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: exportLoading ? t.textDim : `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 700, cursor: exportLoading ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: (exportPeriodos.length === 0 || exportServicios.length === 0) ? 0.5 : 1, transition: "all 0.2s" }}>
+                disabled={exportLoading || !exportDateFrom2 || !exportDateTo2}
+                style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: exportLoading ? t.textDim : `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 700, cursor: exportLoading ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.2s" }}>
                 {exportLoading
                   ? <><RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} /> Generando…</>
                   : <><Download size={13} /> Exportar {exportFormat === "pdf" ? "PDF" : "Excel"}</>}
@@ -4147,7 +4110,7 @@ export default function BiblioAnalytics360() {
       {/* ===== HIDDEN EXPORT CHART RENDERER ===== */}
       {isExportRendering && (
         <div style={{ position: "fixed", top: "-9999px", left: 0, width: 900, zIndex: 9999, pointerEvents: "none" }}>
-          {exportSecciones.includes("overview") && (
+          {false && (
             <div ref={exportChartRefs.overview} style={{ width: 860, padding: "16px 20px", background: "#ffffff" }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>Circulación de Colecciones</div>
               <ResponsiveContainer width="100%" height={260}>
@@ -4165,7 +4128,7 @@ export default function BiblioAnalytics360() {
               </ResponsiveContainer>
             </div>
           )}
-          {exportSecciones.includes("servicios") && (
+          {true && (
             <div ref={exportChartRefs.servicios} style={{ width: 860, padding: "16px 20px", background: "#ffffff" }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>Servicios por Tipo — Temporal</div>
               <ResponsiveContainer width="100%" height={260}>
@@ -4181,7 +4144,7 @@ export default function BiblioAnalytics360() {
               </ResponsiveContainer>
             </div>
           )}
-          {exportSecciones.includes("predictivo") && (
+          {false && (
             <div ref={exportChartRefs.predictivo} style={{ width: 860, padding: "16px 20px", background: "#ffffff" }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>Pronóstico de Circulación</div>
               <ResponsiveContainer width="100%" height={260}>
@@ -4199,7 +4162,7 @@ export default function BiblioAnalytics360() {
               </ResponsiveContainer>
             </div>
           )}
-          {exportSecciones.includes("sentimiento") && (
+          {false && (
             <div ref={exportChartRefs.sentimiento} style={{ width: 860, padding: "16px 20px", background: "#ffffff" }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>Tendencia de Sentimiento NLP</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -4226,7 +4189,7 @@ export default function BiblioAnalytics360() {
               </div>
             </div>
           )}
-          {exportSecciones.includes("impacto") && (
+          {false && (
             <div ref={exportChartRefs.impacto} style={{ width: 860, padding: "16px 20px", background: "#ffffff" }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>Impacto Académico</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
