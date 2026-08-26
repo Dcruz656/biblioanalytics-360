@@ -236,6 +236,7 @@ export default function KioscoView() {
   const [pinTerminar,     setPinTerminar]     = useState('');
   const [pinTerminarErr,  setPinTerminarErr]  = useState('');
   const [confirmando,     setConfirmando]     = useState(false);
+  const [renovando,       setRenovando]       = useState(false);
   const [servicio,        setServicio]        = useState("cubiculos");
   const [computadoras,    setComputadoras]    = useState([]);
   const [compuSelectedId, setCompuSelectedId] = useState(null);
@@ -322,18 +323,25 @@ export default function KioscoView() {
             const old = prev[i];
             if (old?.reserva?.matricula) {
               const res = old.reserva;
-              const hh = new Date(res.inicio).getHours();
-              const turno = hh >= 7 && hh < 14 ? 'Matutino' : hh >= 14 && hh < 20 ? 'Vespertino' : 'Nocturno';
-              dbSaveHistorialReserva({
-                cubicule: old.nombre, tipo: 'cubiculos',
-                nombre: res.nombre, matricula: res.matricula, carrera: res.carrera,
-                duracion: res.duracion, personas: res.personas || null, piso: old.piso,
-                inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
-                fin: new Date(serverNow()).toISOString(), turno,
-              });
-              dbGetPushSubscriptions(res.matricula).then(subs => {
-                subs.forEach(sub => sendPush(sub, '📚 Tu reserva ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Gracias por usar la biblioteca.`));
-              });
+              if (res.pendingCheckin) {
+                // Tolerancia de check-in expirada — sin historial (no hubo uso real)
+                dbGetPushSubscriptions(res.matricula).then(subs => {
+                  subs.forEach(sub => sendPush(sub, '❌ Reserva cancelada', `No se detectó check-in en ${old.nombre} dentro del tiempo de tolerancia. El espacio fue liberado.`));
+                });
+              } else if (res.inicio) {
+                const hh = new Date(res.inicio).getHours();
+                const turno = hh >= 7 && hh < 14 ? 'Matutino' : hh >= 14 && hh < 20 ? 'Vespertino' : 'Nocturno';
+                dbSaveHistorialReserva({
+                  cubicule: old.nombre, tipo: 'cubiculos',
+                  nombre: res.nombre, matricula: res.matricula, carrera: res.carrera,
+                  duracion: res.duracion, personas: res.personas || null, piso: old.piso,
+                  inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
+                  fin: new Date(serverNow()).toISOString(), turno,
+                });
+                dbGetPushSubscriptions(res.matricula).then(subs => {
+                  subs.forEach(sub => sendPush(sub, '📚 Tu tiempo ha terminado', `Tu sesión en ${old.nombre} venció. Gracias por usar la biblioteca.`));
+                });
+              }
             }
             dbSaveCubiculo(c);
           });
@@ -562,6 +570,13 @@ export default function KioscoView() {
       }
       setCubiculos(prev => prev.map(c => c.id === selectedId ? newState : c));
       await dbSaveCubiculo(newState);
+      dbGetPushSubscriptions(account.matricula).then(subs => {
+        if (cubi.estado === "ocupado") {
+          subs.forEach(sub => sendPush(sub, '🔔 Reserva anticipada registrada', `Tu lugar en ${cubi.nombre} quedará listo cuando salga el ocupante actual.`));
+        } else {
+          subs.forEach(sub => sendPush(sub, '✅ Cubículo reservado', `${cubi.nombre} · ${duracion}h. Tienes 5 min para hacer check-in desde el QR del cubículo.`));
+        }
+      });
       setFolio(f);
       setScreen("success");
     } finally {
@@ -578,8 +593,31 @@ export default function KioscoView() {
     const newState = { ...compu, estado: "ocupado", reserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, inicio: new Date(serverNow()) } };
     setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? newState : c));
     dbSaveComputadora(newState);
+    dbGetPushSubscriptions(account.matricula).then(subs => {
+      subs.forEach(sub => sendPush(sub, '💻 Sesión iniciada', `${compu.nombre} lista por ${duracion}h. Dirígete a la sala de cómputo.`));
+    });
     setFolio(f);
     setScreen("success");
+  }
+
+  async function renovarReserva(cubiId) {
+    if (renovando) return;
+    setRenovando(true);
+    try {
+      const fresh = await dbLoadCubiculos();
+      if (fresh && fresh.length > 0) setCubiculos(fresh);
+      const cubi = (fresh || cubiculos).find(c => c.id === cubiId);
+      if (!cubi || cubi.estado !== 'ocupado' || !cubi.reserva?.inicio || cubi.nextReserva) return;
+      const nuevaDur = (cubi.reserva.duracion || 1) + 1;
+      const updated  = { ...cubi, reserva: { ...cubi.reserva, duracion: nuevaDur } };
+      setCubiculos(prev => prev.map(c => c.id === cubiId ? updated : c));
+      await dbSaveCubiculo(updated);
+      dbGetPushSubscriptions(cubi.reserva.matricula).then(subs => {
+        subs.forEach(sub => sendPush(sub, '✅ Renovación confirmada', `Tu sesión en ${cubi.nombre} se extendió 1 hora más. ¡Sigue adelante!`));
+      });
+    } finally {
+      setRenovando(false);
+    }
   }
 
   function terminarUsoCompu() {
@@ -938,6 +976,22 @@ export default function KioscoView() {
             )}
           </div>
 
+          {/* Botón Renovar — aparece ≤10 min antes sin reserva siguiente */}
+          {almostDone && !hasNext && !confirmTerminar && (
+            <div style={{ background: `${TEAL}12`, border: `1.5px solid ${TEAL}40`, borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: TEAL, marginBottom: 4 }}>
+                ⏰ Tu sesión vence en ~{Math.ceil(remaining / 60000)} min
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 14, lineHeight: 1.5 }}>
+                No hay reservas pendientes para este cubículo. Puedes extender tu uso 1 hora más.
+              </div>
+              <button onClick={() => renovarReserva(selectedCubi.id)} disabled={renovando}
+                style={{ width: "100%", padding: "13px 0", borderRadius: 10, border: "none", background: renovando ? "rgba(255,255,255,0.1)" : `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: renovando ? "rgba(255,255,255,0.4)" : "#fff", fontSize: 15, fontWeight: 700, cursor: renovando ? "wait" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                {renovando ? "Procesando…" : "🔄 Renovar 1 hora más"}
+              </button>
+            </div>
+          )}
+
           {/* Botón terminar / cancelar */}
           {!confirmTerminar ? (
             <button onClick={() => setConfirmTerminar(true)}
@@ -1050,6 +1104,26 @@ export default function KioscoView() {
           </div>
 
           <div style={{ fontSize: 18, fontWeight: 600, color: "rgba(255,255,255,0.55)", marginBottom: 24 }}>¿Qué servicio necesitas?</div>
+
+          {/* Card renovación — si tiene cubículo activo ≤10 min y sin siguiente reserva */}
+          {(() => {
+            const miCubi = cubiculos.find(c => c.estado === 'ocupado' && c.reserva?.matricula === account?.matricula);
+            const miRemain = miCubi ? getRemainingMs(miCubi) : Infinity;
+            if (!miCubi || miCubi.nextReserva || miRemain <= 0 || miRemain > 10 * 60 * 1000) return null;
+            return (
+              <div style={{ background: `${TEAL}12`, border: `2px solid ${TEAL}50`, borderRadius: 18, padding: "20px 22px", marginBottom: 22, textAlign: "left" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: TEAL, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Renovación disponible</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{miCubi.nombre}</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 14 }}>
+                  Tu sesión vence en ~{Math.ceil(miRemain / 60000)} min · Sin reservas pendientes
+                </div>
+                <button onClick={() => renovarReserva(miCubi.id)} disabled={renovando}
+                  style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: renovando ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg, ${TEAL}, #2563eb)`, color: renovando ? "rgba(255,255,255,0.3)" : "#fff", fontSize: 16, fontWeight: 700, cursor: renovando ? "wait" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                  {renovando ? "Procesando…" : "🔄 Renovar 1 hora más"}
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Banner fuera de horario */}
           {!isWithinOperatingHours(clock) && (
