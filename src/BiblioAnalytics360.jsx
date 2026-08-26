@@ -266,7 +266,7 @@ const navMain = [
   { id: "sentimiento", icon: Heart, label: "Mod. Sentimiento" },
   { id: "impacto", icon: GraduationCap, label: "Mod. Impacto" },
   { id: "datos", icon: Database, label: "Datos & Upload" },
-  { id: "herramientas", icon: LayoutGrid, label: "Herramientas" },
+  { id: "herramientas", icon: LayoutGrid, label: "Servicios" },
   { id: "configuracion", icon: Settings, label: "Configuración" },
 ];
 
@@ -981,7 +981,7 @@ export default function BiblioAnalytics360() {
               {nav === "predictivo" && "Módulo Predictivo"}
               {nav === "sentimiento" && "Módulo de Sentimiento"}{nav === "impacto" && "Módulo de Impacto"}
               {nav === "datos" && "Datos & Upload"}
-              {nav === "herramientas" && "Herramientas"}
+              {nav === "herramientas" && "Servicios"}
               {nav === "configuracion" && "Configuración"}
             </h1>
             <p style={{ fontSize: 10, color: t.textDim, margin: 0, letterSpacing: .3 }}>Biblioteca Central UACJ · Prototipo Funcional</p>
