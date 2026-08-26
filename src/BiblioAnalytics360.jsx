@@ -2977,50 +2977,50 @@ export default function BiblioAnalytics360() {
                   </div>
 
                   {/* Grid cards */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                     {cubiFiltered.map(cubi => {
                       const cfg = { libre: { color: t.green, bg: `${t.green}12` }, ocupado: { color: t.rose, bg: `${t.rose}12` }, reservado: { color: t.amber, bg: `${t.amber}12` } }[cubi.estado];
                       const isSelected = cubiSelectedId === cubi.id;
                       return (
                         <button key={cubi.id} onClick={() => setCubiSelectedId(isSelected ? null : cubi.id)}
-                          style={{ padding: "14px 8px", borderRadius: 12, border: `2px solid ${isSelected ? cfg.color : `${t.cardBorder}`}`, background: isSelected ? cfg.bg : `${t.text}03`, cursor: "pointer", textAlign: "center", transition: "all 0.15s", outline: "none" }}>
+                          style={{ padding: "20px 12px", borderRadius: 14, border: `2px solid ${isSelected ? cfg.color : `${t.cardBorder}`}`, background: isSelected ? cfg.bg : `${t.text}03`, cursor: "pointer", textAlign: "center", transition: "all 0.15s", outline: "none" }}>
                           {cubi.estado !== "libre" && cubi.reserva ? (() => {
                             const total = cubi.reserva.duracion * 3_600_000;
                             const rem   = getCubiRemainingMs(cubi);
                             const pct   = total > 0 ? Math.max(0, rem / total) : 0;
-                            const S = 38, R = 14, CIRC = 2 * Math.PI * R;
+                            const S = 52, R = 20, CIRC = 2 * Math.PI * R;
                             const mins  = Math.floor(rem / 60000);
                             const hh = Math.floor(mins / 60), mm = mins % 60;
                             const label = mins >= 60 ? (mm === 0 ? `${hh}h` : `${hh}h${mm}m`) : `${mins}m`;
                             return (
-                              <div style={{ position: "relative", width: S, height: S, margin: "0 auto 8px" }}>
+                              <div style={{ position: "relative", width: S, height: S, margin: "0 auto 10px" }}>
                                 <svg width={S} height={S} style={{ transform: "rotate(-90deg)" }}>
-                                  <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={`${cfg.color}20`} strokeWidth={3} />
-                                  <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={cfg.color} strokeWidth={3}
+                                  <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={`${cfg.color}20`} strokeWidth={4} />
+                                  <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={cfg.color} strokeWidth={4}
                                     strokeDasharray={`${pct * CIRC} ${CIRC}`} strokeLinecap="round"
                                     style={{ transition: "stroke-dasharray 1s linear" }} />
                                 </svg>
-                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800, color: cfg.color, fontFamily: "'Space Mono', monospace" }}>
+                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: cfg.color, fontFamily: "'Space Mono', monospace" }}>
                                   {label}
                                 </div>
                               </div>
                             );
                           })() : (
-                            <div style={{ width: 34, height: 34, borderRadius: 9, background: cfg.bg, border: `1.5px solid ${cfg.color}50`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px" }}>
-                              <Layers size={15} color={cfg.color} />
+                            <div style={{ width: 48, height: 48, borderRadius: 12, background: cfg.bg, border: `1.5px solid ${cfg.color}50`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>
+                              <Layers size={20} color={cfg.color} />
                             </div>
                           )}
-                          <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{cubi.nombre}</div>
-                          <div style={{ fontSize: 10, color: t.textDim, margin: "2px 0 2px" }}>Cap. {cubi.capacidad}</div>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{cubi.estado}</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{cubi.nombre}</div>
+                          <div style={{ fontSize: 11, color: t.textDim, margin: "3px 0" }}>Cap. {cubi.capacidad}</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{cubi.estado === "libre" ? "Libre" : cubi.estado === "ocupado" ? "Ocupado" : "Reservado"}</div>
                           {cubi.reserva && (() => {
                             const fmtT = d => new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
                             const fin = new Date(new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000);
                             const firstName = (cubi.reserva.nombre || "").split(" ")[0];
                             return (
-                              <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 5, marginTop: 1 }}>
-                                <div style={{ fontSize: 9, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
-                                <div style={{ fontSize: 8, color: t.textDim, fontFamily: "'Space Mono', monospace", marginTop: 1 }}>{fmtT(cubi.reserva.inicio)}–{fmtT(fin)}</div>
+                              <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 6, marginTop: 2 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
+                                <div style={{ fontSize: 10, color: t.textDim, fontFamily: "'Space Mono', monospace", marginTop: 2 }}>{fmtT(cubi.reserva.inicio)}–{fmtT(fin)}</div>
                               </div>
                             );
                           })()}
@@ -3532,42 +3532,42 @@ export default function BiblioAnalytics360() {
                     </div>
 
                     {/* Grid cards */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
                       {(compuZonaFilter === "Todas" ? computadoras : computadoras.filter(c => c.zona === compuZonaFilter)).map(pc => {
                         const cfg = { libre: { color: t.green, bg: `${t.green}12` }, ocupado: { color: t.rose, bg: `${t.rose}12` }, mantenimiento: { color: t.amber, bg: `${t.amber}12` } }[pc.estado] || { color: t.textDim, bg: `${t.text}08` };
                         const isSelected = compuSelectedId === pc.id;
                         return (
                           <button key={pc.id} onClick={() => setCompuSelectedId(isSelected ? null : pc.id)}
-                            style={{ padding: "10px 6px", borderRadius: 10, border: `2px solid ${isSelected ? cfg.color : t.cardBorder}`, background: isSelected ? cfg.bg : `${t.text}03`, cursor: "pointer", textAlign: "center", transition: "all 0.15s", outline: "none" }}>
+                            style={{ padding: "18px 10px", borderRadius: 12, border: `2px solid ${isSelected ? cfg.color : t.cardBorder}`, background: isSelected ? cfg.bg : `${t.text}03`, cursor: "pointer", textAlign: "center", transition: "all 0.15s", outline: "none" }}>
                             {pc.estado === "ocupado" && pc.reserva ? (() => {
                               const total = pc.reserva.duracion * 3_600_000;
                               const inicio = pc.reserva.inicio instanceof Date ? pc.reserva.inicio : new Date(pc.reserva.inicio);
                               const rem = Math.max(0, inicio.getTime() + total - serverNow());
                               const pct = total > 0 ? Math.max(0, rem / total) : 0;
-                              const S = 32, R = 11, CIRC = 2 * Math.PI * R;
+                              const S = 48, R = 18, CIRC = 2 * Math.PI * R;
                               const mins = Math.floor(rem / 60000);
                               const hh2 = Math.floor(mins / 60), mm2 = mins % 60;
                               const label = mins >= 60 ? (mm2 === 0 ? `${hh2}h` : `${hh2}h${mm2}m`) : `${mins}m`;
                               return (
-                                <div style={{ position: "relative", width: S, height: S, margin: "0 auto 6px" }}>
+                                <div style={{ position: "relative", width: S, height: S, margin: "0 auto 8px" }}>
                                   <svg width={S} height={S} style={{ transform: "rotate(-90deg)" }}>
-                                    <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={`${cfg.color}20`} strokeWidth={3} />
-                                    <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={cfg.color} strokeWidth={3}
+                                    <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={`${cfg.color}20`} strokeWidth={4} />
+                                    <circle cx={S/2} cy={S/2} r={R} fill="none" stroke={cfg.color} strokeWidth={4}
                                       strokeDasharray={`${pct * CIRC} ${CIRC}`} strokeLinecap="round"
                                       style={{ transition: "stroke-dasharray 1s linear" }} />
                                   </svg>
-                                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 800, color: cfg.color, fontFamily: "'Space Mono', monospace" }}>
+                                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: cfg.color, fontFamily: "'Space Mono', monospace" }}>
                                     {label}
                                   </div>
                                 </div>
                               );
                             })() : (
-                              <div style={{ width: 28, height: 28, borderRadius: 7, background: cfg.bg, border: `1.5px solid ${cfg.color}50`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px" }}>
-                                {pc.estado === "mantenimiento" ? <Wrench size={12} color={cfg.color} /> : <Monitor size={12} color={cfg.color} />}
+                              <div style={{ width: 42, height: 42, borderRadius: 11, background: cfg.bg, border: `1.5px solid ${cfg.color}50`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px" }}>
+                                {pc.estado === "mantenimiento" ? <Wrench size={18} color={cfg.color} /> : <Monitor size={18} color={cfg.color} />}
                               </div>
                             )}
-                            <div style={{ fontSize: 10, fontWeight: 700, color: t.text, lineHeight: 1.2 }}>{pc.nombre}</div>
-                            <div style={{ fontSize: 8, color: cfg.color, fontWeight: 700, textTransform: "uppercase", marginTop: 2, letterSpacing: 0.3, marginBottom: 3 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: t.text, lineHeight: 1.2 }}>{pc.nombre}</div>
+                            <div style={{ fontSize: 11, color: cfg.color, fontWeight: 700, textTransform: "uppercase", marginTop: 3, letterSpacing: 0.3, marginBottom: 4 }}>
                               {pc.estado === "mantenimiento" ? "Mant." : pc.estado === "ocupado" ? "Ocupado" : "Libre"}
                             </div>
                             {pc.estado === "ocupado" && pc.reserva && (() => {
@@ -3575,9 +3575,9 @@ export default function BiblioAnalytics360() {
                               const fin = new Date(new Date(pc.reserva.inicio).getTime() + pc.reserva.duracion * 3_600_000);
                               const firstName = (pc.reserva.nombre || "").split(" ")[0];
                               return (
-                                <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 4 }}>
-                                  <div style={{ fontSize: 8, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
-                                  <div style={{ fontSize: 7, color: t.textDim, fontFamily: "'Space Mono', monospace", marginTop: 1 }}>{fmtT(pc.reserva.inicio)}–{fmtT(fin)}</div>
+                                <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 5 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
+                                  <div style={{ fontSize: 10, color: t.textDim, fontFamily: "'Space Mono', monospace", marginTop: 2 }}>{fmtT(pc.reserva.inicio)}–{fmtT(fin)}</div>
                                 </div>
                               );
                             })()}
