@@ -830,13 +830,19 @@ export default function KioscoView() {
             </div>
 
             {isPending ? (
-              <div style={{ padding: "14px 0", textAlign: "center" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: AMBER, marginBottom: 10 }}>⏳ Pendiente de Check-In</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.7 }}>
-                  Escanea el QR del cubículo<br />
-                  <strong style={{ color: "#fff" }}>{selectedCubi.nombre}</strong> para confirmar tu llegada.
+              <div style={{ padding: "20px 0", textAlign: "center" }}>
+                <div style={{ fontSize: 52, marginBottom: 12 }}>⚡</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: AMBER, marginBottom: 10 }}>
+                  ¡Dirígete ahora!
                 </div>
-                <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Tienes 5 minutos desde que hiciste la reserva</div>
+                <div style={{ fontSize: 15, color: "rgba(255,255,255,0.65)", lineHeight: 1.8, marginBottom: 18 }}>
+                  Escanea el QR del cubículo<br />
+                  <strong style={{ color: "#fff", fontSize: 22 }}>{selectedCubi.nombre}</strong>
+                  <br />para confirmar tu llegada
+                </div>
+                <div style={{ display: "inline-block", background: `${AMBER}20`, border: `2px solid ${AMBER}`, borderRadius: 50, padding: "10px 28px", fontSize: 16, fontWeight: 800, color: AMBER }}>
+                  ⏱ Solo tienes 5 minutos — no pierdas tu lugar
+                </div>
               </div>
             ) : (
               <>
@@ -1392,13 +1398,29 @@ export default function KioscoView() {
         <div style={{ fontSize: 42, fontWeight: 800, color: "#fff", marginBottom: 8 }}>
           {isAdvance ? "¡Lugar Asegurado!" : "¡Reserva Confirmada!"}
         </div>
-        <div style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", marginBottom: 36 }}>
+        <div style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", marginBottom: isCompu || isAdvance ? 36 : 20 }}>
           {isCompu
             ? `Dirígete a ${selectedCompu?.zona} y usa ${selectedCompu?.nombre}`
             : isAdvance && availAt
             ? `Tu cubículo estará listo a partir de las ${fmtTime(availAt)}`
-            : `Ve al ${selectedCubi?.nombre || "cubículo"} y escanea el QR · tienes 5 min para Check-In`}
+            : null}
         </div>
+
+        {/* Alerta QR visible solo para reservas de cubículo normales */}
+        {!isCompu && !isAdvance && (
+          <div style={{ width: "100%", maxWidth: 540, marginBottom: 28, borderRadius: 20, border: `2.5px solid ${AMBER}`, background: `${AMBER}15`, padding: "24px 32px", textAlign: "center" }}>
+            <div style={{ fontSize: 44, marginBottom: 10 }}>⚡</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: AMBER, marginBottom: 6 }}>
+              Ve al cubículo y escanea el QR
+            </div>
+            <div style={{ fontSize: 36, fontWeight: 900, color: "#fff", letterSpacing: 1, marginBottom: 10 }}>
+              {selectedCubi?.nombre}
+            </div>
+            <div style={{ display: "inline-block", background: `${AMBER}25`, border: `1px solid ${AMBER}60`, borderRadius: 50, padding: "8px 24px", fontSize: 16, fontWeight: 700, color: AMBER }}>
+              ⏱ Tienes solo <strong>5 minutos</strong> para hacer Check-In
+            </div>
+          </div>
+        )}
 
         <div style={{ background: CARD, borderRadius: 20, padding: "26px 44px", border: `1.5px solid ${accentColor}45`, marginBottom: 28, width: "100%", maxWidth: 540 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10 }}>Folio de reserva</div>
