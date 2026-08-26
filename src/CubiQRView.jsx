@@ -213,7 +213,7 @@ export default function CubiQRView({ cubiId }) {
       setLoading(false); return;
     }
     try {
-      const inicio = serverNow();
+      const inicio = new Date(serverNow());
       await dbSaveCubiculo({ ...cubiculo, estado:'ocupado', reserva:{ ...res, inicio, pendingCheckin:false } });
       setScreen('success-in');
     } catch(e) {
@@ -232,7 +232,7 @@ export default function CubiQRView({ cubiId }) {
       setLoading(false); return;
     }
     try {
-      const finNow = serverNow();
+      const finNow = new Date(serverNow());
       const inicioDate = res.inicio instanceof Date ? res.inicio : (res.inicio ? new Date(res.inicio) : null);
       await dbSaveHistorialReserva({
         tipo:'cubiculos', cubicule:cubiculo.nombre,
