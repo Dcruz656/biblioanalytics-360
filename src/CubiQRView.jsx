@@ -205,11 +205,12 @@ export default function CubiQRView({ cubiId }) {
 
   // ── handlers: flujo específico ───────────────────────────────────────────
   async function handleCheckin() {
-    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu matrícula.'); return; }
+    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu PIN.'); return; }
     setLoading(true); setErrorMsg('');
     const res = cubiculo.reserva;
-    if (String(res?.matricula).toLowerCase() !== checkExpe.trim().toLowerCase()) {
-      setErrorMsg('La matrícula no coincide con la reserva de este cubículo.');
+    const alumno = await dbFindAlumno(res?.matricula);
+    if (!alumno || String(alumno.pin) !== checkExpe.trim()) {
+      setErrorMsg('PIN incorrecto. Intenta de nuevo.');
       setLoading(false); return;
     }
     try {
@@ -224,11 +225,12 @@ export default function CubiQRView({ cubiId }) {
   }
 
   async function handleCheckout() {
-    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu matrícula para confirmar.'); return; }
+    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu PIN para confirmar.'); return; }
     setLoading(true); setErrorMsg('');
     const res = cubiculo.reserva;
-    if (String(res?.matricula).toLowerCase() !== checkExpe.trim().toLowerCase()) {
-      setErrorMsg('La matrícula no coincide. Solo quien hizo Check-In puede hacer Check-Out.');
+    const alumno = await dbFindAlumno(res?.matricula);
+    if (!alumno || String(alumno.pin) !== checkExpe.trim()) {
+      setErrorMsg('PIN incorrecto. Solo quien hizo la reserva puede hacer Check-Out.');
       setLoading(false); return;
     }
     try {
@@ -489,8 +491,8 @@ export default function CubiQRView({ cubiId }) {
           </div>
           <div style={DIV}/>
 
-          <label style={LBL}>Confirma con tu matrícula</label>
-          <input style={INP} placeholder={`Ej. ${res?.matricula?.toString().slice(0,3)||'190'}***`}
+          <label style={LBL}>Confirma con tu PIN</label>
+          <input style={INP} placeholder="••••" type="password" inputMode="numeric"
             value={checkExpe} onChange={e=>{setCheckExpe(e.target.value);setErrorMsg('');}}
             onKeyDown={e=>e.key==='Enter'&&!loading&&handleCheckin()}/>
           {errorMsg && <div style={ERR}>{errorMsg}</div>}
@@ -530,9 +532,9 @@ export default function CubiQRView({ cubiId }) {
           )}
           <div style={DIV}/>
 
-          <label style={LBL}>Tu matrícula para confirmar Check-Out</label>
-          <input style={INP} placeholder="Tu matrícula" value={checkExpe}
-            onChange={e=>{setCheckExpe(e.target.value);setErrorMsg('');}}
+          <label style={LBL}>Confirma con tu PIN</label>
+          <input style={INP} placeholder="••••" type="password" inputMode="numeric"
+            value={checkExpe} onChange={e=>{setCheckExpe(e.target.value);setErrorMsg('');}}
             onKeyDown={e=>e.key==='Enter'&&!loading&&handleCheckout()}/>
           {errorMsg && <div style={ERR}>{errorMsg}</div>}
           <div style={{marginTop:16}}/>
