@@ -3723,10 +3723,16 @@ export default function BiblioAnalytics360() {
                         <div style={{fontSize:15,fontWeight:700,color:t.text}}>Códigos QR — Cubículos</div>
                         <div style={{fontSize:11,color:t.textDim,marginTop:2}}>Imprime y pega cada QR en el cubículo correspondiente. Al escanearlo el alumno hace Check-In / Check-Out.</div>
                       </div>
-                      <button onClick={()=>window.print()}
-                        style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,border:'none',background:`linear-gradient(135deg,${t.teal},${t.blue})`,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',flexShrink:0}}>
-                        <Printer size={14}/> Imprimir todos
-                      </button>
+                      <div style={{display:'flex',gap:10}}>
+                        <button onClick={()=>window.open(`${window.location.origin}/cubiculo`,'_blank')}
+                          style={{display:'flex',alignItems:'center',gap:7,padding:'9px 16px',borderRadius:10,border:`1px solid ${t.teal}`,background:'transparent',color:t.teal,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                          <Eye size={14}/> Página de reservas
+                        </button>
+                        <button onClick={()=>window.print()}
+                          style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,border:'none',background:`linear-gradient(135deg,${t.teal},${t.blue})`,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                          <Printer size={14}/> Imprimir todos
+                        </button>
+                      </div>
                     </div>
 
                     {/* Grid de QRs */}
