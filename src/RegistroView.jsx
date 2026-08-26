@@ -145,7 +145,7 @@ export default function RegistroView() {
     <div style={{ background: NAVY, borderBottom: "1px solid rgba(255,255,255,0.06)", padding: isMobile ? "13px 16px" : "16px 24px", display: "flex", alignItems: "center", gap: 12 }}>
       <div style={{ width: 34, height: 34, borderRadius: 9, background: `linear-gradient(135deg, ${TEAL}, ${TEAL_L})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>📚</div>
       <div>
-        <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 800, color: "#fff" }}>Biblioteca Central UACJ</div>
+        <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 800, color: "#fff" }}>Biblioteca de ICB</div>
         <div style={{ fontSize: 10, color: TEAL, fontWeight: 600 }}>{subtitle}</div>
       </div>
     </div>

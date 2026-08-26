@@ -82,7 +82,7 @@ function Header({ subtitle }) {
   return (
     <div style={HDR}>
       <LibraryIcon size={58}/>
-      <div style={{fontSize:14,fontWeight:800,marginTop:10,letterSpacing:.3}}>Biblioteca Central UACJ</div>
+      <div style={{fontSize:14,fontWeight:800,marginTop:10,letterSpacing:.3}}>Biblioteca de ICB</div>
       {subtitle && <div style={{fontSize:11,color:'rgba(255,255,255,0.4)',marginTop:4}}>{subtitle}</div>}
     </div>
   );

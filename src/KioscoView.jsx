@@ -163,7 +163,7 @@ function TopBar({ onBack, title, clock }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 32, height: 32, borderRadius: 9, background: `linear-gradient(135deg, ${TEAL}, ${TEAL_L})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>📚</div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Biblioteca Central UACJ</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Biblioteca de ICB</div>
             {title && <div style={{ fontSize: 11, color: TEAL }}>{title}</div>}
           </div>
         </div>
@@ -550,8 +550,8 @@ export default function KioscoView() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 40, height: 40, borderRadius: 11, background: `linear-gradient(135deg, ${TEAL}, ${TEAL_L})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>📚</div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>Biblioteca Central</div>
-              <div style={{ fontSize: 11, color: TEAL, fontWeight: 600 }}>Universidad Autónoma de Ciudad Juárez</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>Biblioteca de ICB</div>
+              <div style={{ fontSize: 11, color: TEAL, fontWeight: 600 }}>UACJ</div>
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -561,7 +561,7 @@ export default function KioscoView() {
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 32px", textAlign: "center" }}>
           <div style={{ marginBottom: 28 }}><LibraryIcon size={110}/></div>
-          <div style={{ fontSize: 46, fontWeight: 800, color: "#fff", letterSpacing: -1, marginBottom: 10 }}>Biblioteca Central</div>
+          <div style={{ fontSize: 46, fontWeight: 800, color: "#fff", letterSpacing: -1, marginBottom: 10 }}>Biblioteca de ICB</div>
           <div style={{ fontSize: 18, color: "rgba(255,255,255,0.4)", marginBottom: 44 }}>Reserva cubículos y computadoras</div>
           {(cubiculos.length > 0 || computadoras.length > 0) && (
             <div style={{ display: "flex", gap: 20, justifyContent: "center", marginBottom: 52 }}>

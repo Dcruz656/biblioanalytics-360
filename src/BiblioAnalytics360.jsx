@@ -993,7 +993,7 @@ export default function BiblioAnalytics360() {
               {nav === "herramientas" && "Servicios"}
               {nav === "configuracion" && "Configuración"}
             </h1>
-            <p style={{ fontSize: 10, color: t.textDim, margin: 0, letterSpacing: .3 }}>Biblioteca Central UACJ · Prototipo Funcional</p>
+            <p style={{ fontSize: 10, color: t.textDim, margin: 0, letterSpacing: .3 }}>Biblioteca de ICB · Prototipo Funcional</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.cardBorder}`, fontSize: 11, boxShadow: t.shadow }}>
