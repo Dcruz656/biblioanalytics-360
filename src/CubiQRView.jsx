@@ -111,7 +111,7 @@ export default function CubiQRView({ cubiId }) {
   const [errorMsg,    setErrorMsg]    = useState('');
 
   // Flujo general
-  const [expediente,  setExpediente]  = useState('');
+  const [matricula,  setMatricula]  = useState('');
   const [alumno,      setAlumno]      = useState(null);
   const [draft,       setDraft]       = useState({ nombre:'', carrera:'' });
   const [personas,    setPersonas]    = useState(1);
@@ -166,9 +166,9 @@ export default function CubiQRView({ cubiId }) {
 
   // ── handlers: flujo general ──────────────────────────────────────────────
   async function handleLogin() {
-    if (!expediente.trim()) return;
+    if (!matricula.trim()) return;
     setLoading(true); setErrorMsg('');
-    const found = await dbFindAlumno(expediente.trim());
+    const found = await dbFindAlumno(matricula.trim());
     setAlumno(found || null);
     setScreen(found ? 'personas' : 'register');
     setLoading(false);
@@ -178,7 +178,7 @@ export default function CubiQRView({ cubiId }) {
     if (!draft.nombre.trim() || !draft.carrera.trim()) { setErrorMsg('Completa todos los campos.'); return; }
     setLoading(true); setErrorMsg('');
     try {
-      const a = { matricula: expediente.trim(), nombre: draft.nombre.trim(), carrera: draft.carrera.trim() };
+      const a = { matricula: matricula.trim(), nombre: draft.nombre.trim(), carrera: draft.carrera.trim() };
       await dbSaveAlumno(a);
       setAlumno(a);
       setScreen('personas');
@@ -192,7 +192,7 @@ export default function CubiQRView({ cubiId }) {
     const updated = {
       ...c, estado: 'reservado',
       reserva: {
-        nombre: alumno.nombre, expediente: alumno.matricula, carrera: alumno.carrera,
+        nombre: alumno.nombre, matricula: alumno.matricula, carrera: alumno.carrera,
         personas, duracion, inicio: null, pendingCheckin: true,
         reservedAt: new Date(expiresAt - FIVE_MIN).toISOString(),
       },
@@ -208,7 +208,7 @@ export default function CubiQRView({ cubiId }) {
     if (!checkExpe.trim()) { setErrorMsg('Ingresa tu matrícula.'); return; }
     setLoading(true); setErrorMsg('');
     const res = cubiculo.reserva;
-    if (String(res?.expediente).toLowerCase() !== checkExpe.trim().toLowerCase()) {
+    if (String(res?.matricula).toLowerCase() !== checkExpe.trim().toLowerCase()) {
       setErrorMsg('La matrícula no coincide con la reserva de este cubículo.');
       setLoading(false); return;
     }
@@ -222,14 +222,14 @@ export default function CubiQRView({ cubiId }) {
     if (!checkExpe.trim()) { setErrorMsg('Ingresa tu matrícula para confirmar.'); return; }
     setLoading(true); setErrorMsg('');
     const res = cubiculo.reserva;
-    if (String(res?.expediente).toLowerCase() !== checkExpe.trim().toLowerCase()) {
+    if (String(res?.matricula).toLowerCase() !== checkExpe.trim().toLowerCase()) {
       setErrorMsg('La matrícula no coincide. Solo quien hizo Check-In puede hacer Check-Out.');
       setLoading(false); return;
     }
     const finNow = serverNow();
     await dbSaveHistorialReserva({
       tipo:'cubiculos', cubicule:cubiculo.nombre,
-      nombre:res.nombre, expediente:res.expediente, carrera:res.carrera,
+      nombre:res.nombre, matricula:res.matricula, carrera:res.carrera,
       duracion:res.duracion,
       inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
       fin: finNow.toISOString(),
@@ -256,12 +256,12 @@ export default function CubiQRView({ cubiId }) {
       <Header subtitle="Reserva un cubículo de estudio"/>
       <div style={CRD}>
         <label style={LBL}>Número de matrícula</label>
-        <input style={INP} placeholder="Ej. 190123" value={expediente}
-          onChange={e=>{setExpediente(e.target.value);setErrorMsg('');}}
+        <input style={INP} placeholder="Ej. 190123" value={matricula}
+          onChange={e=>{setMatricula(e.target.value);setErrorMsg('');}}
           onKeyDown={e=>e.key==='Enter'&&!loading&&handleLogin()}/>
         {errorMsg && <div style={ERR}>{errorMsg}</div>}
         <div style={{marginTop:16}}/>
-        <button style={BTN('#0d9488', loading || !expediente.trim())} onClick={handleLogin} disabled={loading||!expediente.trim()}>
+        <button style={BTN('#0d9488', loading || !matricula.trim())} onClick={handleLogin} disabled={loading||!matricula.trim()}>
           {loading ? 'Buscando…' : 'Continuar →'}
         </button>
       </div>
@@ -273,7 +273,7 @@ export default function CubiQRView({ cubiId }) {
       <Header subtitle="Crear cuenta"/>
       <div style={CRD}>
         <div style={{background:'rgba(13,148,136,0.12)',border:'1px solid rgba(13,148,136,0.3)',borderRadius:12,padding:'10px 14px',marginBottom:18,fontSize:12,color:'rgba(255,255,255,0.7)'}}>
-          No encontramos la matrícula <strong style={{color:'#5eead4',fontFamily:"'Space Mono',monospace"}}>{expediente}</strong>. Regístrate para continuar.
+          No encontramos la matrícula <strong style={{color:'#5eead4',fontFamily:"'Space Mono',monospace"}}>{matricula}</strong>. Regístrate para continuar.
         </div>
         <label style={LBL}>Nombre completo</label>
         <input style={{...INP,marginBottom:14,fontFamily:'inherit'}} placeholder="Tu nombre" value={draft.nombre}
@@ -288,7 +288,7 @@ export default function CubiQRView({ cubiId }) {
           {loading ? 'Registrando…' : 'Crear cuenta y continuar →'}
         </button>
         <div style={{marginTop:10}}/>
-        <button style={SEC} onClick={()=>{setExpediente('');setScreen('login');}}>← Cambiar matrícula</button>
+        <button style={SEC} onClick={()=>{setMatricula('');setScreen('login');}}>← Cambiar matrícula</button>
       </div>
     </div>
   );
@@ -421,7 +421,7 @@ export default function CubiQRView({ cubiId }) {
       <Header/>
       <SuccessScreen icon="⏰" color="#f59e0b" title="Tiempo expirado"
         sub="No se realizó el Check-In en 5 minutos. El cubículo quedó liberado.">
-        <button style={BTN()} onClick={()=>{setScreen('login');setExpediente('');setAlumno(null);setPending(null);}}>
+        <button style={BTN()} onClick={()=>{setScreen('login');setMatricula('');setAlumno(null);setPending(null);}}>
           Intentar de nuevo
         </button>
       </SuccessScreen>
@@ -479,7 +479,7 @@ export default function CubiQRView({ cubiId }) {
           <div style={DIV}/>
 
           <label style={LBL}>Confirma con tu matrícula</label>
-          <input style={INP} placeholder={`Ej. ${res?.expediente?.toString().slice(0,3)||'190'}***`}
+          <input style={INP} placeholder={`Ej. ${res?.matricula?.toString().slice(0,3)||'190'}***`}
             value={checkExpe} onChange={e=>{setCheckExpe(e.target.value);setErrorMsg('');}}
             onKeyDown={e=>e.key==='Enter'&&!loading&&handleCheckin()}/>
           {errorMsg && <div style={ERR}>{errorMsg}</div>}

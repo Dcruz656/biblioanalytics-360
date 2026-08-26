@@ -626,7 +626,7 @@ export function generateServiceExcel(historial, serviceType, periodLabel, meta) 
   const topCarrera = Object.entries(byCarrera).sort((a, b) => b[1] - a[1])[0] ?? ["—", 0];
   const topTurno   = Object.entries(byTurno).sort((a, b)   => b[1] - a[1])[0] ?? ["—", 0];
   const topSpace   = Object.entries(bySpace).sort((a, b)   => b[1] - a[1])[0] ?? ["—", 0];
-  const uniqueAlum = new Set(historial.map(r => r.expediente).filter(Boolean)).size;
+  const uniqueAlum = new Set(historial.map(r => r.matricula).filter(Boolean)).size;
 
   // Hoja 1: Resumen
   const resumenData = [
@@ -651,7 +651,7 @@ export function generateServiceExcel(historial, serviceType, periodLabel, meta) 
   const histData = historial.map(r => ({
     [spaceKey]:       r.cubicule || "—",
     Nombre:           r.nombre    || "—",
-    Expediente:       r.expediente || "—",
+    Matrícula:       r.matricula || "—",
     Carrera:          r.carrera   || "—",
     "Duración (h)":   r.duracion  || "—",
     Turno:            r.turno     || "—",
@@ -738,7 +738,7 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
   const topCarrera = Object.entries(byCarrera).sort((a, b) => b[1] - a[1])[0] ?? ["—", 0];
   const topTurno   = Object.entries(byTurno).sort((a, b)   => b[1] - a[1])[0] ?? ["—", 0];
   const topSpace   = Object.entries(bySpace).sort((a, b)   => b[1] - a[1])[0] ?? ["—", 0];
-  const uniqueAlum = new Set(historial.map(r => r.expediente).filter(Boolean)).size;
+  const uniqueAlum = new Set(historial.map(r => r.matricula).filter(Boolean)).size;
 
   const dias   = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
   const byDia  = groupBy(historial, r => r.inicio ? dias[new Date(r.inicio).getDay()] : "—");

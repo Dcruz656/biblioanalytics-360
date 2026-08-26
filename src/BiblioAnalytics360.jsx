@@ -415,19 +415,19 @@ function getCubiRemainingMs(cubi) {
 function createInitComputadoras() {
   const now = Date.now();
   return [
-    { id:1,  nombre:"PC-01", zona:"Sala General",       sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Fernanda Rivas",  expediente:"A203111", carrera:"Ing. Software",   inicio:new Date(now-2400000), duracion:2 } },
+    { id:1,  nombre:"PC-01", zona:"Sala General",       sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Fernanda Rivas",  matricula:"A203111", carrera:"Ing. Software",   inicio:new Date(now-2400000), duracion:2 } },
     { id:2,  nombre:"PC-02", zona:"Sala General",       sistema:"Windows 11",  estado:"libre",         reserva:null },
     { id:3,  nombre:"PC-03", zona:"Sala General",       sistema:"Windows 11",  estado:"libre",         reserva:null },
     { id:4,  nombre:"PC-04", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"mantenimiento", reserva:null },
-    { id:5,  nombre:"PC-05", zona:"Sala General",       sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Omar Castillo",   expediente:"B201555", carrera:"Derecho",          inicio:new Date(now-1800000), duracion:1 } },
+    { id:5,  nombre:"PC-05", zona:"Sala General",       sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Omar Castillo",   matricula:"B201555", carrera:"Derecho",          inicio:new Date(now-1800000), duracion:1 } },
     { id:6,  nombre:"PC-06", zona:"Sala General",       sistema:"Windows 11",  estado:"libre",         reserva:null },
     { id:7,  nombre:"PC-07", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre",         reserva:null },
-    { id:8,  nombre:"PC-08", zona:"Sala Silencio",      sistema:"Ubuntu 22.04",estado:"ocupado",       reserva:{ nombre:"Valeria Moreno",  expediente:"C202777", carrera:"Medicina",         inicio:new Date(now-900000),  duracion:2 } },
+    { id:8,  nombre:"PC-08", zona:"Sala Silencio",      sistema:"Ubuntu 22.04",estado:"ocupado",       reserva:{ nombre:"Valeria Moreno",  matricula:"C202777", carrera:"Medicina",         inicio:new Date(now-900000),  duracion:2 } },
     { id:9,  nombre:"PC-09", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre",         reserva:null },
     { id:10, nombre:"PC-10", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre",         reserva:null },
     { id:11, nombre:"PC-11", zona:"Sala Investigación", sistema:"Ubuntu 22.04",estado:"libre",         reserva:null },
     { id:12, nombre:"PC-12", zona:"Sala Investigación", sistema:"Windows 11",  estado:"mantenimiento", reserva:null },
-    { id:13, nombre:"PC-13", zona:"Sala Investigación", sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Diego Mendoza",   expediente:"D200888", carrera:"Arquitectura",     inicio:new Date(now-600000),  duracion:1 } },
+    { id:13, nombre:"PC-13", zona:"Sala Investigación", sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Diego Mendoza",   matricula:"D200888", carrera:"Arquitectura",     inicio:new Date(now-600000),  duracion:1 } },
     { id:14, nombre:"PC-14", zona:"Sala Investigación", sistema:"Windows 11",  estado:"libre",         reserva:null },
     { id:15, nombre:"PC-15", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"libre",         reserva:null },
   ];
@@ -438,16 +438,16 @@ function createInitCubiculos() {
   const now = Date.now();
   return [
     { id: 1,  nombre: "C-01", capacidad: 4, piso: 1, estado: "libre",     reserva: null },
-    { id: 2,  nombre: "C-02", capacidad: 4, piso: 1, estado: "ocupado",   reserva: { nombre: "María García",   expediente: "A201234", carrera: "Ing. Software", inicio: new Date(now - 3600000),  duracion: 2 } },
-    { id: 3,  nombre: "C-03", capacidad: 6, piso: 1, estado: "reservado", reserva: { nombre: "Carlos López",   expediente: "B198765", carrera: "Medicina",      inicio: new Date(now + 1800000),  duracion: 1 } },
+    { id: 2,  nombre: "C-02", capacidad: 4, piso: 1, estado: "ocupado",   reserva: { nombre: "María García",   matricula: "A201234", carrera: "Ing. Software", inicio: new Date(now - 3600000),  duracion: 2 } },
+    { id: 3,  nombre: "C-03", capacidad: 6, piso: 1, estado: "reservado", reserva: { nombre: "Carlos López",   matricula: "B198765", carrera: "Medicina",      inicio: new Date(now + 1800000),  duracion: 1 } },
     { id: 4,  nombre: "C-04", capacidad: 4, piso: 1, estado: "libre",     reserva: null },
     { id: 5,  nombre: "C-05", capacidad: 4, piso: 1, estado: "libre",     reserva: null },
-    { id: 6,  nombre: "C-06", capacidad: 8, piso: 1, estado: "ocupado",   reserva: { nombre: "Ana Martínez",   expediente: "C205678", carrera: "Derecho",       inicio: new Date(now - 1800000),  duracion: 3 } },
+    { id: 6,  nombre: "C-06", capacidad: 8, piso: 1, estado: "ocupado",   reserva: { nombre: "Ana Martínez",   matricula: "C205678", carrera: "Derecho",       inicio: new Date(now - 1800000),  duracion: 3 } },
     { id: 7,  nombre: "C-07", capacidad: 4, piso: 2, estado: "libre",     reserva: null },
     { id: 8,  nombre: "C-08", capacidad: 4, piso: 2, estado: "libre",     reserva: null },
-    { id: 9,  nombre: "C-09", capacidad: 6, piso: 2, estado: "ocupado",   reserva: { nombre: "Luis Torres",    expediente: "D198432", carrera: "Psicología",    inicio: new Date(now - 900000),   duracion: 2 } },
+    { id: 9,  nombre: "C-09", capacidad: 6, piso: 2, estado: "ocupado",   reserva: { nombre: "Luis Torres",    matricula: "D198432", carrera: "Psicología",    inicio: new Date(now - 900000),   duracion: 2 } },
     { id: 10, nombre: "C-10", capacidad: 4, piso: 2, estado: "libre",     reserva: null },
-    { id: 11, nombre: "C-11", capacidad: 4, piso: 2, estado: "reservado", reserva: { nombre: "Sofía Ruiz",     expediente: "E203456", carrera: "Arquitectura",  inicio: new Date(now + 3600000),  duracion: 1 } },
+    { id: 11, nombre: "C-11", capacidad: 4, piso: 2, estado: "reservado", reserva: { nombre: "Sofía Ruiz",     matricula: "E203456", carrera: "Arquitectura",  inicio: new Date(now + 3600000),  duracion: 1 } },
     { id: 12, nombre: "C-12", capacidad: 8, piso: 2, estado: "libre",     reserva: null },
   ];
 }
@@ -508,13 +508,13 @@ export default function BiblioAnalytics360() {
   const [computadoras, setComputadoras] = useState(createInitComputadoras);
   const [compuSelectedId, setCompuSelectedId] = useState(null);
   const [compuZonaFilter, setCompuZonaFilter] = useState("Todas");
-  const [compuAsignForm, setCompuAsignForm]   = useState({ nombre: "", expediente: "", carrera: cubiCarreras[0], duracion: 1 });
+  const [compuAsignForm, setCompuAsignForm]   = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0], duracion: 1 });
   const [compuNuevoForm, setCompuNuevoForm]   = useState({ nombre: "", zona: "Sala General", sistema: "Windows 11" });
   const [compuHistorial, setCompuHistorial]   = useState(() => {
     const now = Date.now();
     return [
-      { id:1, pc:"PC-02", nombre:"Laura Jiménez",  expediente:"A200111", carrera:"Psicología",   duracion:2, inicio:new Date(now-86400000*2), estado:"completado" },
-      { id:2, pc:"PC-07", nombre:"Marcos Peña",    expediente:"B199333", carrera:"Contaduría",   duracion:1, inicio:new Date(now-86400000),   estado:"completado" },
+      { id:1, pc:"PC-02", nombre:"Laura Jiménez",  matricula:"A200111", carrera:"Psicología",   duracion:2, inicio:new Date(now-86400000*2), estado:"completado" },
+      { id:2, pc:"PC-07", nombre:"Marcos Peña",    matricula:"B199333", carrera:"Contaduría",   duracion:1, inicio:new Date(now-86400000),   estado:"completado" },
     ];
   });
 
@@ -583,7 +583,7 @@ export default function BiblioAnalytics360() {
           const turno = hh >= 7 && hh < 14 ? "Matutino" : hh >= 14 && hh < 20 ? "Vespertino" : "Nocturno";
           dbSaveHistorialReserva({
             cubicule: c.nombre, tipo: "cubiculos",
-            nombre: c.reserva.nombre, expediente: c.reserva.expediente, carrera: c.reserva.carrera,
+            nombre: c.reserva.nombre, matricula: c.reserva.matricula, carrera: c.reserva.carrera,
             duracion: c.reserva.duracion, personas: c.reserva.personas || null, piso: c.piso,
             inicio: c.reserva.inicio instanceof Date ? c.reserva.inicio.toISOString() : c.reserva.inicio,
             fin: new Date(serverNow()).toISOString(), turno,
@@ -605,7 +605,7 @@ export default function BiblioAnalytics360() {
           const turno = hh >= 7 && hh < 14 ? "Matutino" : hh >= 14 && hh < 20 ? "Vespertino" : "Nocturno";
           dbSaveHistorialReserva({
             cubicule: c.nombre, tipo: "computadoras",
-            nombre: c.reserva.nombre, expediente: c.reserva.expediente, carrera: c.reserva.carrera,
+            nombre: c.reserva.nombre, matricula: c.reserva.matricula, carrera: c.reserva.carrera,
             duracion: c.reserva.duracion, personas: null, piso: null,
             inicio: c.reserva.inicio instanceof Date ? c.reserva.inicio.toISOString() : c.reserva.inicio,
             fin: new Date(serverNow()).toISOString(), turno,
@@ -646,14 +646,14 @@ export default function BiblioAnalytics360() {
     });
     return unsub;
   }, []);
-  const [cubiReservaForm, setCubiReservaForm] = useState({ nombre: "", expediente: "", carrera: "Ing. Software", duracion: 2 });
+  const [cubiReservaForm, setCubiReservaForm] = useState({ nombre: "", matricula: "", carrera: "Ing. Software", duracion: 2 });
   const [cubiPisoFilter, setCubiPisoFilter] = useState(0);
   const [cubiHistorial, setCubiHistorial] = useState(() => {
     const now = Date.now();
     return [
-      { id: 1, cubicule: "C-04", nombre: "Pedro Sánchez",  expediente: "A200001", carrera: "Contaduría",  inicio: new Date(now - 86400000 * 2), duracion: 2, estado: "completado" },
-      { id: 2, cubicule: "C-07", nombre: "Elena Castro",   expediente: "B199002", carrera: "Diseño",       inicio: new Date(now - 86400000),     duracion: 1, estado: "completado" },
-      { id: 3, cubicule: "C-10", nombre: "Roberto Díaz",   expediente: "C201003", carrera: "Ing. Civil",   inicio: new Date(now - 43200000),     duracion: 3, estado: "completado" },
+      { id: 1, cubicule: "C-04", nombre: "Pedro Sánchez",  matricula: "A200001", carrera: "Contaduría",  inicio: new Date(now - 86400000 * 2), duracion: 2, estado: "completado" },
+      { id: 2, cubicule: "C-07", nombre: "Elena Castro",   matricula: "B199002", carrera: "Diseño",       inicio: new Date(now - 86400000),     duracion: 1, estado: "completado" },
+      { id: 3, cubicule: "C-10", nombre: "Roberto Díaz",   matricula: "C201003", carrera: "Ing. Civil",   inicio: new Date(now - 43200000),     duracion: 3, estado: "completado" },
     ];
   });
   // Export state
@@ -1064,7 +1064,7 @@ export default function BiblioAnalytics360() {
             const tasaActual   = totalDisp > 0 ? Math.round((totalOcup / totalDisp) * 100) : 0;
 
             const totalReservas = historialReservas.length;
-            const uniqueAlmn    = new Set(historialReservas.map(h => h.expediente).filter(Boolean)).size;
+            const uniqueAlmn    = new Set(historialReservas.map(h => h.matricula).filter(Boolean)).size;
             const tend7Pct      = prev7.length > 0 ? Math.round(((last7.length - prev7.length) / prev7.length) * 100) : (last7.length > 0 ? 100 : 0);
             const tend7Color    = tend7Pct >= 0 ? t.green : t.rose;
             const avgDur        = historialReservas.length > 0
@@ -1111,9 +1111,9 @@ export default function BiblioAnalytics360() {
 
             const alumnoMap  = {};
             historialReservas.forEach(h => {
-              if (!h.expediente) return;
-              if (!alumnoMap[h.expediente]) alumnoMap[h.expediente] = { nombre: h.nombre||h.expediente, carrera: h.carrera||'—', count: 0 };
-              alumnoMap[h.expediente].count++;
+              if (!h.matricula) return;
+              if (!alumnoMap[h.matricula]) alumnoMap[h.matricula] = { nombre: h.nombre||h.matricula, carrera: h.carrera||'—', count: 0 };
+              alumnoMap[h.matricula].count++;
             });
             const topAlumnos = Object.values(alumnoMap).sort((a,b) => b.count - a.count).slice(0,5);
             const recentRecs = [...historialReservas]
@@ -1135,7 +1135,7 @@ export default function BiblioAnalytics360() {
             // ── Nuevos usuarios por semana (últimas 8 semanas)
             const sortedH = [...historialReservas].sort((a,b) => new Date(a.inicio||a.fin) - new Date(b.inicio||b.fin));
             const firstSeen = {};
-            sortedH.forEach(h => { if (h.expediente && !firstSeen[h.expediente]) firstSeen[h.expediente] = new Date(h.inicio||h.fin); });
+            sortedH.forEach(h => { if (h.matricula && !firstSeen[h.matricula]) firstSeen[h.matricula] = new Date(h.inicio||h.fin); });
             const weeklyNew = Array.from({length:8}, (_, i) => {
               const wEnd   = new Date(nowD.getTime() - (7-i-1)*7*86400000);
               const wStart = new Date(wEnd.getTime() - 7*86400000);
@@ -1172,7 +1172,7 @@ export default function BiblioAnalytics360() {
 
             // ── RFM Segmentation
             const rfmData = Object.entries(alumnoMap).map(([exp,{nombre,carrera,count}]) => {
-              const recs    = historialReservas.filter(h => h.expediente===exp);
+              const recs    = historialReservas.filter(h => h.matricula===exp);
               const lastD   = new Date(Math.max(...recs.map(h=>new Date(h.fin||h.inicio))));
               const days    = Math.floor((nowD-lastD)/86400000);
               const segment = (days<=30&&count>=5)?'Frecuente': days<=30?'Activo': days<=60?'En riesgo':'Inactivo';
@@ -1734,7 +1734,7 @@ export default function BiblioAnalytics360() {
             const withPers    = inPeriod.filter(h => h.personas > 0);
             const avgPers     = withPers.length > 0 ? (withPers.reduce((a, h) => a + h.personas, 0) / withPers.length).toFixed(1) : '—';
             const uniqueCarr  = new Set(inPeriod.map(h => h.carrera).filter(Boolean)).size;
-            const uniqueAlmn  = new Set(inPeriod.map(h => h.expediente).filter(Boolean)).size;
+            const uniqueAlmn  = new Set(inPeriod.map(h => h.matricula).filter(Boolean)).size;
             const cubiInUso   = cubiculos.filter(c => c.estado === 'ocupado').length;
             const compuInUso  = computadoras.filter(c => c.estado === 'ocupado').length;
             const tasa        = svcService === 'cubiculos'
@@ -2071,7 +2071,7 @@ export default function BiblioAnalytics360() {
                             <tr key={i} style={{borderBottom:`1px solid ${t.cardBorder}50`}}>
                               <td style={{padding:'8px 12px',fontWeight:600,color:t.teal,fontFamily:"'Space Mono',monospace",fontSize:10}}>{r.cubicule||r.pc||'—'}</td>
                               <td style={{padding:'8px 12px',color:t.text}}>{r.nombre||'—'}</td>
-                              <td style={{padding:'8px 12px',color:t.textDim,fontFamily:"'Space Mono',monospace",fontSize:10}}>{r.expediente||'—'}</td>
+                              <td style={{padding:'8px 12px',color:t.textDim,fontFamily:"'Space Mono',monospace",fontSize:10}}>{r.matricula||'—'}</td>
                               <td style={{padding:'8px 12px',color:t.textDim,maxWidth:110,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.carrera||'—'}</td>
                               <td style={{padding:'8px 12px',color:t.text,fontWeight:600}}>{r.duracion}h</td>
                               <td style={{padding:'8px 12px',color:t.textDim}}>{r.turno||'—'}</td>
@@ -3137,7 +3137,7 @@ export default function BiblioAnalytics360() {
                       {!cubiEditMode && cubiSelected.estado === "libre" && (
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: t.text, marginBottom: 12 }}>Nueva Reserva</div>
-                          {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "expediente", label: "No. Matrícula", placeholder: "Ej. A201234" }].map(f => (
+                          {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "matricula", label: "No. Matrícula", placeholder: "Ej. A201234" }].map(f => (
                             <div key={f.key} style={{ marginBottom: 10 }}>
                               <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{f.label}</div>
                               <input value={cubiReservaForm[f.key]} onChange={e => setCubiReservaForm(prev => ({ ...prev, [f.key]: e.target.value }))}
@@ -3164,13 +3164,13 @@ export default function BiblioAnalytics360() {
                             </div>
                           </div>
                           <button onClick={() => {
-                            if (!cubiReservaForm.nombre.trim() || !cubiReservaForm.expediente.trim()) return;
+                            if (!cubiReservaForm.nombre.trim() || !cubiReservaForm.matricula.trim()) return;
                             const nombre = cubiSelected.nombre;
                             const updated = { ...cubiSelected, estado: "ocupado", reserva: { ...cubiReservaForm, inicio: new Date(serverNow()) } };
                             setCubiculos(prev => prev.map(c => c.id === cubiSelectedId ? updated : c));
                             dbSaveCubiculo(updated);
                             setCubiHistorial(prev => [{ id: Date.now(), cubicule: nombre, ...cubiReservaForm, inicio: new Date(serverNow()), estado: "activo" }, ...prev]);
-                            setCubiReservaForm({ nombre: "", expediente: "", carrera: "Ing. Software", duracion: 2 });
+                            setCubiReservaForm({ nombre: "", matricula: "", carrera: "Ing. Software", duracion: 2 });
                             setCubiSelectedId(null);
                             setNotifications(prev => [{ id: Date.now(), text: `Cubículo ${nombre} asignado a ${cubiReservaForm.nombre}`, type: "success", time: "Ahora" }, ...prev]);
                           }}
@@ -3186,7 +3186,7 @@ export default function BiblioAnalytics360() {
                           <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
                             {[
                               ["Usuario",     cubiSelected.reserva.nombre],
-                              ["Matrícula",  cubiSelected.reserva.expediente],
+                              ["Matrícula",  cubiSelected.reserva.matricula],
                               ["Carrera",     cubiSelected.reserva.carrera],
                               ["Duración",    `${cubiSelected.reserva.duracion}h`],
                               ["Entrada",     cubiSelected.reserva.inicio instanceof Date
@@ -3228,7 +3228,7 @@ export default function BiblioAnalytics360() {
                             dbSaveCubiculo(updated);
                             dbSaveHistorialReserva({
                               cubicule: nombre, tipo: 'cubiculos',
-                              nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+                              nombre: res.nombre, matricula: res.matricula, carrera: res.carrera,
                               duracion: res.duracion, personas: res.personas || null, piso: cubiSelected.piso,
                               inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
                               fin: finNow.toISOString(), turno: calcTurno(res.inicio),
@@ -3270,7 +3270,7 @@ export default function BiblioAnalytics360() {
                             <tr key={c.id} style={{ borderBottom: `1px solid ${t.cardBorder}` }}>
                               <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: t.teal }}>{c.nombre}</td>
                               <td style={{ padding: "10px 14px", fontSize: 12, color: t.text }}>{c.reserva.nombre}</td>
-                              <td style={{ padding: "10px 14px", fontSize: 11, color: t.textDim, fontFamily: "'Space Mono', monospace" }}>{c.reserva.expediente}</td>
+                              <td style={{ padding: "10px 14px", fontSize: 11, color: t.textDim, fontFamily: "'Space Mono', monospace" }}>{c.reserva.matricula}</td>
                               <td style={{ padding: "10px 14px", fontSize: 11, color: t.textDim }}>{c.reserva.carrera}</td>
                               <td style={{ padding: "10px 14px", fontSize: 11, color: t.text, fontWeight: 600 }}>{c.reserva.duracion}h</td>
                               <td style={{ padding: "10px 14px" }}>
@@ -3492,7 +3492,7 @@ export default function BiblioAnalytics360() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{h.cubicule} — {h.nombre}</div>
-                      <div style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>{h.expediente} · {h.carrera} · {h.duracion}h</div>
+                      <div style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>{h.matricula} · {h.carrera} · {h.duracion}h</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: h.estado === "completado" ? `${t.green}15` : `${t.teal}15`, color: h.estado === "completado" ? t.green : t.teal }}>
@@ -3639,7 +3639,7 @@ export default function BiblioAnalytics360() {
                           {compuSel.estado === "libre" && (
                             <div>
                               <div style={{ fontSize: 12, fontWeight: 700, color: t.text, marginBottom: 12 }}>Asignar Usuario</div>
-                              {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "expediente", label: "No. Matrícula", placeholder: "Ej. A201234" }].map(f => (
+                              {[{ key: "nombre", label: "Nombre completo", placeholder: "Ej. Juan Pérez" }, { key: "matricula", label: "No. Matrícula", placeholder: "Ej. A201234" }].map(f => (
                                 <div key={f.key} style={{ marginBottom: 10 }}>
                                   <div style={{ fontSize: 10, fontWeight: 600, color: t.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{f.label}</div>
                                   <input value={compuAsignForm[f.key]} onChange={e => setCompuAsignForm(prev => ({ ...prev, [f.key]: e.target.value }))}
@@ -3667,13 +3667,13 @@ export default function BiblioAnalytics360() {
                               </div>
                               <div style={{ display: "flex", gap: 8 }}>
                                 <button onClick={() => {
-                                  if (!compuAsignForm.nombre.trim() || !compuAsignForm.expediente.trim()) return;
+                                  if (!compuAsignForm.nombre.trim() || !compuAsignForm.matricula.trim()) return;
                                   const nombre = compuSel.nombre;
                                   const updated = { ...compuSel, estado: "ocupado", reserva: { ...compuAsignForm, inicio: new Date(serverNow()) } };
                                   setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? updated : c));
                                   dbSaveComputadora(updated);
                                   setCompuHistorial(prev => [{ id: Date.now(), pc: nombre, ...compuAsignForm, inicio: new Date(serverNow()), estado: "activo" }, ...prev]);
-                                  setCompuAsignForm({ nombre: "", expediente: "", carrera: cubiCarreras[0], duracion: 1 });
+                                  setCompuAsignForm({ nombre: "", matricula: "", carrera: cubiCarreras[0], duracion: 1 });
                                   setCompuSelectedId(null);
                                   setNotifications(prev => [{ id: Date.now(), text: `${nombre} asignada a ${compuAsignForm.nombre}`, type: "success", time: "Ahora" }, ...prev]);
                                 }}
@@ -3700,7 +3700,7 @@ export default function BiblioAnalytics360() {
                               <div style={{ background: t.inputBg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
                                 {[
                                   ["Usuario", compuSel.reserva.nombre],
-                                  ["Matrícula", compuSel.reserva.expediente],
+                                  ["Matrícula", compuSel.reserva.matricula],
                                   ["Carrera", compuSel.reserva.carrera],
                                   ["Duración", `${compuSel.reserva.duracion}h`],
                                   ["Sistema", compuSel.sistema],
@@ -3745,7 +3745,7 @@ export default function BiblioAnalytics360() {
                                 dbSaveComputadora(updated);
                                 dbSaveHistorialReserva({
                                   cubicule: nombre, tipo: 'computadoras',
-                                  nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+                                  nombre: res.nombre, matricula: res.matricula, carrera: res.carrera,
                                   duracion: res.duracion, personas: null, piso: null,
                                   inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
                                   fin: finNow.toISOString(), turno: calcTurno(res.inicio),
@@ -3892,7 +3892,7 @@ export default function BiblioAnalytics360() {
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{h.pc} — {h.nombre}</div>
-                          <div style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>{h.expediente} · {h.carrera} · {h.duracion}h</div>
+                          <div style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>{h.matricula} · {h.carrera} · {h.duracion}h</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: h.estado === "completado" ? `${t.green}15` : `${t.teal}15`, color: h.estado === "completado" ? t.green : t.teal }}>

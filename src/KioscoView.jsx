@@ -267,13 +267,13 @@ export default function KioscoView() {
     const check = () => {
       // Aviso 10 min antes — usa ref para evitar closure stale
       cubiculosRef.current.forEach(c => {
-        if (c.estado !== 'ocupado' || !c.reserva?.expediente) return;
+        if (c.estado !== 'ocupado' || !c.reserva?.matricula) return;
         const remainMs = getRemainingMs(c);
         const warnKey  = `${c.id}-${String(c.reserva.inicio)}`;
         if (remainMs > 0 && remainMs <= 10 * 60 * 1000 && !pushWarnedRef.current.has(warnKey)) {
           pushWarnedRef.current.add(warnKey);
           const minLeft = Math.ceil(remainMs / 60000);
-          dbGetPushSubscriptions(c.reserva.expediente).then(subs => {
+          dbGetPushSubscriptions(c.reserva.matricula).then(subs => {
             subs.forEach(sub => sendPush(sub, `⏰ Te quedan ${minLeft} min`, `Tu reserva en ${c.nombre} vence pronto. Libera el espacio a tiempo.`));
           });
         }
@@ -286,18 +286,18 @@ export default function KioscoView() {
           updated.forEach((c, i) => {
             if (c === prev[i]) return;
             const old = prev[i];
-            if (old?.reserva?.expediente) {
+            if (old?.reserva?.matricula) {
               const res = old.reserva;
               const hh = new Date(res.inicio).getHours();
               const turno = hh >= 7 && hh < 14 ? 'Matutino' : hh >= 14 && hh < 20 ? 'Vespertino' : 'Nocturno';
               dbSaveHistorialReserva({
                 cubicule: old.nombre, tipo: 'cubiculos',
-                nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+                nombre: res.nombre, matricula: res.matricula, carrera: res.carrera,
                 duracion: res.duracion, personas: res.personas || null, piso: old.piso,
                 inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
                 fin: new Date(serverNow()).toISOString(), turno,
               });
-              dbGetPushSubscriptions(res.expediente).then(subs => {
+              dbGetPushSubscriptions(res.matricula).then(subs => {
                 subs.forEach(sub => sendPush(sub, '📚 Tu reserva ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Gracias por usar la biblioteca.`));
               });
             }
@@ -315,18 +315,18 @@ export default function KioscoView() {
           updated.forEach((c, i) => {
             if (c === prev[i]) return;
             const old = prev[i];
-            if (old?.reserva?.expediente) {
+            if (old?.reserva?.matricula) {
               const res = old.reserva;
               const hh = new Date(res.inicio).getHours();
               const turno = hh >= 7 && hh < 14 ? 'Matutino' : hh >= 14 && hh < 20 ? 'Vespertino' : 'Nocturno';
               dbSaveHistorialReserva({
                 cubicule: old.nombre, tipo: 'computadoras',
-                nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+                nombre: res.nombre, matricula: res.matricula, carrera: res.carrera,
                 duracion: res.duracion, personas: null, piso: null,
                 inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
                 fin: new Date(serverNow()).toISOString(), turno,
               });
-              dbGetPushSubscriptions(res.expediente).then(subs => {
+              dbGetPushSubscriptions(res.matricula).then(subs => {
                 subs.forEach(sub => sendPush(sub, '💻 Tu sesión ha vencido', `Tu tiempo en ${old.nombre} ha terminado. Por favor libera la computadora.`));
               });
             }
@@ -425,9 +425,9 @@ export default function KioscoView() {
       if (!found) { setLookupError("not_found"); return; }
 
       // Determinar destino tras verificar PIN
-      const activeCubi  = cubiActuales.find(c => (c.estado === "ocupado" || (c.estado === "reservado" && c.reserva?.pendingCheckin)) && c.reserva?.expediente === found.matricula);
-      const advanceCubi = cubiActuales.find(c => c.nextReserva?.expediente === found.matricula);
-      const activeCompu = computadoras.find(c => c.estado === "ocupado" && c.reserva?.expediente === found.matricula);
+      const activeCubi  = cubiActuales.find(c => (c.estado === "ocupado" || (c.estado === "reservado" && c.reserva?.pendingCheckin)) && c.reserva?.matricula === found.matricula);
+      const advanceCubi = cubiActuales.find(c => c.nextReserva?.matricula === found.matricula);
+      const activeCompu = computadoras.find(c => c.estado === "ocupado" && c.reserva?.matricula === found.matricula);
 
       let dest = { screen: "bienvenido", selectedId: null, compuSelectedId: null };
       if (activeCubi)  dest = { screen: "mi_reserva",      selectedId: activeCubi.id,  compuSelectedId: null };
@@ -460,7 +460,7 @@ export default function KioscoView() {
       const turno = h >= 7 && h < 14 ? 'Matutino' : h >= 14 && h < 20 ? 'Vespertino' : 'Nocturno';
       dbSaveHistorialReserva({
         cubicule: changed.nombre, tipo: 'cubiculos',
-        nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+        nombre: res.nombre, matricula: res.matricula, carrera: res.carrera,
         duracion: res.duracion, personas: res.personas || null, piso: changed.piso,
         inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
         fin: new Date(serverNow()).toISOString(), turno,
@@ -489,9 +489,9 @@ export default function KioscoView() {
     const f = generateFolio();
     let newState;
     if (cubi.estado === "ocupado") {
-      newState = { ...cubi, nextReserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas } };
+      newState = { ...cubi, nextReserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, personas } };
     } else {
-      newState = { ...cubi, estado: "reservado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas, inicio: null, pendingCheckin: true, reservedAt: new Date(serverNow()).toISOString() } };
+      newState = { ...cubi, estado: "reservado", reserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, personas, inicio: null, pendingCheckin: true, reservedAt: new Date(serverNow()).toISOString() } };
     }
     setCubiculos(prev => prev.map(c => c.id === selectedId ? newState : c));
     dbSaveCubiculo(newState);
@@ -504,7 +504,7 @@ export default function KioscoView() {
     if (!compu || !account) return;
     const d = new Date(), pad = n => String(n).padStart(2, "0");
     const f = `PC-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${String(Date.now()).slice(-4)}`;
-    const newState = { ...compu, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, inicio: new Date(serverNow()) } };
+    const newState = { ...compu, estado: "ocupado", reserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, inicio: new Date(serverNow()) } };
     setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? newState : c));
     dbSaveComputadora(newState);
     setFolio(f);
@@ -520,7 +520,7 @@ export default function KioscoView() {
       const turno = h >= 7 && h < 14 ? 'Matutino' : h >= 14 && h < 20 ? 'Vespertino' : 'Nocturno';
       dbSaveHistorialReserva({
         cubicule: compu.nombre, tipo: 'computadoras',
-        nombre: res.nombre, expediente: res.expediente, carrera: res.carrera,
+        nombre: res.nombre, matricula: res.matricula, carrera: res.carrera,
         duracion: res.duracion, personas: null, piso: null,
         inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
         fin: new Date(serverNow()).toISOString(), turno,
@@ -1377,7 +1377,7 @@ export default function KioscoView() {
   if (screen === "success") {
     const pct       = Math.min(100, ((15 - countdown) / 15) * 100);
     const isCompu   = servicio === "computadoras";
-    const isAdvance = !isCompu && !!selectedCubi?.nextReserva && selectedCubi.nextReserva.expediente === account?.matricula;
+    const isAdvance = !isCompu && !!selectedCubi?.nextReserva && selectedCubi.nextReserva.matricula === account?.matricula;
     const availAt   = isAdvance && selectedCubi?.reserva?.inicio
       ? new Date(new Date(selectedCubi.reserva.inicio).getTime() + selectedCubi.reserva.duracion * 3_600_000)
       : null;
