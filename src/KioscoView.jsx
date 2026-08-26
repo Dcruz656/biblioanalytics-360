@@ -202,6 +202,7 @@ export default function KioscoView() {
   const [pisoFilter,      setPisoFilter]      = useState(0);
   const [pulse,           setPulse]           = useState(true);
   const [confirmTerminar, setConfirmTerminar] = useState(false);
+  const [confirmando,     setConfirmando]     = useState(false);
   const [servicio,        setServicio]        = useState("cubiculos");
   const [computadoras,    setComputadoras]    = useState([]);
   const [compuSelectedId, setCompuSelectedId] = useState(null);
@@ -483,20 +484,46 @@ export default function KioscoView() {
     resetToIdle();
   }
 
-  function confirmarReserva() {
+  async function confirmarReserva() {
+    if (confirmando) return;
     const cubi = cubiculos.find(c => c.id === selectedId);
     if (!cubi || !account) return;
-    const f = generateFolio();
-    let newState;
-    if (cubi.estado === "ocupado") {
-      newState = { ...cubi, nextReserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, personas } };
-    } else {
-      newState = { ...cubi, estado: "reservado", reserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, personas, inicio: null, pendingCheckin: true, reservedAt: new Date(serverNow()).toISOString() } };
+
+    setConfirmando(true);
+    try {
+      // Re-fetch fresh state to prevent race condition (Realtime lag between kiosks)
+      const fresh = await dbLoadCubiculos();
+      if (fresh && fresh.length > 0) {
+        setCubiculos(fresh);
+        const freshCubi = fresh.find(c => c.id === selectedId);
+        if (freshCubi) {
+          const isAdvanceFlow = cubi.estado === "ocupado";
+          if (!isAdvanceFlow && freshCubi.estado !== "libre") {
+            // Cubículo ya tomado — regresar a selección con datos actualizados
+            setScreen("cubiculos");
+            return;
+          }
+          if (isAdvanceFlow && (freshCubi.estado !== "ocupado" || freshCubi.nextReserva)) {
+            setScreen("cubiculos");
+            return;
+          }
+        }
+      }
+
+      const f = generateFolio();
+      let newState;
+      if (cubi.estado === "ocupado") {
+        newState = { ...cubi, nextReserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, personas } };
+      } else {
+        newState = { ...cubi, estado: "reservado", reserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, personas, inicio: null, pendingCheckin: true, reservedAt: new Date(serverNow()).toISOString() } };
+      }
+      setCubiculos(prev => prev.map(c => c.id === selectedId ? newState : c));
+      await dbSaveCubiculo(newState);
+      setFolio(f);
+      setScreen("success");
+    } finally {
+      setConfirmando(false);
     }
-    setCubiculos(prev => prev.map(c => c.id === selectedId ? newState : c));
-    dbSaveCubiculo(newState);
-    setFolio(f);
-    setScreen("success");
   }
 
   function confirmarReservaCompu() {
@@ -1188,9 +1215,9 @@ export default function KioscoView() {
             <span style={{ display: "block", marginTop: 2, fontFamily: "'Space Mono', monospace", fontSize: 12 }}>{account?.matricula} · {account?.carrera}</span>
           </div>
 
-          <button onClick={confirmarReserva}
-            style={{ width: "100%", padding: "22px 0", borderRadius: 16, border: "none", background: isAdvance ? `linear-gradient(135deg, ${AMBER}, ${ROSE})` : `linear-gradient(135deg, ${GREEN}, ${TEAL})`, color: "#fff", fontSize: 22, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-            {isAdvance ? "⏱️ Confirmar reserva anticipada" : "✓ Confirmar Reserva"}
+          <button onClick={confirmarReserva} disabled={confirmando}
+            style={{ width: "100%", padding: "22px 0", borderRadius: 16, border: "none", background: isAdvance ? `linear-gradient(135deg, ${AMBER}, ${ROSE})` : `linear-gradient(135deg, ${GREEN}, ${TEAL})`, color: "#fff", fontSize: 22, fontWeight: 700, cursor: confirmando ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", opacity: confirmando ? 0.75 : 1, transition: "opacity .2s" }}>
+            {confirmando ? "Verificando disponibilidad…" : (isAdvance ? "⏱️ Confirmar reserva anticipada" : "✓ Confirmar Reserva")}
           </button>
         </div>
       </div>
