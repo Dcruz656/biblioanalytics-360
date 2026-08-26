@@ -212,10 +212,15 @@ export default function CubiQRView({ cubiId }) {
       setErrorMsg('La matrícula no coincide con la reserva de este cubículo.');
       setLoading(false); return;
     }
-    const inicio = serverNow();
-    await dbSaveCubiculo({ ...cubiculo, estado:'ocupado', reserva:{ ...res, inicio, pendingCheckin:false } });
-    setScreen('success-in');
-    setLoading(false);
+    try {
+      const inicio = serverNow();
+      await dbSaveCubiculo({ ...cubiculo, estado:'ocupado', reserva:{ ...res, inicio, pendingCheckin:false } });
+      setScreen('success-in');
+    } catch(e) {
+      setErrorMsg('Error al registrar. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleCheckout() {
@@ -226,19 +231,25 @@ export default function CubiQRView({ cubiId }) {
       setErrorMsg('La matrícula no coincide. Solo quien hizo Check-In puede hacer Check-Out.');
       setLoading(false); return;
     }
-    const finNow = serverNow();
-    await dbSaveHistorialReserva({
-      tipo:'cubiculos', cubicule:cubiculo.nombre,
-      nombre:res.nombre, matricula:res.matricula, carrera:res.carrera,
-      duracion:res.duracion,
-      inicio: res.inicio instanceof Date ? res.inicio.toISOString() : res.inicio,
-      fin: finNow.toISOString(),
-      turno: calcTurno(res.inicio instanceof Date ? res.inicio : new Date(res.inicio)),
-      personas: res.personas || 1, piso: cubiculo.piso,
-    });
-    await dbSaveCubiculo({ ...cubiculo, estado:'libre', reserva:null });
-    setScreen('success-out');
-    setLoading(false);
+    try {
+      const finNow = serverNow();
+      const inicioDate = res.inicio instanceof Date ? res.inicio : (res.inicio ? new Date(res.inicio) : null);
+      await dbSaveHistorialReserva({
+        tipo:'cubiculos', cubicule:cubiculo.nombre,
+        nombre:res.nombre, matricula:res.matricula, carrera:res.carrera,
+        duracion:res.duracion,
+        inicio: inicioDate ? inicioDate.toISOString() : null,
+        fin: finNow.toISOString(),
+        turno: inicioDate ? calcTurno(inicioDate) : 'Matutino',
+        personas: res.personas || 1, piso: cubiculo.piso,
+      });
+      await dbSaveCubiculo({ ...cubiculo, estado:'libre', reserva:null });
+      setScreen('success-out');
+    } catch(e) {
+      setErrorMsg('Error al registrar la salida. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   // ── renders ───────────────────────────────────────────────────────────────
