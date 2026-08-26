@@ -202,6 +202,8 @@ export default function KioscoView() {
   const [pisoFilter,      setPisoFilter]      = useState(0);
   const [pulse,           setPulse]           = useState(true);
   const [confirmTerminar, setConfirmTerminar] = useState(false);
+  const [pinTerminar,     setPinTerminar]     = useState('');
+  const [pinTerminarErr,  setPinTerminarErr]  = useState('');
   const [confirmando,     setConfirmando]     = useState(false);
   const [servicio,        setServicio]        = useState("cubiculos");
   const [computadoras,    setComputadoras]    = useState([]);
@@ -452,9 +454,17 @@ export default function KioscoView() {
     });
   }
 
-  function terminarUso() {
+  async function terminarUso() {
     const changed = cubiculos.find(c => c.id === selectedId);
     if (!changed) return;
+
+    // Validar PIN antes de ejecutar
+    const alumno = await dbFindAlumno(changed.reserva?.matricula);
+    if (!alumno || String(alumno.pin) !== pinTerminar.trim()) {
+      setPinTerminarErr('PIN incorrecto. Intenta de nuevo.');
+      return;
+    }
+
     if (changed.reserva && changed.reserva.inicio) {
       const res = changed.reserva;
       const h = new Date(res.inicio).getHours();
@@ -472,6 +482,7 @@ export default function KioscoView() {
       : { ...changed, estado: "libre", reserva: null };
     setCubiculos(prev => prev.map(c => c.id === selectedId ? newState : c));
     dbSaveCubiculo(newState);
+    setPinTerminar(''); setPinTerminarErr('');
     resetToIdle();
   }
 
@@ -902,17 +913,26 @@ export default function KioscoView() {
             </button>
           ) : (
             <div style={{ background: `${ROSE}10`, border: `1px solid ${ROSE}40`, borderRadius: 14, padding: "20px", marginBottom: 12 }}>
-              <div style={{ fontSize: 14, color: "#fff", fontWeight: 600, marginBottom: 16 }}>
+              <div style={{ fontSize: 14, color: "#fff", fontWeight: 600, marginBottom: 12 }}>
                 {isPending ? "¿Confirmas que quieres cancelar la reserva?" : "¿Confirmas que quieres terminar el uso ahora?"}
                 {!isPending && hasNext && <span style={{ display: "block", marginTop: 4, fontSize: 12, color: AMBER, fontWeight: 400 }}>El cubículo pasará al siguiente usuario automáticamente.</span>}
               </div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Confirma con tu PIN</div>
+              <input
+                type="password" inputMode="numeric"
+                placeholder="••••"
+                value={pinTerminar}
+                onChange={e => { setPinTerminar(e.target.value); setPinTerminarErr(''); }}
+                style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: `1px solid ${pinTerminarErr ? ROSE : "rgba(255,255,255,0.15)"}`, background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 16, fontWeight: 700, outline: "none", boxSizing: "border-box", fontFamily: "'Space Mono',monospace", marginBottom: pinTerminarErr ? 6 : 12 }}
+              />
+              {pinTerminarErr && <div style={{ fontSize: 12, color: "#fda4af", background: "rgba(225,29,72,0.14)", border: "1px solid rgba(225,29,72,0.35)", borderRadius: 8, padding: "7px 12px", marginBottom: 12 }}>{pinTerminarErr}</div>}
               <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setConfirmTerminar(false)}
+                <button onClick={() => { setConfirmTerminar(false); setPinTerminar(''); setPinTerminarErr(''); }}
                   style={{ flex: 1, padding: "13px 0", borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
                   No, volver
                 </button>
-                <button onClick={terminarUso}
-                  style={{ flex: 1, padding: "13px 0", borderRadius: 10, border: "none", background: ROSE, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                <button onClick={terminarUso} disabled={!pinTerminar.trim()}
+                  style={{ flex: 1, padding: "13px 0", borderRadius: 10, border: "none", background: pinTerminar.trim() ? ROSE : "rgba(255,255,255,0.1)", color: pinTerminar.trim() ? "#fff" : "rgba(255,255,255,0.3)", fontSize: 14, fontWeight: 700, cursor: pinTerminar.trim() ? "pointer" : "not-allowed", fontFamily: "'DM Sans', sans-serif" }}>
                   {isPending ? "Sí, cancelar" : "Sí, terminar"}
                 </button>
               </div>
