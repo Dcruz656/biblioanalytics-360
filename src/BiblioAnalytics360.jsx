@@ -24,22 +24,22 @@ import {
 // ===== THEME =====
 const themes = {
   light: {
-    bg: "#f6f8fb", card: "#ffffff", cardBorder: "#e8ecf1", navy: "#0e1629",
+    bg: "#f0f4fa", card: "#ffffff", cardBorder: "#e2e8f0", navy: "#0e1629",
     navyLight: "#1a2744", text: "#1e293b", textDim: "#64748b", textMuted: "#94a3b8",
     teal: "#0d9488", tealLight: "#14b8a6", blue: "#2563eb", blueLight: "#3b82f6",
     purple: "#7c3aed", amber: "#d97706", rose: "#e11d48", green: "#059669",
-    sidebarBg: "linear-gradient(180deg, #0e1629 0%, #1a2744 100%)",
+    sidebarBg: "linear-gradient(180deg, #0e1629 0%, #162040 100%)",
     sidebarText: "#ffffff", sidebarDim: "rgba(255,255,255,0.5)",
-    inputBg: "#f1f5f9", hover: "#f8fafc", shadow: "0 1px 3px rgba(0,0,0,0.04)",
+    inputBg: "#f1f5f9", hover: "#f8fafc", shadow: "0 4px 20px rgba(0,0,0,0.06)",
   },
   dark: {
-    bg: "#0b1120", card: "#131c2e", cardBorder: "#1e2d48", navy: "#e2e8f0",
+    bg: "#0d1321", card: "#141f33", cardBorder: "#1e2f4d", navy: "#e2e8f0",
     navyLight: "#cbd5e1", text: "#e2e8f0", textDim: "#94a3b8", textMuted: "#64748b",
     teal: "#14b8a6", tealLight: "#2dd4bf", blue: "#3b82f6", blueLight: "#60a5fa",
     purple: "#8b5cf6", amber: "#f59e0b", rose: "#f43f5e", green: "#10b981",
-    sidebarBg: "linear-gradient(180deg, #060d1b 0%, #0e1629 100%)",
-    sidebarText: "#ffffff", sidebarDim: "rgba(255,255,255,0.4)",
-    inputBg: "#1a2744", hover: "#1e2d48", shadow: "0 1px 3px rgba(0,0,0,0.2)",
+    sidebarBg: "linear-gradient(180deg, #070e1c 0%, #0d1828 50%, #0e1629 100%)",
+    sidebarText: "#ffffff", sidebarDim: "rgba(255,255,255,0.38)",
+    inputBg: "#1a2744", hover: "#1e2d48", shadow: "0 4px 20px rgba(0,0,0,0.35)",
   },
 };
 
@@ -266,7 +266,7 @@ const navMain = [
   { id: "sentimiento", icon: Heart, label: "Mod. Sentimiento" },
   { id: "impacto", icon: GraduationCap, label: "Mod. Impacto" },
   { id: "datos", icon: Database, label: "Datos & Upload" },
-  { id: "herramientas", icon: LayoutGrid, label: "Servicios" },
+  { id: "herramientas", icon: LayoutGrid, label: "Herramientas" },
   { id: "configuracion", icon: Settings, label: "Configuración" },
 ];
 
@@ -450,6 +450,23 @@ function createInitCubiculos() {
     { id: 11, nombre: "C-11", capacidad: 4, piso: 2, estado: "reservado", reserva: { nombre: "Sofía Ruiz",     expediente: "E203456", carrera: "Arquitectura",  inicio: new Date(now + 3600000),  duracion: 1 } },
     { id: 12, nombre: "C-12", capacidad: 8, piso: 2, estado: "libre",     reserva: null },
   ];
+}
+
+// ── LiveClock — componente aislado para no re-renderizar todo el dashboard ──
+function LiveClock() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const time = now.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const date = now.toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  return (
+    <div style={{ textAlign: "right", lineHeight: 1.3 }}>
+      <div style={{ fontSize: 13, fontWeight: 800, fontFamily: "'Space Mono', monospace", color: "#fff", letterSpacing: .5 }}>{time}</div>
+      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", textTransform: "capitalize" }}>{date}</div>
+    </div>
+  );
 }
 
 // ===== MAIN APP =====
@@ -895,56 +912,71 @@ export default function BiblioAnalytics360() {
     <div style={{ display: "flex", minHeight: "100vh", background: t.bg, fontFamily: "'DM Sans', sans-serif", color: t.text }}>
 
       {/* SIDEBAR */}
-      <aside style={{ width: 240, flexShrink: 0, background: t.sidebarBg, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, height: "100%", zIndex: 50 }}>
-        <div style={{ padding: "20px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg, ${t.teal}, ${t.tealLight})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <BookOpen size={16} color="#fff" />
+      <aside style={{ width: 240, flexShrink: 0, background: t.sidebarBg, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, height: "100%", zIndex: 50, boxShadow: "4px 0 24px rgba(0,0,0,0.25)" }}>
+        <div style={{ padding: "20px 18px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 12, background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 16px ${t.teal}50`, flexShrink: 0 }}>
+            <BookOpen size={17} color="#fff" />
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: t.sidebarText }}>BiblioAnalytics</div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: t.teal }}>360 — Prototipo</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: -.2 }}>BiblioAnalytics</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: t.teal, letterSpacing: .5 }}>360 · UACJ</div>
           </div>
         </div>
 
-        <div style={{ padding: "16px 10px", flex: 1 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, padding: "0 10px", marginBottom: 8, color: t.sidebarDim }}>Analítica</div>
-          {navMain.map(item => (
+        <div style={{ padding: "16px 10px", flex: 1, overflowY: "auto" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, padding: "0 10px", marginBottom: 10, color: t.sidebarDim }}>Analítica</div>
+          {navMain.slice(0, 6).map(item => (
             <button key={item.id} onClick={() => setNav(item.id)}
-              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 10, border: "none", marginBottom: 2, cursor: "pointer",
-                background: nav === item.id ? `${t.teal}20` : "transparent",
-                color: nav === item.id ? t.tealLight : t.sidebarDim,
-                fontSize: 12, fontWeight: nav === item.id ? 600 : 400, textAlign: "left", transition: "all 0.15s" }}>
-              <item.icon size={16} />
+              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 12px", borderRadius: "0 10px 10px 0", border: "none", marginBottom: 3, cursor: "pointer",
+                background: nav === item.id ? `linear-gradient(90deg, ${t.blue}35, ${t.teal}12)` : "transparent",
+                boxShadow: nav === item.id ? `inset 3px 0 0 ${t.teal}` : "none",
+                color: nav === item.id ? "#fff" : t.sidebarDim,
+                fontSize: 12, fontWeight: nav === item.id ? 700 : 400, textAlign: "left", transition: "all 0.15s" }}>
+              <item.icon size={15} />
               <span>{item.label}</span>
-              {nav === item.id && <ChevronRight size={12} style={{ marginLeft: "auto" }} />}
+              {nav === item.id && <ChevronRight size={11} style={{ marginLeft: "auto", opacity: 0.6 }} />}
+            </button>
+          ))}
+          <div style={{ height: 1, background: "rgba(255,255,255,0.07)", margin: "10px 10px" }} />
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, padding: "0 10px", marginBottom: 10, color: t.sidebarDim }}>Sistema</div>
+          {navMain.slice(6).map(item => (
+            <button key={item.id} onClick={() => setNav(item.id)}
+              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 12px", borderRadius: "0 10px 10px 0", border: "none", marginBottom: 3, cursor: "pointer",
+                background: nav === item.id ? `linear-gradient(90deg, ${t.blue}35, ${t.teal}12)` : "transparent",
+                boxShadow: nav === item.id ? `inset 3px 0 0 ${t.teal}` : "none",
+                color: nav === item.id ? "#fff" : t.sidebarDim,
+                fontSize: 12, fontWeight: nav === item.id ? 700 : 400, textAlign: "left", transition: "all 0.15s" }}>
+              <item.icon size={15} />
+              <span>{item.label}</span>
+              {nav === item.id && <ChevronRight size={11} style={{ marginLeft: "auto", opacity: 0.6 }} />}
             </button>
           ))}
         </div>
 
-        <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <button onClick={() => setDark(!dark)}
-            style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", borderRadius: 8, border: "none", background: "rgba(255,255,255,0.05)", color: t.sidebarDim, fontSize: 11, cursor: "pointer" }}>
-            {dark ? <Sun size={14} /> : <Moon size={14} />}
-            {dark ? "Modo Claro" : "Modo Oscuro"}
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.04)" }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: `linear-gradient(135deg, ${t.purple}, ${t.blue})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>
+        <div style={{ padding: "14px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px", borderRadius: 12, background: "rgba(255,255,255,0.05)", marginBottom: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ width: 34, height: 34, borderRadius: "50%", background: `linear-gradient(135deg, ${t.blue}, ${t.purple})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0, boxShadow: `0 3px 10px ${t.blue}50` }}>
               {userProfile.name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}
             </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>{userProfile.name}</div>
-              <div style={{ fontSize: 9, color: t.sidebarDim }}>{userProfile.role}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{userProfile.name}</div>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>{userProfile.institution}</div>
             </div>
           </div>
+          <button onClick={() => setDark(!dark)}
+            style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.45)", fontSize: 10, cursor: "pointer", transition: "all 0.15s" }}>
+            {dark ? <Sun size={12} /> : <Moon size={12} />}
+            {dark ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+          </button>
         </div>
       </aside>
 
       {/* MAIN */}
       <main style={{ flex: 1, marginLeft: 240 }}>
         {/* TOP BAR */}
-        <header style={{ position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 28px", background: `${t.bg}ee`, backdropFilter: "blur(12px)" }}>
+        <header style={{ position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 28px", background: `${t.bg}f0`, backdropFilter: "blur(16px)", borderBottom: `1px solid ${t.cardBorder}` }}>
           <div>
-            <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: t.text }}>
+            <h1 style={{ fontSize: 17, fontWeight: 800, margin: 0, color: t.text, letterSpacing: -.3 }}>
               {nav === "overview" && "Vista General"}{nav === "servicios" && "Estadísticas de Servicios"}
               {nav === "predictivo" && "Módulo Predictivo"}
               {nav === "sentimiento" && "Módulo de Sentimiento"}{nav === "impacto" && "Módulo de Impacto"}
@@ -952,20 +984,21 @@ export default function BiblioAnalytics360() {
               {nav === "herramientas" && "Herramientas"}
               {nav === "configuracion" && "Configuración"}
             </h1>
-            <p style={{ fontSize: 11, color: t.textDim, margin: 0 }}>Biblioteca Central UACJ · Prototipo Funcional</p>
+            <p style={{ fontSize: 10, color: t.textDim, margin: 0, letterSpacing: .3 }}>Biblioteca Central UACJ · Prototipo Funcional</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, background: t.card, border: `1px solid ${t.cardBorder}`, fontSize: 11 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.cardBorder}`, fontSize: 11, boxShadow: t.shadow }}>
               <Search size={13} color={t.textDim} />
               <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar métricas..."
-                style={{ border: "none", outline: "none", background: "transparent", fontSize: 11, color: t.text, width: 120 }} />
+                style={{ border: "none", outline: "none", background: "transparent", fontSize: 11, color: t.text, width: 130 }} />
               {searchQ && <X size={12} color={t.textDim} style={{ cursor: "pointer" }} onClick={() => setSearchQ("")} />}
             </div>
+            <div style={{ height: 28, width: 1, background: t.cardBorder }} />
             <div style={{ position: "relative" }}>
               <button onClick={() => setShowNotif(!showNotif)}
-                style={{ width: 34, height: 34, borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.card, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
+                style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.card, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", boxShadow: t.shadow }}>
                 <Bell size={15} color={t.text} />
-                <div style={{ position: "absolute", top: 5, right: 5, width: 7, height: 7, borderRadius: "50%", background: t.rose }} />
+                {notifications.length > 0 && <div style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", background: t.rose, border: `2px solid ${t.bg}` }} />}
               </button>
               {showNotif && (
                 <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 6, width: 320, background: t.card, border: `1px solid ${t.cardBorder}`, borderRadius: 14, padding: 12, zIndex: 200, boxShadow: "0 12px 32px rgba(0,0,0,0.15)" }}>
@@ -983,9 +1016,13 @@ export default function BiblioAnalytics360() {
               )}
             </div>
             <button onClick={() => setShowExport(true)}
-              style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", boxShadow: `0 4px 14px ${t.teal}40` }}>
               <Download size={13} /> Exportar
             </button>
+            <div style={{ height: 28, width: 1, background: t.cardBorder }} />
+            <div style={{ padding: "4px 10px", borderRadius: 10, background: t.card, border: `1px solid ${t.cardBorder}`, boxShadow: t.shadow }}>
+              <LiveClock />
+            </div>
           </div>
         </header>
 
