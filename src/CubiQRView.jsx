@@ -100,6 +100,32 @@ function SuccessScreen({ icon, color, title, sub, children }) {
   );
 }
 
+// ── Auto-redirect success screen ───────────────────────────────────────────
+function SuccessRedirect({ icon, color, title, sub, seconds, dest, children }) {
+  const [left, setLeft] = useState(seconds);
+  useEffect(() => {
+    const id = setInterval(() => setLeft(p => {
+      if (p <= 1) { clearInterval(id); window.location.href = dest; return 0; }
+      return p - 1;
+    }), 1000);
+    return () => clearInterval(id);
+  }, [dest]);
+  return (
+    <div style={P}>
+      <Header/>
+      <div style={{...CRD, textAlign:'center'}}>
+        <div style={{width:64,height:64,borderRadius:'50%',background:`${color}22`,border:`2px solid ${color}`,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',fontSize:28}}>{icon}</div>
+        <div style={{fontSize:20,fontWeight:800,color,marginBottom:6}}>{title}</div>
+        <div style={{fontSize:13,color:'rgba(255,255,255,0.55)',marginBottom:16,lineHeight:1.5}}>{sub}</div>
+        {children}
+        <div style={{fontSize:12,color:'rgba(255,255,255,0.3)',marginTop:8}}>
+          Volviendo al inicio en <strong style={{color:'rgba(255,255,255,0.6)'}}>{left}s</strong>…
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 export default function CubiQRView({ cubiId }) {
   const isGeneral = !cubiId;
@@ -550,15 +576,15 @@ export default function CubiQRView({ cubiId }) {
   }
 
   if (screen === 'success-in') return (
-    <div style={P}>
-      <Header/>
-      <SuccessScreen icon="✓" color="#22c55e" title="¡Check-In exitoso!"
-        sub={`Cubículo ${cubiculo?.nombre} registrado. El espacio se liberará automáticamente al vencer el tiempo.`}>
-        <div style={{background:'rgba(255,255,255,0.05)',borderRadius:12,padding:'12px 14px',fontSize:12,color:'rgba(255,255,255,0.5)',textAlign:'left',lineHeight:1.6,marginBottom:16}}>
-          Al terminar antes del tiempo: escanea nuevamente el QR de este cubículo para hacer <strong style={{color:'#fff'}}>Check-Out</strong> voluntario y liberar el espacio.
-        </div>
-      </SuccessScreen>
-    </div>
+    <SuccessRedirect
+      icon="✓" color="#22c55e" title="¡Check-In exitoso!"
+      sub={`Cubículo ${cubiculo?.nombre} registrado. El espacio se liberará automáticamente al vencer el tiempo.`}
+      seconds={5} dest="/kiosco"
+    >
+      <div style={{background:'rgba(255,255,255,0.05)',borderRadius:12,padding:'12px 14px',fontSize:12,color:'rgba(255,255,255,0.5)',textAlign:'left',lineHeight:1.6,marginBottom:16}}>
+        Al terminar antes del tiempo: escanea nuevamente el QR de este cubículo para hacer <strong style={{color:'#fff'}}>Check-Out</strong> voluntario y liberar el espacio.
+      </div>
+    </SuccessRedirect>
   );
 
   if (screen === 'success-out') return (
