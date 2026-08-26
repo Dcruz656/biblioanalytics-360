@@ -129,8 +129,16 @@ function fmtRing(ms) {
 }
 
 function applyAutoRelease(cubiList) {
+  const FIVE_MIN = 5 * 60 * 1000;
   let changed = false;
   const result = cubiList.map(c => {
+    if (c.estado === "reservado" && c.reserva?.pendingCheckin && c.reserva?.reservedAt) {
+      if (Date.now() - new Date(c.reserva.reservedAt).getTime() > FIVE_MIN) {
+        changed = true;
+        return { ...c, estado: "libre", reserva: null };
+      }
+      return c;
+    }
     if (c.estado !== "ocupado" || !c.reserva) return c;
     if (getRemainingMs(c) > 0) return c;
     changed = true;
@@ -373,9 +381,10 @@ export default function KioscoView() {
     const cubi  = cubiculos.find(c => c.id === selectedId) || null;
     const compu = computadoras.find(c => c.id === compuSelectedId) || null;
     if (screen === "mi_reserva" && cubi) {
-      if (cubi.estado !== "ocupado") {
+      const isPendingCheckin = cubi.estado === "reservado" && cubi.reserva?.pendingCheckin;
+      if (!isPendingCheckin && cubi.estado !== "ocupado") {
         resetToIdle();
-      } else if (getRemainingMs(cubi) <= 0) {
+      } else if (cubi.estado === "ocupado" && getRemainingMs(cubi) <= 0) {
         terminarUso();
       }
     }
@@ -416,7 +425,7 @@ export default function KioscoView() {
       if (!found) { setLookupError("not_found"); return; }
 
       // Determinar destino tras verificar PIN
-      const activeCubi  = cubiActuales.find(c => c.estado === "ocupado" && c.reserva?.expediente === found.matricula);
+      const activeCubi  = cubiActuales.find(c => (c.estado === "ocupado" || (c.estado === "reservado" && c.reserva?.pendingCheckin)) && c.reserva?.expediente === found.matricula);
       const advanceCubi = cubiActuales.find(c => c.nextReserva?.expediente === found.matricula);
       const activeCompu = computadoras.find(c => c.estado === "ocupado" && c.reserva?.expediente === found.matricula);
 
@@ -445,7 +454,7 @@ export default function KioscoView() {
   function terminarUso() {
     const changed = cubiculos.find(c => c.id === selectedId);
     if (!changed) return;
-    if (changed.reserva) {
+    if (changed.reserva && changed.reserva.inicio) {
       const res = changed.reserva;
       const h = new Date(res.inicio).getHours();
       const turno = h >= 7 && h < 14 ? 'Matutino' : h >= 14 && h < 20 ? 'Vespertino' : 'Nocturno';
@@ -482,7 +491,7 @@ export default function KioscoView() {
     if (cubi.estado === "ocupado") {
       newState = { ...cubi, nextReserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas } };
     } else {
-      newState = { ...cubi, estado: "ocupado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas, inicio: new Date(serverNow()) } };
+      newState = { ...cubi, estado: "reservado", reserva: { nombre: account.nombre, expediente: account.matricula, carrera: account.carrera, duracion, personas, inicio: null, pendingCheckin: true, reservedAt: new Date(serverNow()).toISOString() } };
     }
     setCubiculos(prev => prev.map(c => c.id === selectedId ? newState : c));
     dbSaveCubiculo(newState);
@@ -787,6 +796,7 @@ export default function KioscoView() {
 
   // ── MI RESERVA (turno activo del usuario) ────────────────
   if (screen === "mi_reserva" && selectedCubi && account) {
+    const isPending  = !!selectedCubi.reserva?.pendingCheckin;
     const remaining  = getRemainingMs(selectedCubi);
     const total      = (selectedCubi.reserva?.duracion || 1) * 3_600_000;
     const usedPct    = Math.min(100, ((total - remaining) / total) * 100);
@@ -794,7 +804,7 @@ export default function KioscoView() {
       ? new Date(new Date(selectedCubi.reserva.inicio).getTime() + total)
       : null;
     const hasNext    = !!selectedCubi.nextReserva;
-    const almostDone = remaining < 10 * 60 * 1000;
+    const almostDone = !isPending && remaining < 10 * 60 * 1000;
 
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
@@ -805,7 +815,7 @@ export default function KioscoView() {
             {initials(account.nombre)}
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", marginBottom: 4 }}>
-            {account.nombre.split(" ")[0]}, tienes una reserva activa
+            {account.nombre.split(" ")[0]}, {isPending ? "tu reserva está confirmada" : "tienes una reserva activa"}
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 32 }}>
             {account.carrera} · <span style={{ fontFamily: "'Space Mono', monospace" }}>{account.matricula}</span>
@@ -819,17 +829,30 @@ export default function KioscoView() {
               {endTime && ` · Hasta las ${fmtTime(endTime)}`}
             </div>
 
-            {/* Barra de tiempo */}
-            <div style={{ width: "100%", height: 8, borderRadius: 4, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 10 }}>
-              <div style={{ width: `${usedPct}%`, height: "100%", borderRadius: 4, background: almostDone ? ROSE : TEAL, transition: "width 1s linear" }} />
-            </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
-              <span>Tiempo restante</span>
-              <span>{Math.round(usedPct)}% usado</span>
-            </div>
-            <div style={{ fontSize: 38, fontWeight: 800, color: almostDone ? ROSE : "#fff", fontFamily: "'Space Mono', monospace" }}>
-              {fmtRemaining(remaining)}
-            </div>
+            {isPending ? (
+              <div style={{ padding: "14px 0", textAlign: "center" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: AMBER, marginBottom: 10 }}>⏳ Pendiente de Check-In</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.7 }}>
+                  Escanea el QR del cubículo<br />
+                  <strong style={{ color: "#fff" }}>{selectedCubi.nombre}</strong> para confirmar tu llegada.
+                </div>
+                <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Tienes 5 minutos desde que hiciste la reserva</div>
+              </div>
+            ) : (
+              <>
+                {/* Barra de tiempo */}
+                <div style={{ width: "100%", height: 8, borderRadius: 4, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 10 }}>
+                  <div style={{ width: `${usedPct}%`, height: "100%", borderRadius: 4, background: almostDone ? ROSE : TEAL, transition: "width 1s linear" }} />
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
+                  <span>Tiempo restante</span>
+                  <span>{Math.round(usedPct)}% usado</span>
+                </div>
+                <div style={{ fontSize: 38, fontWeight: 800, color: almostDone ? ROSE : "#fff", fontFamily: "'Space Mono', monospace" }}>
+                  {fmtRemaining(remaining)}
+                </div>
+              </>
+            )}
 
             {hasNext && (
               <div style={{ marginTop: 16, padding: "10px 14px", borderRadius: 10, background: `${AMBER}15`, border: `1px solid ${AMBER}40`, fontSize: 12, color: AMBER }}>
@@ -838,26 +861,26 @@ export default function KioscoView() {
             )}
           </div>
 
-          {/* Botón terminar */}
+          {/* Botón terminar / cancelar */}
           {!confirmTerminar ? (
             <button onClick={() => setConfirmTerminar(true)}
               style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: `1.5px solid ${ROSE}50`, background: `${ROSE}10`, color: ROSE, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 12 }}>
-              Terminar uso anticipadamente
+              {isPending ? "Cancelar reserva" : "Terminar uso anticipadamente"}
             </button>
           ) : (
             <div style={{ background: `${ROSE}10`, border: `1px solid ${ROSE}40`, borderRadius: 14, padding: "20px", marginBottom: 12 }}>
               <div style={{ fontSize: 14, color: "#fff", fontWeight: 600, marginBottom: 16 }}>
-                ¿Confirmas que quieres terminar el uso ahora?
-                {hasNext && <span style={{ display: "block", marginTop: 4, fontSize: 12, color: AMBER, fontWeight: 400 }}>El cubículo pasará al siguiente usuario automáticamente.</span>}
+                {isPending ? "¿Confirmas que quieres cancelar la reserva?" : "¿Confirmas que quieres terminar el uso ahora?"}
+                {!isPending && hasNext && <span style={{ display: "block", marginTop: 4, fontSize: 12, color: AMBER, fontWeight: 400 }}>El cubículo pasará al siguiente usuario automáticamente.</span>}
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => setConfirmTerminar(false)}
                   style={{ flex: 1, padding: "13px 0", borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                  Cancelar
+                  No, volver
                 </button>
                 <button onClick={terminarUso}
                   style={{ flex: 1, padding: "13px 0", borderRadius: 10, border: "none", background: ROSE, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                  Sí, terminar
+                  {isPending ? "Sí, cancelar" : "Sí, terminar"}
                 </button>
               </div>
             </div>
@@ -1368,7 +1391,7 @@ export default function KioscoView() {
             ? `Dirígete a ${selectedCompu?.zona} y usa ${selectedCompu?.nombre}`
             : isAdvance && availAt
             ? `Tu cubículo estará listo a partir de las ${fmtTime(availAt)}`
-            : "Puedes dirigirte directamente a tu cubículo"}
+            : `Ve al ${selectedCubi?.nombre || "cubículo"} y escanea el QR · tienes 5 min para Check-In`}
         </div>
 
         <div style={{ background: CARD, borderRadius: 20, padding: "26px 44px", border: `1.5px solid ${accentColor}45`, marginBottom: 28, width: "100%", maxWidth: 540 }}>

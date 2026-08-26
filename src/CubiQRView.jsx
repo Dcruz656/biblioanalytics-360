@@ -450,9 +450,9 @@ export default function CubiQRView({ cubiId }) {
         </div>
         <div style={{fontSize:13,color:'rgba(255,255,255,0.5)',lineHeight:1.7,marginBottom:20}}>
           Este cubículo está libre.<br/>
-          Para reservarlo ve a la página de reservas y selecciónalo.
+          Acude al kiosco de la biblioteca para hacer una reserva.
         </div>
-        <button style={BTN()} onClick={()=>window.location.href='/cubiculo'}>Ir a reservas →</button>
+        <button style={BTN()} onClick={()=>window.location.href='/kiosco'}>Ir al kiosco →</button>
       </div>
     </div>
   );
