@@ -568,6 +568,16 @@ export default function BiblioAnalytics360() {
       setCubiculos(prev => {
         let changed = false;
         const next = prev.map(c => {
+          // Auto-liberar pendingCheckin vencido (> 5 min sin check-in)
+          if (c.estado === "reservado" && c.reserva?.pendingCheckin && c.reserva?.reservedAt) {
+            if (serverNow() - new Date(c.reserva.reservedAt).getTime() > 5 * 60 * 1000) {
+              changed = true;
+              const freed = { ...c, estado: "libre", reserva: null };
+              dbSaveCubiculo(freed);
+              return freed;
+            }
+            return c;
+          }
           if (c.estado !== "ocupado" || !c.reserva) return c;
           if (getCubiRemainingMs(c) > 0) return c;
           changed = true;
@@ -2985,13 +2995,23 @@ export default function BiblioAnalytics360() {
                         <button key={cubi.id} onClick={() => setCubiSelectedId(isSelected ? null : cubi.id)}
                           style={{ padding: "20px 12px", borderRadius: 14, border: `2px solid ${isSelected ? cfg.color : `${t.cardBorder}`}`, background: isSelected ? cfg.bg : `${t.text}03`, cursor: "pointer", textAlign: "center", transition: "all 0.15s", outline: "none" }}>
                           {cubi.estado !== "libre" && cubi.reserva ? (() => {
-                            const total = cubi.reserva.duracion * 3_600_000;
-                            const rem   = getCubiRemainingMs(cubi);
-                            const pct   = total > 0 ? Math.max(0, rem / total) : 0;
+                            const isPending = cubi.estado === "reservado" && cubi.reserva.pendingCheckin;
+                            let total, rem;
+                            if (isPending) {
+                              total = 5 * 60 * 1000;
+                              const ra = cubi.reserva.reservedAt ? new Date(cubi.reserva.reservedAt).getTime() : serverNow();
+                              rem = Math.max(0, total - (serverNow() - ra));
+                            } else {
+                              total = cubi.reserva.duracion * 3_600_000;
+                              rem = getCubiRemainingMs(cubi);
+                            }
+                            const pct = total > 0 ? Math.max(0, rem / total) : 0;
                             const S = 52, R = 20, CIRC = 2 * Math.PI * R;
-                            const mins  = Math.floor(rem / 60000);
-                            const hh = Math.floor(mins / 60), mm = mins % 60;
-                            const label = mins >= 60 ? (mm === 0 ? `${hh}h` : `${hh}h${mm}m`) : `${mins}m`;
+                            const mins = Math.floor(rem / 60000);
+                            const secs = Math.floor((rem % 60000) / 1000);
+                            const label = isPending
+                              ? (mins > 0 ? `${mins}m` : `${secs}s`)
+                              : (mins >= 60 ? (mins % 60 === 0 ? `${Math.floor(mins/60)}h` : `${Math.floor(mins/60)}h${mins%60}m`) : `${mins}m`);
                             return (
                               <div style={{ position: "relative", width: S, height: S, margin: "0 auto 10px" }}>
                                 <svg width={S} height={S} style={{ transform: "rotate(-90deg)" }}>
@@ -3012,11 +3032,20 @@ export default function BiblioAnalytics360() {
                           )}
                           <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{cubi.nombre}</div>
                           <div style={{ fontSize: 11, color: t.textDim, margin: "3px 0" }}>Cap. {cubi.capacidad}</div>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{cubi.estado === "libre" ? "Libre" : cubi.estado === "ocupado" ? "Ocupado" : "Reservado"}</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{cubi.estado === "libre" ? "Libre" : "Ocupado"}</div>
                           {cubi.reserva && (() => {
+                            const isPending = cubi.estado === "reservado" && cubi.reserva.pendingCheckin;
+                            const firstName = (cubi.reserva.nombre || "").split(" ")[0];
+                            if (isPending || !cubi.reserva.inicio) {
+                              return (
+                                <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 6, marginTop: 2 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
+                                  <div style={{ fontSize: 10, color: cfg.color, marginTop: 2 }}>En camino…</div>
+                                </div>
+                              );
+                            }
                             const fmtT = d => new Date(d).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
                             const fin = new Date(new Date(cubi.reserva.inicio).getTime() + cubi.reserva.duracion * 3_600_000);
-                            const firstName = (cubi.reserva.nombre || "").split(" ")[0];
                             return (
                               <div style={{ borderTop: `1px solid ${cfg.color}20`, paddingTop: 6, marginTop: 2 }}>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{firstName}</div>
