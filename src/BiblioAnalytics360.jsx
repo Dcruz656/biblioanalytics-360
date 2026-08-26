@@ -413,42 +413,40 @@ function getCubiRemainingMs(cubi) {
 
 // ===== COMPUTADORAS INITIAL DATA =====
 function createInitComputadoras() {
-  const now = Date.now();
   return [
-    { id:1,  nombre:"PC-01", zona:"Sala General",       sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Fernanda Rivas",  matricula:"A203111", carrera:"Ing. Software",   inicio:new Date(now-2400000), duracion:2 } },
-    { id:2,  nombre:"PC-02", zona:"Sala General",       sistema:"Windows 11",  estado:"libre",         reserva:null },
-    { id:3,  nombre:"PC-03", zona:"Sala General",       sistema:"Windows 11",  estado:"libre",         reserva:null },
-    { id:4,  nombre:"PC-04", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"mantenimiento", reserva:null },
-    { id:5,  nombre:"PC-05", zona:"Sala General",       sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Omar Castillo",   matricula:"B201555", carrera:"Derecho",          inicio:new Date(now-1800000), duracion:1 } },
-    { id:6,  nombre:"PC-06", zona:"Sala General",       sistema:"Windows 11",  estado:"libre",         reserva:null },
-    { id:7,  nombre:"PC-07", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre",         reserva:null },
-    { id:8,  nombre:"PC-08", zona:"Sala Silencio",      sistema:"Ubuntu 22.04",estado:"ocupado",       reserva:{ nombre:"Valeria Moreno",  matricula:"C202777", carrera:"Medicina",         inicio:new Date(now-900000),  duracion:2 } },
-    { id:9,  nombre:"PC-09", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre",         reserva:null },
-    { id:10, nombre:"PC-10", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre",         reserva:null },
-    { id:11, nombre:"PC-11", zona:"Sala Investigación", sistema:"Ubuntu 22.04",estado:"libre",         reserva:null },
-    { id:12, nombre:"PC-12", zona:"Sala Investigación", sistema:"Windows 11",  estado:"mantenimiento", reserva:null },
-    { id:13, nombre:"PC-13", zona:"Sala Investigación", sistema:"Windows 11",  estado:"ocupado",       reserva:{ nombre:"Diego Mendoza",   matricula:"D200888", carrera:"Arquitectura",     inicio:new Date(now-600000),  duracion:1 } },
-    { id:14, nombre:"PC-14", zona:"Sala Investigación", sistema:"Windows 11",  estado:"libre",         reserva:null },
-    { id:15, nombre:"PC-15", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"libre",         reserva:null },
+    { id:1,  nombre:"PC-01", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:2,  nombre:"PC-02", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:3,  nombre:"PC-03", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:4,  nombre:"PC-04", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
+    { id:5,  nombre:"PC-05", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:6,  nombre:"PC-06", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:7,  nombre:"PC-07", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:8,  nombre:"PC-08", zona:"Sala Silencio",      sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
+    { id:9,  nombre:"PC-09", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:10, nombre:"PC-10", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:11, nombre:"PC-11", zona:"Sala Investigación", sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
+    { id:12, nombre:"PC-12", zona:"Sala Investigación", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:13, nombre:"PC-13", zona:"Sala Investigación", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:14, nombre:"PC-14", zona:"Sala Investigación", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:15, nombre:"PC-15", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
   ];
 }
 
 // ===== CUBICULOS INITIAL DATA =====
 function createInitCubiculos() {
-  const now = Date.now();
   return [
-    { id: 1,  nombre: "C-01", capacidad: 4, piso: 1, estado: "libre",     reserva: null },
-    { id: 2,  nombre: "C-02", capacidad: 4, piso: 1, estado: "ocupado",   reserva: { nombre: "María García",   matricula: "A201234", carrera: "Ing. Software", inicio: new Date(now - 3600000),  duracion: 2 } },
-    { id: 3,  nombre: "C-03", capacidad: 6, piso: 1, estado: "reservado", reserva: { nombre: "Carlos López",   matricula: "B198765", carrera: "Medicina",      inicio: new Date(now + 1800000),  duracion: 1 } },
-    { id: 4,  nombre: "C-04", capacidad: 4, piso: 1, estado: "libre",     reserva: null },
-    { id: 5,  nombre: "C-05", capacidad: 4, piso: 1, estado: "libre",     reserva: null },
-    { id: 6,  nombre: "C-06", capacidad: 8, piso: 1, estado: "ocupado",   reserva: { nombre: "Ana Martínez",   matricula: "C205678", carrera: "Derecho",       inicio: new Date(now - 1800000),  duracion: 3 } },
-    { id: 7,  nombre: "C-07", capacidad: 4, piso: 2, estado: "libre",     reserva: null },
-    { id: 8,  nombre: "C-08", capacidad: 4, piso: 2, estado: "libre",     reserva: null },
-    { id: 9,  nombre: "C-09", capacidad: 6, piso: 2, estado: "ocupado",   reserva: { nombre: "Luis Torres",    matricula: "D198432", carrera: "Psicología",    inicio: new Date(now - 900000),   duracion: 2 } },
-    { id: 10, nombre: "C-10", capacidad: 4, piso: 2, estado: "libre",     reserva: null },
-    { id: 11, nombre: "C-11", capacidad: 4, piso: 2, estado: "reservado", reserva: { nombre: "Sofía Ruiz",     matricula: "E203456", carrera: "Arquitectura",  inicio: new Date(now + 3600000),  duracion: 1 } },
-    { id: 12, nombre: "C-12", capacidad: 8, piso: 2, estado: "libre",     reserva: null },
+    { id: 1,  nombre: "C-01", capacidad: 4, piso: 1, estado: "libre", reserva: null },
+    { id: 2,  nombre: "C-02", capacidad: 4, piso: 1, estado: "libre", reserva: null },
+    { id: 3,  nombre: "C-03", capacidad: 6, piso: 1, estado: "libre", reserva: null },
+    { id: 4,  nombre: "C-04", capacidad: 4, piso: 1, estado: "libre", reserva: null },
+    { id: 5,  nombre: "C-05", capacidad: 4, piso: 1, estado: "libre", reserva: null },
+    { id: 6,  nombre: "C-06", capacidad: 8, piso: 1, estado: "libre", reserva: null },
+    { id: 7,  nombre: "C-07", capacidad: 4, piso: 2, estado: "libre", reserva: null },
+    { id: 8,  nombre: "C-08", capacidad: 4, piso: 2, estado: "libre", reserva: null },
+    { id: 9,  nombre: "C-09", capacidad: 6, piso: 2, estado: "libre", reserva: null },
+    { id: 10, nombre: "C-10", capacidad: 4, piso: 2, estado: "libre", reserva: null },
+    { id: 11, nombre: "C-11", capacidad: 4, piso: 2, estado: "libre", reserva: null },
+    { id: 12, nombre: "C-12", capacidad: 8, piso: 2, estado: "libre", reserva: null },
   ];
 }
 
@@ -510,13 +508,7 @@ export default function BiblioAnalytics360() {
   const [compuZonaFilter, setCompuZonaFilter] = useState("Todas");
   const [compuAsignForm, setCompuAsignForm]   = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0], duracion: 1 });
   const [compuNuevoForm, setCompuNuevoForm]   = useState({ nombre: "", zona: "Sala General", sistema: "Windows 11" });
-  const [compuHistorial, setCompuHistorial]   = useState(() => {
-    const now = Date.now();
-    return [
-      { id:1, pc:"PC-02", nombre:"Laura Jiménez",  matricula:"A200111", carrera:"Psicología",   duracion:2, inicio:new Date(now-86400000*2), estado:"completado" },
-      { id:2, pc:"PC-07", nombre:"Marcos Peña",    matricula:"B199333", carrera:"Contaduría",   duracion:1, inicio:new Date(now-86400000),   estado:"completado" },
-    ];
-  });
+  const [compuHistorial, setCompuHistorial]   = useState([]);
 
   // Cargar cubículos y computadoras desde Supabase al montar; suscribir actualizaciones en tiempo real
   useEffect(() => {
@@ -646,16 +638,9 @@ export default function BiblioAnalytics360() {
     });
     return unsub;
   }, []);
-  const [cubiReservaForm, setCubiReservaForm] = useState({ nombre: "", matricula: "", carrera: "Ing. Software", duracion: 2 });
+  const [cubiReservaForm, setCubiReservaForm] = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0], duracion: 2 });
   const [cubiPisoFilter, setCubiPisoFilter] = useState(0);
-  const [cubiHistorial, setCubiHistorial] = useState(() => {
-    const now = Date.now();
-    return [
-      { id: 1, cubicule: "C-04", nombre: "Pedro Sánchez",  matricula: "A200001", carrera: "Contaduría",  inicio: new Date(now - 86400000 * 2), duracion: 2, estado: "completado" },
-      { id: 2, cubicule: "C-07", nombre: "Elena Castro",   matricula: "B199002", carrera: "Diseño",       inicio: new Date(now - 86400000),     duracion: 1, estado: "completado" },
-      { id: 3, cubicule: "C-10", nombre: "Roberto Díaz",   matricula: "C201003", carrera: "Ing. Civil",   inicio: new Date(now - 43200000),     duracion: 3, estado: "completado" },
-    ];
-  });
+  const [cubiHistorial, setCubiHistorial] = useState([]);
   // Export state
   const [showExport, setShowExport] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
