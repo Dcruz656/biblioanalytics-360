@@ -567,6 +567,7 @@ export default function BiblioAnalytics360() {
     const hb = setInterval(() => {
       dbLoadCubiculos().then(data => { if (data && data.length > 0) setCubiculos(data); });
       dbLoadComputadoras().then(data => { if (data && data.length > 0) setComputadoras(data); });
+      dbLoadHistorialReservas().then(d => { if (d) setHistorialReservas(d); });
     }, 30_000);
     return () => clearInterval(hb);
   }, []);
