@@ -132,6 +132,23 @@ export async function dbLoadAlumnos() {
   return data;
 }
 
+export async function dbUpdateAlumno(alumno) {
+  const accounts = lsLoadAccounts();
+  const idx = accounts.findIndex(a => a.matricula === alumno.matricula);
+  if (idx >= 0) accounts[idx] = alumno;
+  lsSaveAccounts(accounts);
+  if (!supabase) return;
+  const { error } = await supabase.from('alumnos').update(alumno).eq('matricula', alumno.matricula);
+  if (error) console.error('[db] alumnos update:', error.message);
+}
+
+export async function dbDeleteAlumno(matricula) {
+  lsSaveAccounts(lsLoadAccounts().filter(a => a.matricula !== matricula));
+  if (!supabase) return;
+  const { error } = await supabase.from('alumnos').delete().eq('matricula', matricula);
+  if (error) console.error('[db] alumnos delete:', error.message);
+}
+
 // ── Suscripciones en tiempo real ────────────────────────────────────────────
 export function subscribeCubiculos(onChange) {
   if (!supabase) return () => {};

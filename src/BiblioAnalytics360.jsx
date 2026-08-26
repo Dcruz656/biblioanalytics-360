@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
-import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, dbLoadAppConfig, dbSaveAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas, subscribeHistorialReservas } from "./db";
+import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, dbUpdateAlumno, dbDeleteAlumno, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, dbLoadAppConfig, dbSaveAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas, subscribeHistorialReservas } from "./db";
 import { serverNow } from "./serverTime";
 import { getOwnSubscription } from "./pushNotifications";
 import html2canvas from "html2canvas";
@@ -18,7 +18,7 @@ import {
   Download, Activity, AlertTriangle, CheckCircle, Clock, Heart, ThumbsUp,
   ThumbsDown, Minus, Home, FileText, Zap, Target, Award, Brain, BarChart3,
   Filter, Plus, X, Upload, Play, Pause, RefreshCw, Send, Eye, Layers,
-  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid, Edit2, Shield, QrCode, Printer
+  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid, Edit2, Edit3, Trash2, Shield, QrCode, Printer
 } from "lucide-react";
 
 // ===== THEME =====
@@ -480,7 +480,11 @@ export default function BiblioAnalytics360() {
   const [pinRequired,  setPinRequired]  = useState(true);
   useEffect(() => { dbLoadAppConfig().then(cfg => setPinRequired(cfg.pinRequired)); }, []);
   useEffect(() => subscribeAppConfig(cfg => { if (typeof cfg.pinRequired === 'boolean') setPinRequired(cfg.pinRequired); }), []);
-  const [syncingSource, setSyncingSource] = useState(null);
+  const [syncingSource,  setSyncingSource]  = useState(null);
+  const [userSearch,     setUserSearch]     = useState("");
+  const [userEditId,     setUserEditId]     = useState(null);
+  const [userEditDraft,  setUserEditDraft]  = useState({});
+  const [userDeleteId,   setUserDeleteId]   = useState(null);
   const [testPushState, setTestPushState] = useState("idle"); // "idle"|"sending"|"ok"|"error"
   const [testPushMsg, setTestPushMsg] = useState("");
   const [alumnos, setAlumnos] = useState([]);
@@ -2762,6 +2766,164 @@ export default function BiblioAnalytics360() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Usuarios Registrados ── */}
+              {(() => {
+                const filtered = alumnos.filter(a =>
+                  !userSearch ||
+                  a.nombre?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                  a.matricula?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                  a.carrera?.toLowerCase().includes(userSearch.toLowerCase())
+                );
+                return (
+                  <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, boxShadow: t.shadow, marginTop: 20 }}>
+
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${t.cardBorder}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: `${t.blue}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Users size={18} color={t.blue} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Usuarios Registrados</div>
+                          <div style={{ fontSize: 10, color: t.textDim }}>{alumnos.length} alumno{alumnos.length !== 1 ? "s" : ""} en el sistema</div>
+                        </div>
+                      </div>
+                      {/* Search */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 10, background: t.inputBg, border: `1px solid ${t.cardBorder}`, fontSize: 11 }}>
+                        <Search size={12} color={t.textDim} />
+                        <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Buscar por nombre, matrícula o carrera…"
+                          style={{ border: "none", outline: "none", background: "transparent", fontSize: 11, color: t.text, width: 220 }} />
+                        {userSearch && <X size={11} color={t.textDim} style={{ cursor: "pointer" }} onClick={() => setUserSearch("")} />}
+                      </div>
+                    </div>
+
+                    {/* Lista */}
+                    {filtered.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "32px 0", color: t.textDim, fontSize: 13 }}>
+                        {alumnos.length === 0 ? "No hay usuarios registrados aún." : "Sin resultados para la búsqueda."}
+                      </div>
+                    ) : (
+                      <div>
+                        {/* Encabezado de columnas */}
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 1.2fr auto", gap: 12, padding: "6px 12px", marginBottom: 4 }}>
+                          {["Alumno", "Carrera", "Matrícula", "Acciones"].map(h => (
+                            <div key={h} style={{ fontSize: 9, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 1 }}>{h}</div>
+                          ))}
+                        </div>
+
+                        {filtered.map(a => {
+                          const isEditing  = userEditId === a.matricula;
+                          const isDeleting = userDeleteId === a.matricula;
+                          const initials   = a.nombre?.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+                          const colorIdx   = a.matricula?.charCodeAt(0) % 5;
+                          const avatarColor = [t.teal, t.blue, t.purple, t.amber, t.rose][colorIdx];
+
+                          return (
+                            <div key={a.matricula} style={{ borderRadius: 12, border: `1px solid ${isEditing ? t.teal + "60" : isDeleting ? t.rose + "50" : t.cardBorder}`, marginBottom: 8, overflow: "hidden", transition: "border-color 0.2s" }}>
+
+                              {/* Fila principal */}
+                              <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 1.2fr auto", gap: 12, padding: "10px 14px", alignItems: "center", background: isEditing ? `${t.teal}06` : isDeleting ? `${t.rose}06` : "transparent" }}>
+                                {/* Alumno */}
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${avatarColor}, ${avatarColor}99)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0 }}>{initials}</div>
+                                  <div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: t.text }}>{a.nombre || "—"}</div>
+                                    <div style={{ fontSize: 10, color: t.textDim }}>{a.email || ""}</div>
+                                  </div>
+                                </div>
+                                {/* Carrera */}
+                                <div style={{ fontSize: 11, color: t.textDim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.carrera || "—"}</div>
+                                {/* Matrícula */}
+                                <div style={{ fontSize: 11, fontFamily: "'Space Mono', monospace", color: t.teal, fontWeight: 700 }}>{a.matricula}</div>
+                                {/* Acciones */}
+                                <div style={{ display: "flex", gap: 6 }}>
+                                  {!isEditing && !isDeleting && (
+                                    <>
+                                      <button onClick={() => { setUserEditId(a.matricula); setUserEditDraft({ nombre: a.nombre || "", carrera: a.carrera || "" }); setUserDeleteId(null); }}
+                                        style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                                        <Edit3 size={11} /> Editar
+                                      </button>
+                                      <button onClick={() => { setUserDeleteId(a.matricula); setUserEditId(null); }}
+                                        style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.rose}40`, background: `${t.rose}10`, color: t.rose, fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                                        <Trash2 size={11} /> Eliminar
+                                      </button>
+                                    </>
+                                  )}
+                                  {isEditing && (
+                                    <>
+                                      <button onClick={async () => {
+                                        const updated = { ...a, nombre: userEditDraft.nombre, carrera: userEditDraft.carrera };
+                                        await dbUpdateAlumno(updated);
+                                        setAlumnos(prev => prev.map(u => u.matricula === a.matricula ? updated : u));
+                                        setUserEditId(null);
+                                        setNotifications(prev => [{ id: Date.now(), text: `Alumno ${a.matricula} actualizado`, type: "success", time: "Ahora" }, ...prev]);
+                                      }}
+                                        style={{ padding: "5px 12px", borderRadius: 7, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
+                                        Guardar
+                                      </button>
+                                      <button onClick={() => setUserEditId(null)}
+                                        style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 10, cursor: "pointer" }}>
+                                        Cancelar
+                                      </button>
+                                    </>
+                                  )}
+                                  {isDeleting && (
+                                    <>
+                                      <button onClick={async () => {
+                                        await dbDeleteAlumno(a.matricula);
+                                        setAlumnos(prev => prev.filter(u => u.matricula !== a.matricula));
+                                        setUserDeleteId(null);
+                                        setNotifications(prev => [{ id: Date.now(), text: `Alumno ${a.matricula} eliminado`, type: "warn", time: "Ahora" }, ...prev]);
+                                      }}
+                                        style={{ padding: "5px 12px", borderRadius: 7, border: "none", background: t.rose, color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
+                                        Confirmar
+                                      </button>
+                                      <button onClick={() => setUserDeleteId(null)}
+                                        style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 10, cursor: "pointer" }}>
+                                        Cancelar
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Panel de edición inline */}
+                              {isEditing && (
+                                <div style={{ padding: "12px 14px", background: `${t.teal}08`, borderTop: `1px solid ${t.teal}30`, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                                  {[
+                                    { key: "nombre", label: "Nombre completo", placeholder: "Nombre del alumno" },
+                                    { key: "carrera", label: "Carrera", placeholder: "Ej. Ing. Sistemas" },
+                                  ].map(f => (
+                                    <div key={f.key}>
+                                      <div style={{ fontSize: 9, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: .8, marginBottom: 4 }}>{f.label}</div>
+                                      <input value={userEditDraft[f.key]} onChange={e => setUserEditDraft(p => ({ ...p, [f.key]: e.target.value }))}
+                                        placeholder={f.placeholder}
+                                        style={{ width: "100%", background: t.card, border: `1px solid ${t.teal}50`, borderRadius: 8, padding: "7px 10px", color: t.text, fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Panel de confirmación de eliminación */}
+                              {isDeleting && (
+                                <div style={{ padding: "10px 14px", background: `${t.rose}08`, borderTop: `1px solid ${t.rose}30`, fontSize: 11, color: t.rose }}>
+                                  ⚠ ¿Eliminar a <strong>{a.nombre}</strong> ({a.matricula}) permanentemente? Esta acción no se puede deshacer.
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {/* Pie */}
+                        <div style={{ marginTop: 8, fontSize: 10, color: t.textDim, textAlign: "right" }}>
+                          Mostrando {filtered.length} de {alumnos.length} usuario{alumnos.length !== 1 ? "s" : ""}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
             </div>
           )}
