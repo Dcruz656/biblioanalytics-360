@@ -1206,15 +1206,17 @@ export default function BiblioAnalytics360() {
             const PC         = [t.teal, t.blue, t.purple, t.amber, t.rose, '#059669'];
             const stColor    = e => e==='libre'?t.green:e==='ocupado'?t.rose:t.amber;
             const cc         = (title, sub, children, sx={}) => (
-              <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,...sx}}>
-                <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>{title}</div>
-                <div style={{fontSize:10,color:t.textDim,marginBottom:14}}>{sub}</div>
+              <div style={{background:t.card,borderRadius:16,padding:22,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,...sx}}>
+                <div style={{paddingBottom:11,marginBottom:14,borderBottom:`1px solid ${t.cardBorder}`}}>
+                  <div style={{fontSize:10,fontWeight:800,color:t.text,textTransform:'uppercase',letterSpacing:1}}>{title}</div>
+                  <div style={{fontSize:10,color:t.textDim,marginTop:3}}>{sub}</div>
+                </div>
                 {children}
               </div>
             );
 
             return (
-              <div>
+              <div style={{padding:'24px 28px'}}>
                 {/* Hero KPIs */}
                 <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:14}}>
                   {[
@@ -1223,12 +1225,12 @@ export default function BiblioAnalytics360() {
                     {label:'Ocupación actual', value:`${tasaActual}%`,                          sub:`${totalOcup} / ${totalDisp} espacios`, color:t.purple, Ic:Target},
                     {label:'Duración prom.',   value:`${avgDur}h`,                              sub:'por sesión · todos los servicios',   color:t.amber,  Ic:Clock},
                   ].map(({label,value,sub,color,Ic})=>(
-                    <div key={label} style={{background:t.card,borderRadius:14,padding:'18px 20px',border:`1px solid ${t.cardBorder}`}}>
+                    <div key={label} style={{background:t.card,borderRadius:14,padding:'18px 20px',border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,borderTop:`3px solid ${color}`}}>
                       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-                        <div style={{width:32,height:32,borderRadius:10,background:`${color}18`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        <div style={{width:32,height:32,borderRadius:10,background:`${color}22`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 4px 12px ${color}30`}}>
                           <Ic size={14} color={color}/>
                         </div>
-                        <span style={{fontSize:9,color:t.textDim,fontWeight:700,textTransform:'uppercase',letterSpacing:.9}}>{label}</span>
+                        <span style={{fontSize:9,color:t.textDim,fontWeight:700,textTransform:'uppercase',letterSpacing:1}}>{label}</span>
                       </div>
                       <div style={{fontSize:26,fontWeight:800,color:t.text,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{value}</div>
                       <div style={{fontSize:9,color:t.textDim,marginTop:5}}>{sub}</div>
@@ -1245,8 +1247,8 @@ export default function BiblioAnalytics360() {
                     {label:'Tendencia 7 días',     value:last7.length===0&&prev7.length===0?'—':`${tend7Pct>0?'+':''}${tend7Pct}%`, sub:'vs semana anterior', color:tend7Color, Ic:TrendingUp},
                     {label:'Carrera top',          value:topCarreraName.length>13?topCarreraName.slice(0,13)+'…':topCarreraName, sub:'más reservas históricas', color:t.amber, Ic:Award},
                   ].map(({label,value,sub,color,Ic})=>(
-                    <div key={label} style={{background:t.card,borderRadius:12,padding:'12px 16px',border:`1px solid ${t.cardBorder}`,display:'flex',alignItems:'center',gap:12}}>
-                      <div style={{width:34,height:34,borderRadius:10,background:`${color}18`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <div key={label} style={{background:t.card,borderRadius:12,padding:'12px 16px',border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,display:'flex',alignItems:'center',gap:12}}>
+                      <div style={{width:34,height:34,borderRadius:10,background:`${color}22`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:`0 4px 12px ${color}30`}}>
                         <Ic size={15} color={color}/>
                       </div>
                       <div>
@@ -1448,8 +1450,8 @@ export default function BiblioAnalytics360() {
                     </div>
                   </div>
                   {/* Alertas */}
-                  <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
-                    <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Alertas inteligentes</div>
+                  <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow}}>
+                    <div style={{fontSize:10,fontWeight:800,color:t.text,textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Alertas inteligentes</div>
                     <div style={{fontSize:10,color:t.textDim,marginBottom:14}}>Detección automática de condiciones relevantes</div>
                     <div style={{display:'flex',flexDirection:'column',gap:8}}>
                       {alerts.map((a,i)=>{
@@ -1812,7 +1814,7 @@ export default function BiblioAnalytics360() {
             const CHART_H   = 200;
 
             return (
-            <div>
+            <div style={{padding:'24px 28px'}}>
               {/* — Unified filter bar — */}
               {(() => {
                 const lbl = { fontSize:11, fontWeight:700, color:t.textDim, whiteSpace:'nowrap' };
@@ -1829,7 +1831,7 @@ export default function BiblioAnalytics360() {
                 );
                 const hasFilters = svcCarreraFilter || svcTurnoFilter || svcDurFilter;
                 return (
-                  <div style={{background:t.card,borderRadius:12,border:`1px solid ${t.cardBorder}`,marginBottom:20}}>
+                  <div style={{background:t.card,borderRadius:12,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,marginBottom:20}}>
                     {/* Fila 1: Servicio + fechas */}
                     <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',padding:'10px 16px'}}>
                       <span style={lbl}>Servicio:</span>
@@ -1886,12 +1888,12 @@ export default function BiblioAnalytics360() {
                   {label:'Tendencia',       value:total===0&&prevTotal===0?'—':`${tendPct>0?'+':''}${tendPct}%`, sub:'vs periodo anterior', color:tendColor, Ic:TrendingUp},
                   {label:'Tasa uso actual', value:`${tasa}%`,                             sub:'ocupación en tiempo real', color:t.amber, Ic:Target},
                 ].map(({label,value,sub,color,Ic})=>(
-                  <div key={label} style={{background:t.card,borderRadius:14,padding:'14px 16px',border:`1px solid ${t.cardBorder}`}}>
+                  <div key={label} style={{background:t.card,borderRadius:14,padding:'14px 16px',border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,borderTop:`3px solid ${color}`}}>
                     <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:8}}>
-                      <div style={{width:28,height:28,borderRadius:8,background:`${color}18`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{width:28,height:28,borderRadius:8,background:`${color}22`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 4px 10px ${color}28`}}>
                         <Ic size={13} color={color}/>
                       </div>
-                      <span style={{fontSize:9,color:t.textDim,fontWeight:600,textTransform:'uppercase',letterSpacing:.8,lineHeight:1.2}}>{label}</span>
+                      <span style={{fontSize:9,color:t.textDim,fontWeight:700,textTransform:'uppercase',letterSpacing:1,lineHeight:1.2}}>{label}</span>
                     </div>
                     <div style={{fontSize:22,fontWeight:800,color:t.text,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{value}</div>
                     <div style={{fontSize:9,color:t.textDim,marginTop:4}}>{sub}</div>
@@ -1906,7 +1908,7 @@ export default function BiblioAnalytics360() {
                   {label:svcService==='cubiculos'?'Cubículo más usado':'PC más usada', value:topSpace?topSpace[0]:'—', sub:topSpace?`${topSpace[1]} reservas`:'sin datos'},
                   {label:'Alumnos únicos', value:uniqueAlmn, sub:'expedientes distintos'},
                 ].map(({label,value,sub})=>(
-                  <div key={label} style={{background:t.card,borderRadius:12,padding:'12px 16px',border:`1px solid ${t.cardBorder}`,display:'flex',alignItems:'center',gap:14}}>
+                  <div key={label} style={{background:t.card,borderRadius:12,padding:'12px 16px',border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,display:'flex',alignItems:'center',gap:14}}>
                     <div>
                       <div style={{fontSize:9,color:t.textDim,textTransform:'uppercase',letterSpacing:.8,marginBottom:3}}>{label}</div>
                       <div style={{fontSize:18,fontWeight:800,fontFamily:"'Space Mono',monospace",color:t.text}}>{value}</div>
@@ -1920,8 +1922,8 @@ export default function BiblioAnalytics360() {
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
 
                 {/* Tendencia full width */}
-                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,gridColumn:'1/-1'}}>
-                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Tendencia de uso</div>
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,gridColumn:'1/-1'}}>
+                  <div style={{fontSize:10,fontWeight:800,color:t.text,textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Tendencia de uso</div>
                   <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>
                     {rangeDays <= 1 ? 'Reservas por hora del día' : rangeDays <= 60 ? `Reservas por día · ${svcDateFrom} – ${svcDateTo}` : `Reservas por mes · ${svcDateFrom} – ${svcDateTo}`}
                   </div>
@@ -1944,8 +1946,8 @@ export default function BiblioAnalytics360() {
                 </div>
 
                 {/* Por carrera */}
-                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
-                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por carrera</div>
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow}}>
+                  <div style={{fontSize:10,fontWeight:800,color:t.text,textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Por carrera</div>
                   <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Top 8 carreras</div>
                   {carreraData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={CHART_H + 40}>
@@ -1965,8 +1967,8 @@ export default function BiblioAnalytics360() {
                 </div>
 
                 {/* Por turno */}
-                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
-                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por turno</div>
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow}}>
+                  <div style={{fontSize:10,fontWeight:800,color:t.text,textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Por turno</div>
                   <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Matutino · Vespertino · Nocturno</div>
                   <ResponsiveContainer width="100%" height={CHART_H + 40}>
                     <BarChart data={turnoData}>
@@ -1982,8 +1984,8 @@ export default function BiblioAnalytics360() {
                 </div>
 
                 {/* Por duración */}
-                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
-                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por duración</div>
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow}}>
+                  <div style={{fontSize:10,fontWeight:800,color:t.text,textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Por duración</div>
                   <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Sesiones de 1h, 2h y 3h</div>
                   <ResponsiveContainer width="100%" height={CHART_H + 40}>
                     <BarChart data={durData}>
@@ -1999,8 +2001,8 @@ export default function BiblioAnalytics360() {
                 </div>
 
                 {/* Por día de semana */}
-                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
-                  <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por día de semana</div>
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow}}>
+                  <div style={{fontSize:10,fontWeight:800,color:t.text,textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Por día de semana</div>
                   <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Distribución de reservas Lun–Dom</div>
                   <ResponsiveContainer width="100%" height={CHART_H + 40}>
                     <BarChart data={diasData}>
@@ -2014,9 +2016,9 @@ export default function BiblioAnalytics360() {
                 </div>
 
                 {/* Piso (cubiculos) | Zona (computadoras) */}
-                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow}}>
                   {svcService === 'cubiculos' ? (<>
-                    <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por piso</div>
+                    <div style={{fontSize:10,fontWeight:800,color:t.text,textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Por piso</div>
                     <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Reservas por planta del edificio</div>
                     <ResponsiveContainer width="100%" height={CHART_H + 40}>
                       <BarChart data={pisoData}>
@@ -2030,7 +2032,7 @@ export default function BiblioAnalytics360() {
                       </BarChart>
                     </ResponsiveContainer>
                   </>) : (<>
-                    <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:2}}>Por zona</div>
+                    <div style={{fontSize:10,fontWeight:800,color:t.text,textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Por zona</div>
                     <div style={{fontSize:10,color:t.textDim,marginBottom:12}}>Uso por sala de cómputo</div>
                     <ResponsiveContainer width="100%" height={CHART_H + 40}>
                       <BarChart data={zonaData}>
@@ -2049,7 +2051,7 @@ export default function BiblioAnalytics360() {
 
               {/* — Últimas reservas table — */}
               {recentRecs.length > 0 && (
-                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`}}>
+                <div style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow}}>
                   <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:14}}>Últimas reservas del periodo</div>
                   <div style={{overflowX:'auto'}}>
                     <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
