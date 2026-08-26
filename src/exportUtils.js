@@ -648,18 +648,24 @@ export function generateServiceExcel(historial, serviceType, periodLabel, meta) 
 
   // Hoja 2: Historial
   const spaceKey = serviceType === "cubiculos" ? "Cubículo" : "Computadora";
-  const histData = historial.map(r => ({
-    [spaceKey]:       r.cubicule || "—",
-    Nombre:           r.nombre    || "—",
-    Matrícula:       r.matricula || "—",
-    Carrera:          r.carrera   || "—",
-    "Duración (h)":   r.duracion  || "—",
-    Turno:            r.turno     || "—",
-    Personas:         r.personas  ?? "—",
-    Piso:             r.piso      ?? "—",
-    Inicio:           r.inicio ? new Date(r.inicio).toLocaleString("es-MX") : "—",
-    Fin:              r.fin    ? new Date(r.fin).toLocaleString("es-MX")    : "—",
-  }));
+  const histData = historial.map(r => {
+    const durReal = (r.inicio && r.fin)
+      ? ((new Date(r.fin) - new Date(r.inicio)) / 3_600_000).toFixed(2)
+      : "—";
+    return {
+      [spaceKey]:            r.cubicule || "—",
+      Matrícula:            r.matricula || "—",
+      Nombre:                r.nombre    || "—",
+      Carrera:               r.carrera   || "—",
+      "Duración Solicitada (h)": r.duracion ?? "—",
+      "Duración Real (h)":   durReal,
+      Turno:                 r.turno     || "—",
+      Personas:              r.personas  ?? "—",
+      Piso:                  r.piso      ?? "—",
+      Inicio:                r.inicio ? new Date(r.inicio).toLocaleString("es-MX") : "—",
+      Fin:                   r.fin    ? new Date(r.fin).toLocaleString("es-MX")    : "—",
+    };
+  });
   const wsHist = XLSX.utils.json_to_sheet(histData);
   autoWidth(wsHist, histData.length ? histData : [{ [spaceKey]: "" }]);
   XLSX.utils.book_append_sheet(wb, wsHist, "Historial");
@@ -887,29 +893,61 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
   });
   tableY = doc.lastAutoTable.finalY + 8;
 
-  // Detalle de reservas
-  if (tableY < H - 60) {
+  // Por Turno
+  if (tableY < H - 50) {
     doc.setFontSize(9);
     doc.setFont(undefined, "bold");
     setTxt(doc, C.grayD);
-    doc.text("Detalle de Reservas (muestra)", 14, tableY + 6);
+    doc.text("Reservas por Turno", 14, tableY + 6);
+    tableY += 8;
+    autoTable(doc, {
+      startY: tableY,
+      head: [["Turno", "Reservas", "% Total"]],
+      body: Object.entries(byTurno)
+        .sort((a, b) => b[1] - a[1])
+        .map(([t, n]) => [t, n, total ? `${Math.round(n / total * 100)}%` : "0%"]),
+      theme: "striped",
+      headStyles: { fillColor: C.amber, textColor: C.white, fontStyle: "bold", fontSize: 8 },
+      bodyStyles: { fontSize: 8, textColor: C.grayD },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 },
+      tableWidth: 182,
+    });
+    tableY = doc.lastAutoTable.finalY + 8;
+  }
+
+  // Detalle de reservas (todos, con nueva página si es necesario)
+  if (tableY < H - 40) {
+    doc.setFontSize(9);
+    doc.setFont(undefined, "bold");
+    setTxt(doc, C.grayD);
+    const label = `Detalle de Reservas (${historial.length} registros)`;
+    doc.text(label, 14, tableY + 6);
     tableY += 8;
     const spaceKey = serviceType === "cubiculos" ? "Cubículo" : "PC";
     autoTable(doc, {
       startY: tableY,
-      head: [[spaceKey, "Nombre", "Carrera", "Duración", "Turno", "Fecha"]],
-      body: historial.slice(0, 20).map(r => [
-        r.cubicule || "—",
-        (r.nombre  || "—").slice(0, 18),
-        (r.carrera || "—").slice(0, 14),
-        r.duracion ? `${r.duracion}h` : "—",
-        r.turno    || "—",
-        r.inicio ? new Date(r.inicio).toLocaleDateString("es-MX") : "—",
-      ]),
+      head: [[spaceKey, "Matrícula", "Carrera", "Sol.", "Real", "Turno", "Inicio", "Fin"]],
+      body: historial.map(r => {
+        const durReal = (r.inicio && r.fin)
+          ? `${((new Date(r.fin) - new Date(r.inicio)) / 3_600_000).toFixed(1)}h`
+          : "—";
+        return [
+          r.cubicule || "—",
+          r.matricula || "—",
+          (r.carrera || "—").slice(0, 14),
+          r.duracion ? `${r.duracion}h` : "—",
+          durReal,
+          r.turno || "—",
+          r.inicio ? new Date(r.inicio).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" }) : "—",
+          r.fin    ? new Date(r.fin).toLocaleString("es-MX",    { dateStyle: "short", timeStyle: "short" }) : "—",
+        ];
+      }),
       theme: "striped",
-      headStyles: { fillColor: serviceColor, textColor: C.white, fontStyle: "bold", fontSize: 7.5 },
-      bodyStyles: { fontSize: 7.5, textColor: C.grayD },
+      headStyles: { fillColor: serviceColor, textColor: C.white, fontStyle: "bold", fontSize: 7 },
+      bodyStyles: { fontSize: 7, textColor: C.grayD },
       alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 22 }, 2: { cellWidth: 32 }, 3: { cellWidth: 10 }, 4: { cellWidth: 10 }, 5: { cellWidth: 18 }, 6: { cellWidth: 34 }, 7: { cellWidth: 34 } },
       margin: { left: 14, right: 14 },
       tableWidth: 182,
     });
