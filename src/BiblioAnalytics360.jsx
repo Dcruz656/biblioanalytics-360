@@ -620,7 +620,7 @@ export default function BiblioAnalytics360() {
       });
     };
     release();
-    const t = setInterval(release, 10_000);
+    const t = setInterval(release, 5_000);
     return () => clearInterval(t);
   }, []);
 
