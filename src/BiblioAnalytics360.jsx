@@ -2399,9 +2399,8 @@ export default function BiblioAnalytics360() {
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Fuentes de Datos Conectadas</div>
                 {[
-                  { name: "SIAB (Sistema Bibliotecario)", status: "activo", records: "12,450", lastSync: "Hace 2h", icon: BookOpen, color: t.teal },
-                  { name: "Sistema Escolar UACJ", status: "activo", records: "2,110", lastSync: "Hace 24h", icon: GraduationCap, color: t.blue },
-                  { name: "Buzón Digital + Encuestas", status: "activo", records: `${comments.length}`, lastSync: "Tiempo real", icon: MessageSquare, color: t.purple },
+                  { name: "Cubículos", desc: "Reservas y check-ins en tiempo real", records: historialReservas.filter(h => h.tipo === "cubiculos").length, icon: LayoutGrid, color: t.teal },
+                  { name: "Computadoras", desc: "Sesiones de sala de cómputo", records: historialReservas.filter(h => h.tipo === "computadoras").length, icon: Monitor, color: t.blue },
                 ].map((src, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, borderRadius: 12, marginBottom: 8, background: `${t.text}03` }}>
                     <div style={{ width: 38, height: 38, borderRadius: 10, background: `${src.color}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -2409,7 +2408,7 @@ export default function BiblioAnalytics360() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{src.name}</div>
-                      <div style={{ fontSize: 10, color: t.textDim }}>{src.records} registros · Última sync: {src.lastSync}</div>
+                      <div style={{ fontSize: 10, color: t.textDim }}>{src.records} registros históricos · Supabase Realtime</div>
                     </div>
                     <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: `${t.green}12`, color: t.green }}>
                       <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: t.green, marginRight: 4 }} />
@@ -2660,45 +2659,59 @@ export default function BiblioAnalytics360() {
                   </div>
 
                   {[
-                    { id: "siab", label: "SIAB", desc: "Sistema Integral de Automatización de Bibliotecas", url: "https://siab.uacj.mx/api/v2", status: true },
-                    { id: "escolar", label: "Sistema Escolar UACJ", desc: "Datos académicos y de matrícula", url: "https://escolares.uacj.mx/api/data", status: true },
-                    { id: "buzon", label: "Buzón Digital + Encuestas", desc: "Comentarios y encuestas de satisfacción", url: "https://buzon.uacj.mx/api/feedback", status: false },
-                  ].map(src => (
-                    <div key={src.id} style={{ marginBottom: 18, paddingBottom: 18, borderBottom: `1px solid ${t.cardBorder}` }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: t.text }}>{src.label}</div>
-                          <div style={{ fontSize: 10, color: t.textDim }}>{src.desc}</div>
+                    {
+                      id: "cubiculos", label: "Cubículos", icon: LayoutGrid, color: t.teal,
+                      desc: "Reservas · check-in/out · historial de uso",
+                      table: "cubiculos + historial_reservas",
+                      records: historialReservas.filter(h => h.tipo === "cubiculos").length,
+                      reloadFn: () => dbLoadCubiculos().then(() => {}),
+                    },
+                    {
+                      id: "computadoras", label: "Computadoras", icon: Monitor, color: t.blue,
+                      desc: "Sesiones de sala de cómputo · historial",
+                      table: "computadoras + historial_reservas",
+                      records: historialReservas.filter(h => h.tipo === "computadoras").length,
+                      reloadFn: () => dbLoadComputadoras().then(() => {}),
+                    },
+                  ].map((src, idx, arr) => (
+                    <div key={src.id} style={{ marginBottom: idx < arr.length - 1 ? 18 : 0, paddingBottom: idx < arr.length - 1 ? 18 : 0, borderBottom: idx < arr.length - 1 ? `1px solid ${t.cardBorder}` : "none" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: `${src.color}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <src.icon size={15} color={src.color} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: t.text }}>{src.label}</div>
+                            <div style={{ fontSize: 10, color: t.textDim }}>{src.desc}</div>
+                          </div>
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: src.status ? `${t.green}20` : `${t.rose}20`, color: src.status ? t.green : t.rose }}>
-                          {src.status ? "Activo" : "Inactivo"}
-                        </span>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: `${t.green}20`, color: t.green }}>Activo</span>
                       </div>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <input readOnly value={src.url}
-                          style={{ flex: 1, background: t.inputBg, border: `1px solid ${t.cardBorder}`, borderRadius: 8, padding: "6px 10px", color: t.textDim, fontSize: 10, outline: "none", fontFamily: "monospace" }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ flex: 1, background: t.inputBg, border: `1px solid ${t.cardBorder}`, borderRadius: 8, padding: "6px 10px", fontSize: 10, color: t.textDim, fontFamily: "monospace" }}>
+                          supabase · {src.table} · {src.records} reg.
+                        </div>
                         <button
                           disabled={syncingSource === src.id}
                           onClick={() => {
                             setSyncingSource(src.id);
-                            setTimeout(() => {
+                            src.reloadFn().finally(() => {
                               setSyncingSource(null);
-                              setNotifications(prev => [{ id: Date.now(), text: `${src.label}: sincronización completada`, type: "info", time: "Ahora" }, ...prev]);
-                            }, 1500);
+                              setNotifications(prev => [{ id: Date.now(), text: `${src.label}: datos actualizados`, type: "success", time: "Ahora" }, ...prev]);
+                            });
                           }}
-                          style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: syncingSource === src.id ? `${t.teal}20` : t.inputBg, color: syncingSource === src.id ? t.teal : t.text, fontSize: 10, fontWeight: 600, cursor: syncingSource === src.id ? "default" : "pointer", display: "flex", alignItems: "center", gap: 4, flexShrink: 0, transition: "all 0.2s" }}>
+                          style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: syncingSource === src.id ? `${src.color}20` : t.inputBg, color: syncingSource === src.id ? src.color : t.text, fontSize: 10, fontWeight: 600, cursor: syncingSource === src.id ? "default" : "pointer", display: "flex", alignItems: "center", gap: 4, flexShrink: 0, transition: "all 0.2s" }}>
                           {syncingSource === src.id
-                            ? <><RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> Sincronizando…</>
-                            : <><RefreshCw size={11} /> Sincronizar</>
-                          }
+                            ? <><RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> Cargando…</>
+                            : <><RefreshCw size={11} /> Recargar</>}
                         </button>
                       </div>
                     </div>
                   ))}
 
-                  <div style={{ padding: "10px 12px", borderRadius: 8, background: `${t.blue}10`, border: `1px solid ${t.blue}30` }}>
-                    <div style={{ fontSize: 10, color: t.blue, fontWeight: 600 }}>Fase 2 — Backend</div>
-                    <div style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>Las URLs de conexión serán configurables cuando se integre la API REST con FastAPI + Supabase.</div>
+                  <div style={{ marginTop: 16, padding: "10px 12px", borderRadius: 8, background: `${t.teal}08`, border: `1px solid ${t.teal}25` }}>
+                    <div style={{ fontSize: 10, color: t.teal, fontWeight: 600, marginBottom: 2 }}>Supabase Realtime activo</div>
+                    <div style={{ fontSize: 10, color: t.textDim }}>Los datos se actualizan automáticamente vía subscripciones postgres_changes. El botón Recargar fuerza una recarga manual.</div>
                   </div>
                 </div>
 
