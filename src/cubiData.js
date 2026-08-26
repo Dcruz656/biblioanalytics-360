@@ -17,6 +17,8 @@ export const cubiCarreras = [
   "Maestría en Ciencias Veterinarias", "Maestría en Salud Pública",
   // Doctorados
   "Doctorado en Ciencias Químico-Biológicas", "Doctorado en Investigación en Salud Humana y Animal",
+  // Personal
+  "Docente", "Empleado",
 ];
 
 export const compuZonas    = ["Sala General", "Sala Silencio", "Sala Investigación"];
