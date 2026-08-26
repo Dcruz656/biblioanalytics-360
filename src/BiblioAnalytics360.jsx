@@ -414,21 +414,21 @@ function getCubiRemainingMs(cubi) {
 // ===== COMPUTADORAS INITIAL DATA =====
 function createInitComputadoras() {
   return [
-    { id:1,  nombre:"PC-01", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:2,  nombre:"PC-02", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:3,  nombre:"PC-03", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:4,  nombre:"PC-04", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
-    { id:5,  nombre:"PC-05", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:6,  nombre:"PC-06", zona:"Sala General",       sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:7,  nombre:"PC-07", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:8,  nombre:"PC-08", zona:"Sala Silencio",      sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
-    { id:9,  nombre:"PC-09", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:10, nombre:"PC-10", zona:"Sala Silencio",      sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:11, nombre:"PC-11", zona:"Sala Investigación", sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
-    { id:12, nombre:"PC-12", zona:"Sala Investigación", sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:13, nombre:"PC-13", zona:"Sala Investigación", sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:14, nombre:"PC-14", zona:"Sala Investigación", sistema:"Windows 11",  estado:"libre", reserva:null },
-    { id:15, nombre:"PC-15", zona:"Sala General",       sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
+    { id:1,  nombre:"PC-01", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:2,  nombre:"PC-02", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:3,  nombre:"PC-03", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:4,  nombre:"PC-04", sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
+    { id:5,  nombre:"PC-05", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:6,  nombre:"PC-06", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:7,  nombre:"PC-07", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:8,  nombre:"PC-08", sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
+    { id:9,  nombre:"PC-09", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:10, nombre:"PC-10", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:11, nombre:"PC-11", sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
+    { id:12, nombre:"PC-12", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:13, nombre:"PC-13", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:14, nombre:"PC-14", sistema:"Windows 11",  estado:"libre", reserva:null },
+    { id:15, nombre:"PC-15", sistema:"Ubuntu 22.04",estado:"libre", reserva:null },
   ];
 }
 
@@ -507,7 +507,7 @@ export default function BiblioAnalytics360() {
   const [compuSelectedId, setCompuSelectedId] = useState(null);
   const [compuZonaFilter, setCompuZonaFilter] = useState("Todas");
   const [compuAsignForm, setCompuAsignForm]   = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0], duracion: 1 });
-  const [compuNuevoForm, setCompuNuevoForm]   = useState({ nombre: "", zona: "Sala General", sistema: "Windows 11" });
+  const [compuNuevoForm, setCompuNuevoForm]   = useState({ nombre: "", sistema: "Windows 11" });
   const [compuHistorial, setCompuHistorial]   = useState([]);
 
   // Cargar cubículos y computadoras desde Supabase al montar; suscribir actualizaciones en tiempo real
@@ -1149,7 +1149,7 @@ export default function BiblioAnalytics360() {
               total: cubiH.filter(h => h.cubicule===c.nombre || h.cubicule===c.id).length,
             })).sort((a,b)=>b.total-a.total);
             const compuRot = computadoras.map(c => ({
-              nombre:c.nombre, zona:c.zona,
+              nombre:c.nombre,
               total: compuH.filter(h => h.pc===c.nombre || h.pc===c.id).length,
             })).sort((a,b)=>b.total-a.total);
             const maxRotC  = Math.max(...cubiRot.map(c=>c.total),  1);
@@ -1275,25 +1275,25 @@ export default function BiblioAnalytics360() {
                   )}
                   {cc('Estado actual — Computadoras', `${compuOcupN} ocupadas · ${compuLibresN} libres de ${computadoras.length} totales`,
                     <div>
-                      {compuZonas.map(zona=>{
-                        const zc  = computadoras.filter(c => c.zona === zona);
-                        const occ = zc.filter(c => c.estado === 'ocupado').length;
-                        const pct = zc.length > 0 ? Math.round((occ / zc.length) * 100) : 0;
+                      {(() => {
+                        const total = computadoras.length;
+                        const occ   = compuOcupN;
+                        const pct   = total > 0 ? Math.round((occ / total) * 100) : 0;
                         return (
-                          <div key={zona} style={{marginBottom:12}}>
-                            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                              <span style={{fontSize:11,fontWeight:600,color:t.text}}>{zona}</span>
-                              <span style={{fontSize:10,color:t.textDim,fontFamily:"'Space Mono',monospace"}}>{occ}/{zc.length} · {pct}%</span>
+                          <>
+                            <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                              <span style={{fontSize:11,fontWeight:600,color:t.text}}>Sala de Cómputo</span>
+                              <span style={{fontSize:10,color:t.textDim,fontFamily:"'Space Mono',monospace"}}>{occ}/{total} · {pct}%</span>
                             </div>
-                            <div style={{height:7,borderRadius:4,background:`${t.text}10`,overflow:'hidden'}}>
+                            <div style={{height:7,borderRadius:4,background:`${t.text}10`,overflow:'hidden',marginBottom:8}}>
                               <div style={{height:'100%',borderRadius:4,background:pct>75?t.rose:pct>40?t.amber:t.green,width:`${pct}%`,transition:'width .4s'}}/>
                             </div>
-                            <div style={{display:'flex',gap:3,marginTop:5,flexWrap:'wrap'}}>
-                              {zc.map(c=><div key={c.id} title={c.nombre} style={{width:10,height:10,borderRadius:2,background:stColor(c.estado)}}/>)}
+                            <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
+                              {computadoras.map(c=><div key={c.id} title={c.nombre} style={{width:10,height:10,borderRadius:2,background:stColor(c.estado)}}/>)}
                             </div>
-                          </div>
+                          </>
                         );
-                      })}
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1790,9 +1790,7 @@ export default function BiblioAnalytics360() {
             const pisoData = [1,2].map(p => ({
               piso: `Piso ${p}`, reservas: inPeriod.filter(h => h.piso===p).length,
             }));
-            const zonaData = ['General','Silencio','Investigación'].map(z => ({
-              zona: z, reservas: inPeriod.filter(h => (h.zona||'').includes(z)).length,
-            }));
+            const zonaData = [];
 
             // ── recent table ────────────────────────────────────────────
             const recentRecs = [...inPeriod]
@@ -3532,14 +3530,6 @@ export default function BiblioAnalytics360() {
                   <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>Sala de Cómputo</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {["Todas", ...compuZonas].map(z => (
-                          <button key={z} onClick={() => setCompuZonaFilter(z)}
-                            style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${compuZonaFilter === z ? t.teal : t.cardBorder}`, background: compuZonaFilter === z ? `${t.teal}15` : t.inputBg, color: compuZonaFilter === z ? t.teal : t.textDim, fontSize: 10, fontWeight: compuZonaFilter === z ? 700 : 400, cursor: "pointer" }}>
-                            {z}
-                          </button>
-                        ))}
-                      </div>
                     </div>
 
                     {/* Legend */}
@@ -3553,7 +3543,7 @@ export default function BiblioAnalytics360() {
 
                     {/* Grid cards */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-                      {(compuZonaFilter === "Todas" ? computadoras : computadoras.filter(c => c.zona === compuZonaFilter)).map(pc => {
+                      {computadoras.map(pc => {
                         const cfg = { libre: { color: t.green, bg: `${t.green}12` }, ocupado: { color: t.rose, bg: `${t.rose}12` }, mantenimiento: { color: t.amber, bg: `${t.amber}12` } }[pc.estado] || { color: t.textDim, bg: `${t.text}08` };
                         const isSelected = compuSelectedId === pc.id;
                         return (
@@ -3625,7 +3615,7 @@ export default function BiblioAnalytics360() {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
                             <div>
                               <div style={{ fontSize: 22, fontWeight: 800, color: t.text }}>{compuSel.nombre}</div>
-                              <div style={{ fontSize: 11, color: t.textDim, marginTop: 2 }}>{compuSel.zona} · {compuSel.sistema}</div>
+                              <div style={{ fontSize: 11, color: t.textDim, marginTop: 2 }}>{compuSel.sistema}</div>
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                               <span style={{ padding: "4px 12px", borderRadius: 20,
@@ -3817,17 +3807,6 @@ export default function BiblioAnalytics360() {
                           placeholder={`PC-${String(computadoras.length + 1).padStart(2, "0")}`}
                           style={{ width: "100%", background: t.card, border: `1px solid ${t.cardBorder}`, borderRadius: 8, padding: "8px 12px", color: t.text, fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "'Space Mono', monospace" }} />
                       </div>
-                      <div style={{ marginBottom: 10 }}>
-                        <div style={{ fontSize: 10, color: t.textDim, marginBottom: 4 }}>Zona</div>
-                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                          {compuZonas.map(z => (
-                            <button key={z} onClick={() => setCompuNuevoForm(p => ({ ...p, zona: z }))}
-                              style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${compuNuevoForm.zona === z ? t.teal : t.cardBorder}`, background: compuNuevoForm.zona === z ? `${t.teal}20` : t.card, color: compuNuevoForm.zona === z ? t.teal : t.textDim, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
-                              {z}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
                       <div style={{ marginBottom: 14 }}>
                         <div style={{ fontSize: 10, color: t.textDim, marginBottom: 4 }}>Sistema Operativo</div>
                         <div style={{ display: "flex", gap: 4 }}>
@@ -3842,11 +3821,11 @@ export default function BiblioAnalytics360() {
                       <button onClick={() => {
                         const nombre = compuNuevoForm.nombre.trim() || `PC-${String(computadoras.length + 1).padStart(2, "0")}`;
                         const newId = Math.max(...computadoras.map(c => c.id), 0) + 1;
-                        const nueva = { id: newId, nombre, zona: compuNuevoForm.zona, sistema: compuNuevoForm.sistema, estado: "libre", reserva: null };
+                        const nueva = { id: newId, nombre, sistema: compuNuevoForm.sistema, estado: "libre", reserva: null };
                         setComputadoras(prev => [...prev, nueva]);
                         dbSaveComputadora(nueva);
-                        setCompuNuevoForm({ nombre: "", zona: "Sala General", sistema: "Windows 11" });
-                        setNotifications(prev => [{ id: Date.now(), text: `${nombre} agregada a ${compuNuevoForm.zona}`, type: "success", time: "Ahora" }, ...prev]);
+                        setCompuNuevoForm({ nombre: "", sistema: "Windows 11" });
+                        setNotifications(prev => [{ id: Date.now(), text: `${nombre} agregada a la sala de cómputo`, type: "success", time: "Ahora" }, ...prev]);
                       }}
                         style={{ width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                         + Agregar
@@ -3864,7 +3843,7 @@ export default function BiblioAnalytics360() {
                           <div key={pc.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
                             <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
                             <span style={{ fontSize: 12, fontWeight: 700, color: t.text, fontFamily: "'Space Mono', monospace", minWidth: 50 }}>{pc.nombre}</span>
-                            <span style={{ fontSize: 10, color: t.textDim, flex: 1 }}>{pc.zona}</span>
+                            <span style={{ fontSize: 10, color: t.textDim, flex: 1 }}>{pc.sistema}</span>
                             <button disabled={!isLibre}
                               title={isLibre ? "Quitar equipo" : "Solo se pueden quitar equipos libres"}
                               onClick={() => {

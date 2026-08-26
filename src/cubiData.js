@@ -21,7 +21,7 @@ export const cubiCarreras = [
   "Docente", "Empleado",
 ];
 
-export const compuZonas    = ["Sala General", "Sala Silencio", "Sala Investigación"];
+export const compuZonas    = [];
 export const compuSistemas = ["Windows 11", "Ubuntu 22.04"];
 
 // Config del servicio — único uso de localStorage permitido (preferencia de UI, no datos)

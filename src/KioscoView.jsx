@@ -1337,7 +1337,7 @@ export default function KioscoView() {
           <div style={{ background: CARD, borderRadius: 20, padding: "26px 32px", border: `1.5px solid ${almostDone ? ROSE : "#2563eb"}40`, marginBottom: 20 }}>
             <div style={{ fontSize: 32, fontWeight: 800, color: "#fff", marginBottom: 4 }}>💻 {selectedCompu.nombre}</div>
             <div style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", marginBottom: 22 }}>
-              {selectedCompu.zona} · {selectedCompu.sistema} · Hasta las {fmtTime(endTime)}
+              {selectedCompu.sistema} · Hasta las {fmtTime(endTime)}
             </div>
             <div style={{ width: "100%", height: 8, borderRadius: 4, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 10 }}>
               <div style={{ width: `${usedPct}%`, height: "100%", borderRadius: 4, background: almostDone ? ROSE : TEAL, transition: "width 1s linear" }} />
@@ -1366,7 +1366,7 @@ export default function KioscoView() {
 
   // ── BROWSE COMPU ──────────────────────────────────────────
   if (screen === "browse_compu") {
-    const compuFiltradas = compuZonaFilter === "Todas" ? computadoras : computadoras.filter(c => c.zona === compuZonaFilter);
+    const compuFiltradas = computadoras;
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={() => setScreen("bienvenido")} title={account?.nombre.split(" ")[0]} clock={clock} />
@@ -1374,18 +1374,10 @@ export default function KioscoView() {
           <div style={{ fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 4 }}>Selecciona una computadora</div>
           <div style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginBottom: 22 }}>Sala de cómputo — elige un equipo disponible</div>
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap", alignItems: "center" }}>
-            {["Todas", ...compuZonas].map(z => (
-              <button key={z} onClick={() => setCompuZonaFilter(z)}
-                style={{ padding: "10px 18px", borderRadius: 10, border: `1.5px solid ${compuZonaFilter === z ? TEAL : "rgba(255,255,255,0.12)"}`, background: compuZonaFilter === z ? `${TEAL}20` : "transparent", color: compuZonaFilter === z ? TEAL : "rgba(255,255,255,0.45)", fontSize: 13, fontWeight: compuZonaFilter === z ? 700 : 400, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                {z}
-              </button>
+          <div style={{ display: "flex", gap: 14, marginBottom: 24, alignItems: "center", justifyContent: "flex-end" }}>
+            {[["🟢", GREEN, "Disponible"], ["🔴", ROSE, "Ocupado"], ["🟡", AMBER, "Mantenimiento"]].map(([ico, c, l]) => (
+              <div key={l} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.4)" }}><span>{ico}</span>{l}</div>
             ))}
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
-              {[["🟢", GREEN, "Disponible"], ["🔴", ROSE, "Ocupado"], ["🟡", AMBER, "Mantenimiento"]].map(([ico, c, l]) => (
-                <div key={l} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.4)" }}><span>{ico}</span>{l}</div>
-              ))}
-            </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
@@ -1423,7 +1415,7 @@ export default function KioscoView() {
                     <div style={{ fontSize: isMant ? 24 : 28, marginBottom: 10 }}>{isLibre ? "🟢" : isMant ? "🔧" : "🔴"}</div>
                   )}
                   <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginBottom: 3 }}>{pc.nombre}</div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>{pc.zona.replace("Sala ", "")}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>{pc.sistema}</div>
                   <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: 0.5 }}>
                     {isLibre ? "Disponible" : isMant ? "Mantenimiento" : "Ocupado"}
                   </div>
@@ -1443,7 +1435,7 @@ export default function KioscoView() {
 
           {compuFiltradas.length === 0 && (
             <div style={{ textAlign: "center", padding: "56px 0", color: "rgba(255,255,255,0.3)", fontSize: 16 }}>
-              No hay computadoras en esta zona.
+              No hay computadoras registradas.
             </div>
           )}
         </div>
@@ -1462,7 +1454,7 @@ export default function KioscoView() {
           <div style={{ background: CARD, borderRadius: 20, padding: "26px 36px", border: `1.5px solid ${GREEN}45`, marginBottom: 38 }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>💻</div>
             <div style={{ fontSize: 36, fontWeight: 800, color: "#fff", marginBottom: 6 }}>{selectedCompu.nombre}</div>
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", marginBottom: 8 }}>{selectedCompu.zona} · {selectedCompu.sistema}</div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", marginBottom: 8 }}>{selectedCompu.sistema}</div>
             <div style={{ fontSize: 14, color: GREEN, fontWeight: 700 }}>✓ Disponible ahora</div>
           </div>
 
@@ -1482,7 +1474,7 @@ export default function KioscoView() {
 
           <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 12, padding: "14px 22px", marginBottom: 30, fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
             <strong style={{ color: "#fff" }}>{account?.nombre}</strong> · {selectedCompu.nombre} · {duracion}h
-            <span style={{ display: "block", marginTop: 2, fontFamily: "'Space Mono', monospace", fontSize: 12 }}>{account?.matricula} · {selectedCompu.zona}</span>
+            <span style={{ display: "block", marginTop: 2, fontFamily: "'Space Mono', monospace", fontSize: 12 }}>{account?.matricula} · {selectedCompu.sistema}</span>
           </div>
 
           <button onClick={confirmarReservaCompu}
@@ -1514,7 +1506,7 @@ export default function KioscoView() {
         </div>
         <div style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", marginBottom: isCompu || isAdvance ? 36 : 20 }}>
           {isCompu
-            ? `Dirígete a ${selectedCompu?.zona} y usa ${selectedCompu?.nombre}`
+            ? `Dirígete a la sala de cómputo y usa ${selectedCompu?.nombre}`
             : isAdvance && availAt
             ? `Tu cubículo estará listo a partir de las ${fmtTime(availAt)}`
             : null}
@@ -1540,7 +1532,7 @@ export default function KioscoView() {
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10 }}>Folio de reserva</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: accentColor, fontFamily: "'Space Mono', monospace", marginBottom: 22 }}>{folio}</div>
           {isCompu ? [
-            ["Equipo",      selectedCompu ? `${selectedCompu.nombre} — ${selectedCompu.zona}` : ""],
+            ["Equipo",      selectedCompu ? selectedCompu.nombre : ""],
             ["Sistema",     selectedCompu?.sistema || ""],
             ["Estudiante",  account?.nombre || ""],
             ["Matrícula",   account?.matricula || ""],
