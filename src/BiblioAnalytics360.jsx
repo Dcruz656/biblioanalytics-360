@@ -5,6 +5,7 @@ import { serverNow } from "./serverTime";
 import { getOwnSubscription } from "./pushNotifications";
 import html2canvas from "html2canvas";
 import { generateExcel, generatePDF, generateServiceExcel, generateServicePDF } from "./exportUtils";
+import { QRCodeSVG } from "qrcode.react";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart,
@@ -17,7 +18,7 @@ import {
   Download, Activity, AlertTriangle, CheckCircle, Clock, Heart, ThumbsUp,
   ThumbsDown, Minus, Home, FileText, Zap, Target, Award, Brain, BarChart3,
   Filter, Plus, X, Upload, Play, Pause, RefreshCw, Send, Eye, Layers,
-  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid, Edit2, Shield
+  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid, Edit2, Shield, QrCode, Printer
 } from "lucide-react";
 
 // ===== THEME =====
@@ -2732,8 +2733,9 @@ export default function BiblioAnalytics360() {
               {/* Tool sub-nav */}
               <div style={{ display: "flex", gap: 8, marginBottom: 20, alignItems: "center", flexWrap: "wrap" }}>
                 {[
-                  { id: "cubiculos",    icon: Layers,  label: "Cubículos" },
-                  { id: "computadoras", icon: Monitor, label: "Computadoras" },
+                  { id: "cubiculos",    icon: Layers,   label: "Cubículos" },
+                  { id: "computadoras", icon: Monitor,  label: "Computadoras" },
+                  { id: "qr",           icon: QrCode,   label: "Códigos QR" },
                 ].map(tab => (
                   <button key={tab.id} onClick={() => setHerrTool(tab.id)}
                     style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 10, border: `1px solid ${herrTool === tab.id ? t.teal : t.cardBorder}`, background: herrTool === tab.id ? `${t.teal}15` : t.inputBg, color: herrTool === tab.id ? t.teal : t.textDim, fontSize: 12, fontWeight: herrTool === tab.id ? 700 : 400, cursor: "pointer" }}>
@@ -3706,6 +3708,71 @@ export default function BiblioAnalytics360() {
                 </div>
 
               </>)}
+
+              {/* ===== QR CODES ===== */}
+              {herrTool === "qr" && (() => {
+                const baseUrl = window.location.origin;
+                const qrUrl = (c) => `${baseUrl}/cubiculo/${encodeURIComponent(c.nombre)}`;
+                const stColor = e => e==='libre'?t.green:e==='ocupado'?t.rose:t.amber;
+                const stLabel = e => e==='libre'?'Libre':e==='ocupado'?'Ocupado':'Reservado';
+                return (
+                  <div>
+                    {/* Header + acciones */}
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+                      <div>
+                        <div style={{fontSize:15,fontWeight:700,color:t.text}}>Códigos QR — Cubículos</div>
+                        <div style={{fontSize:11,color:t.textDim,marginTop:2}}>Imprime y pega cada QR en el cubículo correspondiente. Al escanearlo el alumno hace Check-In / Check-Out.</div>
+                      </div>
+                      <button onClick={()=>window.print()}
+                        style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,border:'none',background:`linear-gradient(135deg,${t.teal},${t.blue})`,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',flexShrink:0}}>
+                        <Printer size={14}/> Imprimir todos
+                      </button>
+                    </div>
+
+                    {/* Grid de QRs */}
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:16}} className="qr-grid">
+                      {cubiculos.map(c => {
+                        const url = qrUrl(c);
+                        const col = stColor(c.estado);
+                        return (
+                          <div key={c.id} style={{background:t.card,borderRadius:16,padding:20,border:`1px solid ${t.cardBorder}`,display:'flex',flexDirection:'column',alignItems:'center',gap:12,textAlign:'center'}}>
+                            {/* Status badge */}
+                            <div style={{display:'flex',alignItems:'center',gap:5,fontSize:10,fontWeight:700,color:col,background:`${col}15`,padding:'3px 10px',borderRadius:20,border:`1px solid ${col}35`}}>
+                              <div style={{width:6,height:6,borderRadius:'50%',background:col}}/>{stLabel(c.estado)}
+                            </div>
+                            {/* QR */}
+                            <div style={{padding:10,background:'#fff',borderRadius:12,lineHeight:0}}>
+                              <QRCodeSVG value={url} size={130} level="M"
+                                imageSettings={{src:'',height:0,width:0,excavate:false}}/>
+                            </div>
+                            {/* Info */}
+                            <div>
+                              <div style={{fontSize:15,fontWeight:800,color:t.text}}>{c.nombre}</div>
+                              <div style={{fontSize:10,color:t.textDim,marginTop:2}}>Piso {c.piso || 1}</div>
+                            </div>
+                            {/* URL */}
+                            <div style={{fontSize:8,color:t.textMuted,wordBreak:'break-all',maxWidth:160,lineHeight:1.4}}>{url}</div>
+                            {/* Botón abrir */}
+                            <button onClick={()=>window.open(url,'_blank')}
+                              style={{width:'100%',padding:'8px',borderRadius:10,border:`1px solid ${t.cardBorder}`,background:'transparent',color:t.teal,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                              Abrir vista QR
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Print styles */}
+                    <style>{`
+                      @media print {
+                        body > * { display: none !important; }
+                        .qr-grid { display: grid !important; grid-template-columns: repeat(3,1fr) !important; gap: 20px !important; }
+                        .qr-grid > * { page-break-inside: avoid; border: 1px solid #ddd !important; border-radius: 12px !important; padding: 16px !important; }
+                      }
+                    `}</style>
+                  </div>
+                );
+              })()}
 
             </div>
           )}
