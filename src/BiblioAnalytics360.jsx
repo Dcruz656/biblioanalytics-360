@@ -471,8 +471,8 @@ export default function BiblioAnalytics360() {
   const [accentPreset, setAccentPreset] = useState("teal");
   const [userProfile, setUserProfile] = useState({ name: "Daniel B.", role: "Administrador", institution: "UACJ" });
   const [profileDraft, setProfileDraft] = useState(null);
-  const [alertThresholds, setAlertThresholds] = useState({ prestamos: 900, satisfaccion: 65, calidad: 80 });
-  const [alertToggles, setAlertToggles] = useState({ prestamos: true, sentimiento: true, calidad: true, uploads: true });
+  const [alertThresholds, setAlertThresholds] = useState({ cubiculos: 80, computadoras: 80 });
+  const [alertToggles, setAlertToggles] = useState({ liberacion: true, vencimiento: true, proximoVencer: true, pushAlumnos: true });
   const [pinRequired,  setPinRequired]  = useState(true);
   useEffect(() => { dbLoadAppConfig().then(cfg => setPinRequired(cfg.pinRequired)); }, []);
   useEffect(() => subscribeAppConfig(cfg => { if (typeof cfg.pinRequired === 'boolean') setPinRequired(cfg.pinRequired); }), []);
@@ -2657,11 +2657,10 @@ export default function BiblioAnalytics360() {
 
                   {/* Sliders */}
                   <div style={{ marginBottom: 18 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: t.textDim, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8 }}>Umbrales de alerta</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: t.textDim, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8 }}>Umbral de ocupación máxima</div>
                     {[
-                      { key: "prestamos", label: "Préstamos mínimos / mes", min: 500, max: 2000, step: 50, unit: "" },
-                      { key: "satisfaccion", label: "Satisfacción NLP mínima", min: 50, max: 95, step: 1, unit: "%" },
-                      { key: "calidad", label: "Calidad de datos mínima", min: 60, max: 100, step: 1, unit: "%" },
+                      { key: "cubiculos", label: "Cubículos — alerta al superar", min: 50, max: 100, step: 5, unit: "%" },
+                      { key: "computadoras", label: "Computadoras — alerta al superar", min: 50, max: 100, step: 5, unit: "%" },
                     ].map(s => (
                       <div key={s.key} style={{ marginBottom: 14 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -2682,12 +2681,12 @@ export default function BiblioAnalytics360() {
 
                   {/* Toggles */}
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: t.textDim, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8 }}>Tipos de alerta</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: t.textDim, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8 }}>Eventos con notificación</div>
                     {[
-                      { key: "prestamos", label: "Alertas de circulación" },
-                      { key: "sentimiento", label: "Alertas de sentimiento NLP" },
-                      { key: "calidad", label: "Alertas de calidad de datos" },
-                      { key: "uploads", label: "Notificaciones de carga de archivos" },
+                      { key: "liberacion", label: "Cubículo / computadora liberada" },
+                      { key: "vencimiento", label: "Reserva vencida (tiempo agotado)" },
+                      { key: "proximoVencer", label: "Aviso 10 min antes de vencer" },
+                      { key: "pushAlumnos", label: "Push al alumno al confirmar reserva" },
                     ].map(tog => (
                       <div key={tog.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${t.cardBorder}` }}>
                         <span style={{ fontSize: 12, color: t.text }}>{tog.label}</span>
