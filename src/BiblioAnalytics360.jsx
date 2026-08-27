@@ -481,6 +481,7 @@ export default function BiblioAnalytics360() {
   const [userEditId,     setUserEditId]     = useState(null);
   const [userEditDraft,  setUserEditDraft]  = useState({});
   const [userDeleteId,   setUserDeleteId]   = useState(null);
+  const [userHistorialId, setUserHistorialId] = useState(null);
   const [testPushState, setTestPushState] = useState("idle"); // "idle"|"sending"|"ok"|"error"
   const [testPushMsg, setTestPushMsg] = useState("");
   const [alumnos, setAlumnos] = useState([]);
@@ -2898,11 +2899,13 @@ export default function BiblioAnalytics360() {
                         </div>
 
                         {filtered.map(a => {
-                          const isEditing  = userEditId === a.matricula;
-                          const isDeleting = userDeleteId === a.matricula;
-                          const initials   = a.nombre?.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
-                          const colorIdx   = a.matricula?.charCodeAt(0) % 5;
+                          const isEditing   = userEditId === a.matricula;
+                          const isDeleting  = userDeleteId === a.matricula;
+                          const isHistorial = userHistorialId === a.matricula;
+                          const initials    = a.nombre?.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+                          const colorIdx    = a.matricula?.charCodeAt(0) % 5;
                           const avatarColor = [t.teal, t.blue, t.purple, t.amber, t.rose][colorIdx];
+                          const userHist    = historialReservas.filter(h => h.matricula === a.matricula).sort((a, b) => new Date(b.inicio) - new Date(a.inicio));
 
                           return (
                             <div key={a.matricula} style={{ borderRadius: 12, border: `1px solid ${isEditing ? t.teal + "60" : isDeleting ? t.rose + "50" : t.cardBorder}`, marginBottom: 8, overflow: "hidden", transition: "border-color 0.2s" }}>
@@ -2925,11 +2928,15 @@ export default function BiblioAnalytics360() {
                                 <div style={{ display: "flex", gap: 6 }}>
                                   {!isEditing && !isDeleting && (
                                     <>
-                                      <button onClick={() => { setUserEditId(a.matricula); setUserEditDraft({ nombre: a.nombre || "", carrera: a.carrera || "" }); setUserDeleteId(null); }}
+                                      <button onClick={() => { setUserHistorialId(isHistorial ? null : a.matricula); setUserEditId(null); setUserDeleteId(null); }}
+                                        style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${isHistorial ? t.teal + "80" : t.cardBorder}`, background: isHistorial ? `${t.teal}15` : t.inputBg, color: isHistorial ? t.teal : t.text, fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                                        <Clock size={11} /> Historial
+                                      </button>
+                                      <button onClick={() => { setUserEditId(a.matricula); setUserEditDraft({ nombre: a.nombre || "", carrera: a.carrera || "" }); setUserDeleteId(null); setUserHistorialId(null); }}
                                         style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                                         <Edit3 size={11} /> Editar
                                       </button>
-                                      <button onClick={() => { setUserDeleteId(a.matricula); setUserEditId(null); }}
+                                      <button onClick={() => { setUserDeleteId(a.matricula); setUserEditId(null); setUserHistorialId(null); }}
                                         style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.rose}40`, background: `${t.rose}10`, color: t.rose, fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                                         <Trash2 size={11} /> Eliminar
                                       </button>
@@ -2994,6 +3001,59 @@ export default function BiblioAnalytics360() {
                               {isDeleting && (
                                 <div style={{ padding: "10px 14px", background: `${t.rose}08`, borderTop: `1px solid ${t.rose}30`, fontSize: 11, color: t.rose }}>
                                   ⚠ ¿Eliminar a <strong>{a.nombre}</strong> ({a.matricula}) permanentemente? Esta acción no se puede deshacer.
+                                </div>
+                              )}
+
+                              {/* Panel historial de servicios */}
+                              {isHistorial && (
+                                <div style={{ padding: "14px 16px", background: `${t.teal}06`, borderTop: `1px solid ${t.teal}25` }}>
+                                  <div style={{ fontSize: 10, fontWeight: 700, color: t.teal, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                                    Historial de préstamos — {a.nombre}
+                                  </div>
+                                  {userHist.length === 0 ? (
+                                    <div style={{ fontSize: 11, color: t.textDim, textAlign: "center", padding: "12px 0" }}>Sin préstamos registrados</div>
+                                  ) : (
+                                    <div style={{ overflowX: "auto" }}>
+                                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                                        <thead>
+                                          <tr style={{ borderBottom: `1px solid ${t.cardBorder}` }}>
+                                            {["Fecha", "Servicio", "Espacio", "Duración", "Estado"].map(h => (
+                                              <th key={h} style={{ padding: "4px 8px", textAlign: "left", fontSize: 9, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: 0.6, whiteSpace: "nowrap" }}>{h}</th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {userHist.map((h, i) => {
+                                            const fecha = h.inicio ? new Date(h.inicio) : null;
+                                            const fechaStr = fecha ? fecha.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+                                            const horaStr = fecha ? fecha.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "";
+                                            const esCubi = h.tipo === "cubiculos";
+                                            const dur = h.duracion ? `${h.duracion}h` : "—";
+                                            const estado = h.fin ? "Completado" : "En curso";
+                                            const estadoColor = h.fin ? t.green : t.amber;
+                                            return (
+                                              <tr key={i} style={{ borderBottom: `1px solid ${t.cardBorder}40` }}>
+                                                <td style={{ padding: "6px 8px", color: t.text, whiteSpace: "nowrap" }}>
+                                                  <div>{fechaStr}</div>
+                                                  <div style={{ fontSize: 9, color: t.textDim }}>{horaStr}</div>
+                                                </td>
+                                                <td style={{ padding: "6px 8px" }}>
+                                                  <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 9, fontWeight: 700, background: esCubi ? `${t.teal}20` : `${t.blue}20`, color: esCubi ? t.teal : t.blue }}>
+                                                    {esCubi ? "Cubículo" : "Computadora"}
+                                                  </span>
+                                                </td>
+                                                <td style={{ padding: "6px 8px", color: t.text, fontWeight: 600 }}>{h.nombre || "—"}</td>
+                                                <td style={{ padding: "6px 8px", color: t.textDim, fontFamily: "'Space Mono', monospace" }}>{dur}</td>
+                                                <td style={{ padding: "6px 8px" }}>
+                                                  <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 9, fontWeight: 700, background: `${estadoColor}20`, color: estadoColor }}>{estado}</span>
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
