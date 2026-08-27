@@ -1037,8 +1037,8 @@ export default function BiblioAnalytics360() {
 
         {/* GLOBAL FILTERS */}
         <div style={{ padding: isMob ? "0 12px 10px" : "0 28px 12px", display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Dropdown label="Campus" value={campus} onChange={setCampus} t={t} icon={Globe}
-            options={[{ value: "todos", label: "Todos los Campus" }, { value: "central", label: "Campus Central" }, { value: "norte", label: "Campus Norte" }, { value: "sur", label: "Campus Sur" }]} />
+          <Dropdown label="Biblioteca" value={campus} onChange={setCampus} t={t} icon={Globe}
+            options={[{ value: "todos", label: "Biblioteca de ICB" }]} />
           <Dropdown label="Periodo" value={periodo} onChange={setPeriodo} t={t} icon={Calendar}
             options={[{ value: "2024-1", label: "Ene – Jul 2024" }, { value: "2024-2", label: "Ago 2024 – Ene 2025" }, { value: "2025-1", label: "Feb – Jul 2025" }]} />
         </div>
