@@ -2710,12 +2710,20 @@ export default function BiblioAnalytics360() {
                     onClick={async () => {
                       setTestPushState("sending"); setTestPushMsg("");
                       try {
-                        const sub = await getOwnSubscription();
-                        if (!sub) { setTestPushState("error"); setTestPushMsg("No se pudo obtener suscripción. ¿Notificaciones bloqueadas?"); return; }
+                        const SUPA_URL = "https://mqlpqjhyulibwpeiivws.supabase.co";
+                        const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbHBxamh5dWxpYndwZWlpdndzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NDYxNTIsImV4cCI6MjEwMzAyMjE1Mn0.D-DQCQCG--2mRMEcemyaZ6X0irYrBxNZBy3Ad4jszLs";
+                        const rows = await fetch(`${SUPA_URL}/rest/v1/push_subscriptions?select=subscription`, {
+                          headers: { Authorization: `Bearer ${SUPA_KEY}`, apikey: SUPA_KEY },
+                        }).then(r => r.json());
+                        if (!rows?.length) { setTestPushState("error"); setTestPushMsg("No hay dispositivos registrados en Supabase."); return; }
                         const { sendPush: sp } = await import("./pushNotifications");
-                        const result = await sp(sub, "🔔 Prueba de notificación", "Las notificaciones push están funcionando correctamente.");
-                        if (result?.ok) { setTestPushState("ok"); setTestPushMsg("Notificación enviada. ¿La recibiste?"); }
-                        else { setTestPushState("error"); setTestPushMsg(`Error HTTP ${result?.status ?? "?"}: ${result?.text ?? result?.error ?? "sin detalle"}`); }
+                        let ok = 0, fail = 0;
+                        for (const row of rows) {
+                          const result = await sp(row.subscription, "🔔 Prueba de notificación", "Las notificaciones push están funcionando correctamente.");
+                          result?.ok ? ok++ : fail++;
+                        }
+                        if (ok > 0) { setTestPushState("ok"); setTestPushMsg(`Enviada a ${ok} dispositivo${ok > 1 ? "s" : ""}. ¿La recibiste?`); }
+                        else { setTestPushState("error"); setTestPushMsg(`Falló en ${fail} dispositivo${fail > 1 ? "s" : ""}.`); }
                       } catch (e) {
                         setTestPushState("error"); setTestPushMsg(e.message);
                       }
