@@ -71,7 +71,7 @@ export default function RegistroView() {
   const isMobile = useIsMobile();
 
   const [screen,      setScreen]      = useState("form");
-  const [form,        setForm]        = useState({ nombre: "", matricula: "", carrera: cubiCarreras[0], pin: "", pinConfirm: "" });
+  const [form,        setForm]        = useState({ nombre: "", matricula: "", carrera: "", pin: "", pinConfirm: "" });
   const [errors,      setErrors]      = useState({});
   const [globalError, setGlobalError] = useState("");
   const [submitting,  setSubmitting]  = useState(false);
@@ -86,6 +86,8 @@ export default function RegistroView() {
       e.matricula = "Ingresa tu número de matrícula";
     if (form.matricula.includes(" "))
       e.matricula = "La matrícula no debe contener espacios";
+    if (!form.carrera)
+      e.carrera = "Elige tu carrera";
     if (!/^\d{4}$/.test(form.pin))
       e.pin = "El PIN debe ser exactamente 4 dígitos numéricos";
     if (form.pin !== form.pinConfirm)
@@ -213,6 +215,7 @@ export default function RegistroView() {
               value={form.carrera}
               onChange={e => setForm(p => ({ ...p, carrera: e.target.value }))}
               style={{ ...inputBase, border: "1.5px solid rgba(255,255,255,0.1)" }}>
+              <option value="" disabled style={{ background: CARD, color: "rgba(255,255,255,0.35)" }}>Elige carrera</option>
               {cubiCarreras.map(c => <option key={c} value={c} style={{ background: CARD }}>{c}</option>)}
             </select>
           </Field>
@@ -358,7 +361,7 @@ export default function RegistroView() {
           </button>
 
           <button
-            onClick={() => { setScreen("form"); setForm({ nombre: "", matricula: "", carrera: cubiCarreras[0], pin: "", pinConfirm: "" }); setErrors({}); setGlobalError(""); setSavedAccount(null); setPushState("idle"); }}
+            onClick={() => { setScreen("form"); setForm({ nombre: "", matricula: "", carrera: "", pin: "", pinConfirm: "" }); setErrors({}); setGlobalError(""); setSavedAccount(null); setPushState("idle"); }}
             style={{ width: "100%", maxWidth: 440, padding: "14px 0", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", touchAction: "manipulation" }}>
             Registrar otro alumno
           </button>
