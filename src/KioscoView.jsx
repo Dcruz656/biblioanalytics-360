@@ -238,7 +238,7 @@ export default function KioscoView() {
   }, []);
   const [clock,           setClock]           = useState(new Date(serverNow()));
   const [cubiculos,       setCubiculos]       = useState([]);
-  const [cubiConfig,      setCubiConfig]      = useState({ minPersonas: 3, maxPersonas: 5 });
+  const [cubiConfig,      setCubiConfig]      = useState({ minPersonas: 3, maxPersonas: 6 });
   const [matriculaInput,  setMatriculaInput]  = useState("");
   const [account,         setAccount]         = useState(null);
   const [lookupError,     setLookupError]     = useState("");

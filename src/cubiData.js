@@ -1,5 +1,5 @@
 export const CUBI_CONFIG_KEY   = "biblioanalytics_config";
-export const DEFAULT_CUBI_CONFIG = { minPersonas: 3, maxPersonas: 5 };
+export const DEFAULT_CUBI_CONFIG = { minPersonas: 3, maxPersonas: 6 };
 
 export const cubiCarreras = [
   // Licenciaturas
