@@ -215,7 +215,18 @@ function TopBar({ onBack, title, clock }) {
 }
 
 // ── Main ─────────────────────────────────────────────────
+function useIsMobile(bp = 640) {
+  const [mob, setMob] = useState(() => window.innerWidth < bp);
+  useEffect(() => {
+    const h = () => setMob(window.innerWidth < bp);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, [bp]);
+  return mob;
+}
+
 export default function KioscoView() {
+  const isMobile = useIsMobile();
   // screens: idle | matricula | mi_reserva | proxima_reserva | bienvenido | browse | duration | success
   const [screen,          setScreen]          = useState("idle");
   const [installPrompt,   setInstallPrompt]   = useState(null);
@@ -725,7 +736,7 @@ export default function KioscoView() {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={resetToIdle} title="Acceso al servicio" clock={clock} />
-        <div style={{ maxWidth: 520, margin: "0 auto", padding: "64px 28px", textAlign: "center" }}>
+        <div style={{ maxWidth: 520, margin: "0 auto", padding: isMobile ? "36px 16px" : "64px 28px", textAlign: "center" }}>
           <div style={{ width: 72, height: 72, borderRadius: 20, background: `${TEAL}18`, border: `1.5px solid ${TEAL}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, margin: "0 auto 24px" }}>🎓</div>
           <div style={{ fontSize: 30, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Ingresa tu Matrícula</div>
           <div style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", marginBottom: 40 }}>Necesitas una cuenta registrada para usar el servicio</div>
@@ -929,7 +940,7 @@ export default function KioscoView() {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={resetToIdle} title="Mi reserva activa" clock={clock} />
-        <div style={{ maxWidth: 520, margin: "0 auto", padding: "48px 28px", textAlign: "center" }}>
+        <div style={{ maxWidth: 520, margin: "0 auto", padding: isMobile ? "28px 16px" : "48px 28px", textAlign: "center" }}>
 
           <div style={{ width: 70, height: 70, borderRadius: "50%", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 auto 16px" }}>
             {initials(account.nombre)}
@@ -1056,7 +1067,7 @@ export default function KioscoView() {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={resetToIdle} title="Mi próxima reserva" clock={clock} />
-        <div style={{ maxWidth: 520, margin: "0 auto", padding: "48px 28px", textAlign: "center" }}>
+        <div style={{ maxWidth: 520, margin: "0 auto", padding: isMobile ? "28px 16px" : "48px 28px", textAlign: "center" }}>
 
           <div style={{ width: 70, height: 70, borderRadius: 20, background: `${AMBER}18`, border: `1.5px solid ${AMBER}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, margin: "0 auto 20px" }}>⏱️</div>
           <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Lugar asegurado</div>
@@ -1103,7 +1114,7 @@ export default function KioscoView() {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={() => setScreen("matricula")} title="Bienvenido" clock={clock} />
-        <div style={{ maxWidth: 540, margin: "0 auto", padding: "52px 28px", textAlign: "center" }}>
+        <div style={{ maxWidth: 540, margin: "0 auto", padding: isMobile ? "32px 16px" : "52px 28px", textAlign: "center" }}>
           <div style={{ width: 80, height: 80, borderRadius: "50%", background: `linear-gradient(135deg, ${TEAL}, #2563eb)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 800, color: "#fff", margin: "0 auto 20px" }}>
             {initials(account.nombre)}
           </div>
@@ -1212,7 +1223,7 @@ export default function KioscoView() {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={() => setScreen("bienvenido")} title="Cubículos" clock={clock} />
-        <div style={{ maxWidth: 540, margin: "0 auto", padding: "52px 28px", textAlign: "center" }}>
+        <div style={{ maxWidth: 540, margin: "0 auto", padding: isMobile ? "32px 16px" : "52px 28px", textAlign: "center" }}>
           <div style={{ display:"flex", justifyContent:"center", marginBottom: 16 }}><CubiIcon size={52} color="#fff"/></div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", marginBottom: 6 }}>¿Cuántas personas?</div>
           <div style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginBottom: 40 }}>Mínimo {min} · Máximo {max} personas por cubículo</div>
@@ -1264,7 +1275,7 @@ export default function KioscoView() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: isMobile ? 10 : 14 }}>
             {cubisFiltrados.map(cubi => {
               const isLibre        = cubi.estado === "libre";
               const isOcupado      = cubi.estado === "ocupado";
@@ -1356,7 +1367,7 @@ export default function KioscoView() {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={() => setScreen("browse")} title={selectedCubi.nombre} clock={clock} />
-        <div style={{ maxWidth: 560, margin: "0 auto", padding: "52px 28px", textAlign: "center" }}>
+        <div style={{ maxWidth: 560, margin: "0 auto", padding: isMobile ? "32px 16px" : "52px 28px", textAlign: "center" }}>
 
           <div style={{ background: CARD, borderRadius: 20, padding: "26px 36px", border: `1.5px solid ${isAdvance ? AMBER : GREEN}45`, marginBottom: 38 }}>
             <div style={{ fontSize: 40, fontWeight: 800, color: "#fff", marginBottom: 6 }}>{selectedCubi.nombre}</div>
@@ -1424,7 +1435,7 @@ export default function KioscoView() {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={resetToIdle} title="Mi sesión activa" clock={clock} />
-        <div style={{ maxWidth: 520, margin: "0 auto", padding: "48px 28px", textAlign: "center" }}>
+        <div style={{ maxWidth: 520, margin: "0 auto", padding: isMobile ? "28px 16px" : "48px 28px", textAlign: "center" }}>
           <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, #2563eb, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 auto 16px" }}>
             {initials(account.nombre)}
           </div>
@@ -1481,7 +1492,7 @@ export default function KioscoView() {
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(3, 1fr)" : "repeat(5, 1fr)", gap: isMobile ? 8 : 12 }}>
             {compuFiltradas.map(pc => {
               const isLibre = pc.estado === "libre";
               const isMant  = pc.estado === "mantenimiento";
@@ -1550,7 +1561,7 @@ export default function KioscoView() {
     return (
       <div style={{ minHeight: "100vh", background: NAVY_DEEP, fontFamily: "'DM Sans', sans-serif" }}>
         <TopBar onBack={() => setScreen("browse_compu")} title={selectedCompu.nombre} clock={clock} />
-        <div style={{ maxWidth: 560, margin: "0 auto", padding: "52px 28px", textAlign: "center" }}>
+        <div style={{ maxWidth: 560, margin: "0 auto", padding: isMobile ? "32px 16px" : "52px 28px", textAlign: "center" }}>
 
           <div style={{ background: CARD, borderRadius: 20, padding: "26px 36px", border: `1.5px solid ${GREEN}45`, marginBottom: 38 }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>💻</div>

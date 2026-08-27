@@ -18,7 +18,7 @@ import {
   Download, Activity, AlertTriangle, CheckCircle, Clock, Heart, ThumbsUp,
   ThumbsDown, Minus, Home, FileText, Zap, Target, Award, Brain, BarChart3,
   Filter, Plus, X, Upload, Play, Pause, RefreshCw, Send, Eye, Layers,
-  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid, Edit2, Edit3, Trash2, Shield, QrCode, Printer
+  Calendar, ChevronLeft, Moon, Sun, Sliders, Database, Globe, Wrench, Monitor, LayoutGrid, Edit2, Edit3, Trash2, Shield, QrCode, Printer, Menu
 } from "lucide-react";
 
 // ===== THEME =====
@@ -891,11 +891,27 @@ export default function BiblioAnalytics360() {
   const cubiFiltered  = cubiPisoFilter === 0 ? cubiculos : cubiculos.filter(c => c.piso === cubiPisoFilter);
   const cubiActivas   = cubiculos.filter(c => c.reserva !== null);
 
+  // Responsive
+  const [winW, setWinW] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const h = () => setWinW(window.innerWidth);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  const isMob = winW < 900;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: t.bg, fontFamily: "'DM Sans', sans-serif", color: t.text }}>
 
+      {/* Mobile backdrop */}
+      {isMob && sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 45, backdropFilter: "blur(2px)" }} />
+      )}
+
       {/* SIDEBAR */}
-      <aside style={{ width: 240, flexShrink: 0, background: t.sidebarBg, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, height: "100%", zIndex: 50, boxShadow: "4px 0 24px rgba(0,0,0,0.25)" }}>
+      <aside style={{ width: 240, flexShrink: 0, background: t.sidebarBg, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, height: "100%", zIndex: 50, boxShadow: "4px 0 24px rgba(0,0,0,0.25)", transform: isMob && !sidebarOpen ? "translateX(-240px)" : "translateX(0)", transition: "transform 0.28s cubic-bezier(0.4,0,0.2,1)" }}>
         <div style={{ padding: "20px 18px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 38, height: 38, borderRadius: 12, background: `linear-gradient(135deg, ${t.teal}, ${t.blue})`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 16px ${t.teal}50`, flexShrink: 0 }}>
             <BookOpen size={17} color="#fff" />
@@ -909,7 +925,7 @@ export default function BiblioAnalytics360() {
         <div style={{ padding: "16px 10px", flex: 1, overflowY: "auto" }}>
           <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, padding: "0 10px", marginBottom: 10, color: t.sidebarDim }}>Analítica</div>
           {navMain.slice(0, 6).map(item => (
-            <button key={item.id} onClick={() => setNav(item.id)}
+            <button key={item.id} onClick={() => { setNav(item.id); if (isMob) setSidebarOpen(false); }}
               style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 12px", borderRadius: "0 10px 10px 0", border: "none", marginBottom: 3, cursor: "pointer",
                 background: nav === item.id ? `linear-gradient(90deg, ${t.blue}35, ${t.teal}12)` : "transparent",
                 boxShadow: nav === item.id ? `inset 3px 0 0 ${t.teal}` : "none",
@@ -923,7 +939,7 @@ export default function BiblioAnalytics360() {
           <div style={{ height: 1, background: "rgba(255,255,255,0.07)", margin: "10px 10px" }} />
           <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, padding: "0 10px", marginBottom: 10, color: t.sidebarDim }}>Sistema</div>
           {navMain.slice(6).map(item => (
-            <button key={item.id} onClick={() => setNav(item.id)}
+            <button key={item.id} onClick={() => { setNav(item.id); if (isMob) setSidebarOpen(false); }}
               style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 12px", borderRadius: "0 10px 10px 0", border: "none", marginBottom: 3, cursor: "pointer",
                 background: nav === item.id ? `linear-gradient(90deg, ${t.blue}35, ${t.teal}12)` : "transparent",
                 boxShadow: nav === item.id ? `inset 3px 0 0 ${t.teal}` : "none",
@@ -955,11 +971,18 @@ export default function BiblioAnalytics360() {
       </aside>
 
       {/* MAIN */}
-      <main style={{ flex: 1, marginLeft: 240 }}>
+      <main style={{ flex: 1, marginLeft: isMob ? 0 : 240, minWidth: 0 }}>
         {/* TOP BAR */}
-        <header style={{ position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 28px", background: `${t.bg}f0`, backdropFilter: "blur(16px)", borderBottom: `1px solid ${t.cardBorder}` }}>
-          <div>
-            <h1 style={{ fontSize: 17, fontWeight: 800, margin: 0, color: t.text, letterSpacing: -.3 }}>
+        <header style={{ position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMob ? "12px 16px" : "14px 28px", background: `${t.bg}f0`, backdropFilter: "blur(16px)", borderBottom: `1px solid ${t.cardBorder}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {isMob && (
+              <button onClick={() => setSidebarOpen(o => !o)}
+                style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${t.cardBorder}`, background: t.card, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                <Menu size={16} color={t.text} />
+              </button>
+            )}
+            <div>
+            <h1 style={{ fontSize: isMob ? 14 : 17, fontWeight: 800, margin: 0, color: t.text, letterSpacing: -.3 }}>
               {nav === "overview" && "Vista General"}{nav === "servicios" && "Estadísticas de Servicios"}
               {nav === "predictivo" && "Módulo Predictivo"}
               {nav === "sentimiento" && "Módulo de Sentimiento"}{nav === "impacto" && "Módulo de Impacto"}
@@ -967,15 +990,18 @@ export default function BiblioAnalytics360() {
               {nav === "herramientas" && "Servicios"}
               {nav === "configuracion" && "Configuración"}
             </h1>
-            <p style={{ fontSize: 10, color: t.textDim, margin: 0, letterSpacing: .3 }}>Biblioteca de ICB · Prototipo Funcional</p>
+            {!isMob && <p style={{ fontSize: 10, color: t.textDim, margin: 0, letterSpacing: .3 }}>Biblioteca de ICB · Prototipo Funcional</p>}
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: isMob ? 6 : 10 }}>
+            {!isMob && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.cardBorder}`, fontSize: 11, boxShadow: t.shadow }}>
               <Search size={13} color={t.textDim} />
               <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar métricas..."
                 style={{ border: "none", outline: "none", background: "transparent", fontSize: 11, color: t.text, width: 130 }} />
               {searchQ && <X size={12} color={t.textDim} style={{ cursor: "pointer" }} onClick={() => setSearchQ("")} />}
             </div>
+            )}
             <div style={{ height: 28, width: 1, background: t.cardBorder }} />
             <div style={{ position: "relative" }}>
               <button onClick={() => setShowNotif(!showNotif)}
@@ -1010,14 +1036,14 @@ export default function BiblioAnalytics360() {
         </header>
 
         {/* GLOBAL FILTERS */}
-        <div style={{ padding: "0 28px 12px", display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ padding: isMob ? "0 12px 10px" : "0 28px 12px", display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Dropdown label="Campus" value={campus} onChange={setCampus} t={t} icon={Globe}
             options={[{ value: "todos", label: "Todos los Campus" }, { value: "central", label: "Campus Central" }, { value: "norte", label: "Campus Norte" }, { value: "sur", label: "Campus Sur" }]} />
           <Dropdown label="Periodo" value={periodo} onChange={setPeriodo} t={t} icon={Calendar}
             options={[{ value: "2024-1", label: "Ene – Jul 2024" }, { value: "2024-2", label: "Ago 2024 – Ene 2025" }, { value: "2025-1", label: "Feb – Jul 2025" }]} />
         </div>
 
-        <div style={{ padding: "0 28px 28px" }}>
+        <div style={{ padding: isMob ? "0 12px 20px" : "0 28px 28px" }}>
 
           {/* ===== OVERVIEW ===== */}
           {nav === "overview" && (() => {
@@ -1199,9 +1225,9 @@ export default function BiblioAnalytics360() {
             );
 
             return (
-              <div style={{padding:'24px 28px'}}>
+              <div style={{padding:isMob?'16px 12px':'24px 28px'}}>
                 {/* Hero KPIs */}
-                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:14}}>
+                <div style={{display:'grid',gridTemplateColumns:isMob?'repeat(2,1fr)':'repeat(4,1fr)',gap:14,marginBottom:14}}>
                   {[
                     {label:'Total reservas',   value:totalReservas.toLocaleString(),           sub:'historial completo',                 color:t.teal,   Ic:Activity},
                     {label:'Alumnos únicos',   value:uniqueAlmn.toLocaleString(),               sub:`de ${alumnos.length} registrados`,    color:t.blue,   Ic:Users},
@@ -1222,7 +1248,7 @@ export default function BiblioAnalytics360() {
                 </div>
 
                 {/* Mini KPIs */}
-                <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:16}}>
+                <div style={{display:'grid',gridTemplateColumns:isMob?'repeat(2,1fr)':'repeat(5,1fr)',gap:10,marginBottom:16}}>
                   {[
                     {label:'Cubículos libres',     value:`${cubiLibresN} / ${cubiculos.length}`,     sub:'disponibles ahora',         color:t.green,  Ic:Layers},
                     {label:'Computadoras libres',  value:`${compuLibresN} / ${computadoras.length}`, sub:'disponibles ahora',         color:t.teal,   Ic:Monitor},
@@ -1585,7 +1611,7 @@ export default function BiblioAnalytics360() {
                 {/* RFM Segmentación de usuarios */}
                 {cc('Segmentación de usuarios (RFM)', 'Clasificación por recencia, frecuencia y actividad — base para acciones de retención',
                   <div>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+                    <div style={{display:'grid',gridTemplateColumns:isMob?'repeat(2,1fr)':'repeat(4,1fr)',gap:10,marginBottom:16}}>
                       {segCounts.map(({s,count,color})=>(
                         <div key={s} style={{borderRadius:12,padding:'14px 12px',background:`${color}10`,border:`1px solid ${color}30`,textAlign:'center'}}>
                           <div style={{fontSize:22,fontWeight:800,color,fontFamily:"'Space Mono',monospace"}}>{count}</div>
@@ -1795,7 +1821,7 @@ export default function BiblioAnalytics360() {
             const CHART_H   = 200;
 
             return (
-            <div style={{padding:'24px 28px'}}>
+            <div style={{padding:isMob?'16px 12px':'24px 28px'}}>
               {/* — Unified filter bar — */}
               {(() => {
                 const lbl = { fontSize:11, fontWeight:700, color:t.textDim, whiteSpace:'nowrap' };
@@ -1861,7 +1887,7 @@ export default function BiblioAnalytics360() {
               })()}
 
               {/* — KPI row 5 cards — */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:14}}>
+              <div style={{display:'grid',gridTemplateColumns:isMob?'repeat(2,1fr)':'repeat(5,1fr)',gap:12,marginBottom:14}}>
                 {[
                   {label:'Total reservas',  value:total,                                  sub:`anterior: ${prevTotal}`, color:t.teal,   Ic:Activity},
                   {label:'Duración prom.',  value:`${avgDur}h`,                           sub: svcService==='cubiculos'?`${avgPers} pers. prom.`:'por sesión', color:t.blue,   Ic:Clock},
