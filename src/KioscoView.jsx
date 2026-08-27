@@ -30,7 +30,7 @@ const ADVANCE_MS = 30 * 60 * 1000; // ventana de 30 min para reserva anticipada
 // Lunes–Viernes 08:00–18:00 · Sábado 10:00–16:00 · Domingo cerrado
 const HORARIO = {
   // [apertura_min, cierre_min]  (minutos desde medianoche)
-  1: [480, 1080], 2: [480, 1080], 3: [480, 1080], 4: [480, 1080], 5: [480, 1080], // L-V
+  1: [480, 1200], 2: [480, 1200], 3: [480, 1200], 4: [480, 1200], 5: [480, 1200], // L-V 8:00-20:00
   6: [600, 960],  // Sábado 10:00-16:00
   0: null,        // Domingo cerrado
 };
@@ -54,7 +54,14 @@ function operatingHoursMessage(now = new Date()) {
   const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   const min = now.getHours() * 60 + now.getMinutes();
   if (min < win[0]) return `El servicio abre a las ${fmt(win[0])} h.`;
-  return `El servicio cerró a las ${fmt(win[1])} h. ${day === 6 ? "El lunes retomamos de 8:00 a 18:00 h." : "Horario: Lun–Vie 8:00–18:00 · Sáb 10:00–16:00"}`;
+  return `El servicio cerró a las ${fmt(win[1])} h. ${day === 6 ? "El lunes retomamos de 8:00 a 20:00 h." : "Horario: Lun–Vie 8:00–20:00 · Sáb 10:00–16:00"}`;
+}
+
+function minutesUntilClose(now = new Date()) {
+  const win = getOperatingWindow(now);
+  if (!win) return 0;
+  const min = now.getHours() * 60 + now.getMinutes();
+  return Math.max(0, win[1] - min);
 }
 
 // Ícono de biblioteca (edificio con columnas y libro)
@@ -536,7 +543,9 @@ export default function KioscoView() {
 
   async function confirmarReserva() {
     if (confirmando) return;
-    if (!isWithinOperatingHours(new Date(serverNow()))) { setScreen("bienvenido"); return; }
+    const nowR = new Date(serverNow());
+    if (!isWithinOperatingHours(nowR)) { setScreen("bienvenido"); return; }
+    if (duracion > Math.floor(minutesUntilClose(nowR) / 60)) { setDuracion(1); return; }
     const cubi = cubiculos.find(c => c.id === selectedId);
     if (!cubi || !account) return;
 
@@ -585,7 +594,9 @@ export default function KioscoView() {
   }
 
   function confirmarReservaCompu() {
-    if (!isWithinOperatingHours(new Date(serverNow()))) { setScreen("bienvenido"); return; }
+    const nowR = new Date(serverNow());
+    if (!isWithinOperatingHours(nowR)) { setScreen("bienvenido"); return; }
+    if (duracion > Math.floor(minutesUntilClose(nowR) / 60)) { setDuracion(1); return; }
     const compu = computadoras.find(c => c.id === compuSelectedId);
     if (!compu || !account) return;
     const d = new Date(), pad = n => String(n).padStart(2, "0");
@@ -1357,19 +1368,35 @@ export default function KioscoView() {
             )}
           </div>
 
+          {(() => {
+            const maxDur = Math.min(2, Math.floor(minutesUntilClose(clock) / 60));
+            if (duracion > maxDur && maxDur >= 1) setDuracion(maxDur);
+            const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+            const closeMin = getOperatingWindow(clock)?.[1] ?? 1200;
+            return (<>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 8 }}>¿Cuánto tiempo necesitas?</div>
           <div style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", marginBottom: 30 }}>
             {fmtTime(availAt)} → {fmtTime(addMinutes(availAt, duracion * 60))}
           </div>
 
-          <div style={{ display: "flex", gap: 16, marginBottom: 36 }}>
-            {[1, 2].map(h => (
-              <button key={h} onClick={() => setDuracion(h)}
-                style={{ flex: 1, padding: "30px 0", borderRadius: 18, border: `2.5px solid ${duracion === h ? TEAL : "rgba(255,255,255,0.1)"}`, background: duracion === h ? `${TEAL}22` : CARD, color: duracion === h ? TEAL : "rgba(255,255,255,0.55)", fontSize: 32, fontWeight: 800, cursor: "pointer", outline: "none", fontFamily: "'Space Mono', monospace" }}>
+          <div style={{ display: "flex", gap: 16, marginBottom: maxDur < 2 ? 8 : 36 }}>
+            {[1, 2].map(h => {
+              const fits = h <= maxDur;
+              return (
+              <button key={h} onClick={() => fits && setDuracion(h)} disabled={!fits}
+                style={{ flex: 1, padding: "30px 0", borderRadius: 18, border: `2.5px solid ${!fits ? "rgba(255,255,255,0.05)" : duracion === h ? TEAL : "rgba(255,255,255,0.1)"}`, background: !fits ? "rgba(255,255,255,0.03)" : duracion === h ? `${TEAL}22` : CARD, color: !fits ? "rgba(255,255,255,0.18)" : duracion === h ? TEAL : "rgba(255,255,255,0.55)", fontSize: 32, fontWeight: 800, cursor: fits ? "pointer" : "not-allowed", outline: "none", fontFamily: "'Space Mono', monospace", position: "relative" }}>
                 {h}h
-              </button>
-            ))}
+                {!fits && <span style={{ display: "block", fontSize: 10, fontWeight: 400, marginTop: 4, color: "rgba(255,255,255,0.25)" }}>Supera el cierre ({fmt(closeMin)})</span>}
+              </button>);
+            })}
           </div>
+          {maxDur < 2 && (
+            <div style={{ background: `${AMBER}10`, border: `1px solid ${AMBER}30`, borderRadius: 10, padding: "10px 16px", fontSize: 12, color: AMBER, marginBottom: 28, lineHeight: 1.5 }}>
+              El servicio cierra a las {fmt(closeMin)} h. Solo está disponible 1 hora.
+            </div>
+          )}
+            </>);
+          })()}
 
           <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 12, padding: "14px 22px", marginBottom: 30, fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
             <strong style={{ color: "#fff" }}>{account?.nombre}</strong> · {selectedCubi.nombre} · {personas} persona{personas !== 1 ? "s" : ""} · {duracion}h
@@ -1532,19 +1559,35 @@ export default function KioscoView() {
             <div style={{ fontSize: 14, color: GREEN, fontWeight: 700 }}>✓ Disponible ahora</div>
           </div>
 
+          {(() => {
+            const maxDur = Math.min(2, Math.floor(minutesUntilClose(clock) / 60));
+            if (duracion > maxDur && maxDur >= 1) setDuracion(maxDur);
+            const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+            const closeMin = getOperatingWindow(clock)?.[1] ?? 1200;
+            return (<>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 8 }}>¿Cuánto tiempo necesitas?</div>
           <div style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", marginBottom: 30 }}>
             {fmtTime(start)} → {fmtTime(addMinutes(start, duracion * 60))}
           </div>
 
-          <div style={{ display: "flex", gap: 16, marginBottom: 36 }}>
-            {[1, 2].map(h => (
-              <button key={h} onClick={() => setDuracion(h)}
-                style={{ flex: 1, padding: "30px 0", borderRadius: 18, border: `2.5px solid ${duracion === h ? TEAL : "rgba(255,255,255,0.1)"}`, background: duracion === h ? `${TEAL}22` : CARD, color: duracion === h ? TEAL : "rgba(255,255,255,0.55)", fontSize: 32, fontWeight: 800, cursor: "pointer", outline: "none", fontFamily: "'Space Mono', monospace" }}>
+          <div style={{ display: "flex", gap: 16, marginBottom: maxDur < 2 ? 8 : 36 }}>
+            {[1, 2].map(h => {
+              const fits = h <= maxDur;
+              return (
+              <button key={h} onClick={() => fits && setDuracion(h)} disabled={!fits}
+                style={{ flex: 1, padding: "30px 0", borderRadius: 18, border: `2.5px solid ${!fits ? "rgba(255,255,255,0.05)" : duracion === h ? TEAL : "rgba(255,255,255,0.1)"}`, background: !fits ? "rgba(255,255,255,0.03)" : duracion === h ? `${TEAL}22` : CARD, color: !fits ? "rgba(255,255,255,0.18)" : duracion === h ? TEAL : "rgba(255,255,255,0.55)", fontSize: 32, fontWeight: 800, cursor: fits ? "pointer" : "not-allowed", outline: "none", fontFamily: "'Space Mono', monospace", position: "relative" }}>
                 {h}h
-              </button>
-            ))}
+                {!fits && <span style={{ display: "block", fontSize: 10, fontWeight: 400, marginTop: 4, color: "rgba(255,255,255,0.25)" }}>Supera el cierre ({fmt(closeMin)})</span>}
+              </button>);
+            })}
           </div>
+          {maxDur < 2 && (
+            <div style={{ background: `${AMBER}10`, border: `1px solid ${AMBER}30`, borderRadius: 10, padding: "10px 16px", fontSize: 12, color: AMBER, marginBottom: 28, lineHeight: 1.5 }}>
+              El servicio cierra a las {fmt(closeMin)} h. Solo está disponible 1 hora.
+            </div>
+          )}
+            </>);
+          })()}
 
           <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 12, padding: "14px 22px", marginBottom: 30, fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
             <strong style={{ color: "#fff" }}>{account?.nombre}</strong> · {selectedCompu.nombre} · {duracion}h
