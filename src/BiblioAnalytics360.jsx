@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { loadCubiConfig, saveCubiConfig, CUBI_CONFIG_KEY, compuZonas, compuSistemas, cubiCarreras } from "./cubiData";
-import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, dbUpdateAlumno, dbDeleteAlumno, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, dbLoadAppConfig, dbSaveAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas, subscribeHistorialReservas } from "./db";
+import { dbLoadCubiculos, dbSaveCubiculo, dbSeedCubiculos, dbDeleteCubiculo, dbLoadComputadoras, dbSaveComputadora, dbSeedComputadoras, dbDeleteComputadora, dbLoadAlumnos, dbUpdateAlumno, dbDeleteAlumno, subscribeCubiculos, subscribeComputadoras, subscribeAlumnos, loadAppConfig, saveAppConfig, dbLoadAppConfig, dbSaveAppConfig, subscribeAppConfig, dbSaveHistorialReserva, dbLoadHistorialReservas, subscribeHistorialReservas, dbLoadPrintJobs, dbLoadPrinters, subscribePrintJobs, subscribePrinters, dbSavePrinter, dbDeletePrinter, dbReembolsarPrintJob, dbRecargarSaldo } from "./db";
 import { serverNow } from "./serverTime";
 import { getOwnSubscription } from "./pushNotifications";
 import html2canvas from "html2canvas";
@@ -500,6 +500,10 @@ export default function BiblioAnalytics360() {
 
   // Herramientas — sub-nav
   const [herrTool, setHerrTool] = useState("cubiculos");
+  const [printJobs,       setPrintJobs]       = useState([]);
+  const [printers,        setPrinters]        = useState([]);
+  const [printNewPrinter, setPrintNewPrinter] = useState(null);
+  const [printSaldoForm,  setPrintSaldoForm]  = useState({ matricula: '', paginas: 50, loading: false });
 
   // Herramientas — Computadoras
   const [computadoras, setComputadoras] = useState(createInitComputadoras);
@@ -567,6 +571,7 @@ export default function BiblioAnalytics360() {
       dbLoadCubiculos().then(data => { if (data && data.length > 0) setCubiculos(data); });
       dbLoadComputadoras().then(data => { if (data && data.length > 0) setComputadoras(data); });
       dbLoadHistorialReservas().then(d => { if (d) setHistorialReservas(d); });
+      dbLoadPrintJobs().then(d => { if (d) setPrintJobs(d); });
     }, 30_000);
     return () => clearInterval(hb);
   }, []);
@@ -706,6 +711,18 @@ export default function BiblioAnalytics360() {
     const unsub = subscribeHistorialReservas(() => {
       dbLoadHistorialReservas().then(d => setHistorialReservas(d));
     });
+    return unsub;
+  }, []);
+
+  // Print jobs + printers
+  useEffect(() => {
+    dbLoadPrintJobs().then(d => { if (d) setPrintJobs(d); });
+    const unsub = subscribePrintJobs(() => { dbLoadPrintJobs().then(d => { if (d) setPrintJobs(d); }); });
+    return unsub;
+  }, []);
+  useEffect(() => {
+    dbLoadPrinters().then(d => { if (d) setPrinters(d); });
+    const unsub = subscribePrinters(() => { dbLoadPrinters().then(d => { if (d) setPrinters(d); }); });
     return unsub;
   }, []);
 
@@ -1224,6 +1241,120 @@ export default function BiblioAnalytics360() {
                 {children}
               </div>
             );
+
+            // ── Impresión early-return view ──────────────────────────────────
+            if (svcService === 'impresion') {
+              const totalJobs   = printJobs.length;
+              const totalPags   = printJobs.reduce((a, j) => a + (j.paginas || 0), 0);
+              const completados = printJobs.filter(j => j.estado === 'completado').length;
+              const tasaExito   = totalJobs > 0 ? Math.round((completados / totalJobs) * 100) : 0;
+              const enCola      = printJobs.filter(j => j.estado === 'pendiente').length;
+              const colorJobs   = printJobs.filter(j => j.color).length;
+              const bnJobs      = printJobs.filter(j => !j.color).length;
+              const recientes   = [...printJobs].slice(0, 10);
+              const estadoColors = { pendiente:t.amber, imprimiendo:t.blue, completado:t.green, error:t.rose, cancelado:t.textDim };
+              const estadoLabels = { pendiente:'Pendiente', imprimiendo:'Imprimiendo', completado:'Completado', error:'Error', cancelado:'Cancelado' };
+              const trendPrint  = Array.from({length:14}, (_, i) => {
+                const d = new Date(nowD.getTime() - (13-i)*86400000);
+                const ds = d.toDateString();
+                return { label: i%2===0?`${d.getDate()}/${d.getMonth()+1}`:'', jobs: printJobs.filter(j=>new Date(j.created_at).toDateString()===ds).length };
+              });
+              const printCarreraMap = {};
+              printJobs.forEach(j => { const c = j.carrera||'Otra'; printCarreraMap[c]=(printCarreraMap[c]||0)+1; });
+              const topPrintCarreras = Object.entries(printCarreraMap).sort((a,b)=>b[1]-a[1]).slice(0,6)
+                .map(([carrera,total])=>({carrera:carrera.length>16?carrera.slice(0,16)+'…':carrera,total}));
+              return (
+                <div style={{padding:isMob?'16px 12px':'24px 28px'}}>
+                  <div style={{display:'grid',gridTemplateColumns:isMob?'repeat(2,1fr)':'repeat(4,1fr)',gap:14,marginBottom:14}}>
+                    {[
+                      {label:'Total trabajos',       value:totalJobs.toLocaleString(),  sub:'todos los estados',          color:t.teal,  Ic:Printer},
+                      {label:'Páginas impresas',      value:totalPags.toLocaleString(),  sub:'acumulado histórico',         color:t.blue,  Ic:FileText},
+                      {label:'Tasa de éxito',         value:`${tasaExito}%`,             sub:`${completados} completados`,  color:t.green, Ic:CheckCircle},
+                      {label:'En cola ahora',         value:String(enCola),              sub:'trabajos pendientes',         color:t.amber, Ic:Clock},
+                    ].map(({label,value,sub,color,Ic})=>(
+                      <div key={label} style={{background:t.card,borderRadius:14,padding:'18px 20px',border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,borderTop:`3px solid ${color}`}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                          <div style={{width:32,height:32,borderRadius:10,background:`${color}22`,display:'flex',alignItems:'center',justifyContent:'center'}}><Ic size={14} color={color}/></div>
+                          <span style={{fontSize:9,color:t.textDim,fontWeight:700,textTransform:'uppercase',letterSpacing:1}}>{label}</span>
+                        </div>
+                        <div style={{fontSize:26,fontWeight:800,color:t.text,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{value}</div>
+                        <div style={{fontSize:9,color:t.textDim,marginTop:5}}>{sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:isMob?'1fr':'repeat(3,1fr)',gap:10,marginBottom:16}}>
+                    {[
+                      {label:'Blanco y Negro',      value:bnJobs,    sub:'trabajos B&N',              color:t.textDim,Ic:FileText},
+                      {label:'A color',             value:colorJobs, sub:'trabajos a color',           color:t.blue,  Ic:FileText},
+                      {label:'Impresoras activas',  value:printers.filter(p=>p.online!==false).length, sub:`de ${printers.length} registradas`, color:t.teal, Ic:Printer},
+                    ].map(({label,value,sub,color,Ic})=>(
+                      <div key={label} style={{background:t.card,borderRadius:12,padding:'12px 16px',border:`1px solid ${t.cardBorder}`,boxShadow:t.shadow,display:'flex',alignItems:'center',gap:12}}>
+                        <div style={{width:34,height:34,borderRadius:10,background:`${color}22`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ic size={15} color={color}/></div>
+                        <div>
+                          <div style={{fontSize:9,color:t.textDim,textTransform:'uppercase',letterSpacing:.8,fontWeight:600}}>{label}</div>
+                          <div style={{fontSize:15,fontWeight:800,fontFamily:"'Space Mono',monospace",color:t.text,lineHeight:1.2,marginTop:2}}>{value}</div>
+                          <div style={{fontSize:9,color:t.textDim,marginTop:2}}>{sub}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:isMob?'1fr':'1fr 1fr',gap:14,marginBottom:14}}>
+                    {cc('Trabajos por día','Últimas 2 semanas',
+                      <ResponsiveContainer width="100%" height={CH}>
+                        <BarChart data={trendPrint} margin={{top:4,right:4,left:0,bottom:0}}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={t.cardBorder} vertical={false}/>
+                          <XAxis dataKey="label" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                          <YAxis tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                          <Tooltip content={<CTooltip t={t}/>}/>
+                          <Bar dataKey="jobs" name="Trabajos" fill={t.teal} radius={[4,4,0,0]}/>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                    {cc('Por carrera','Trabajos agrupados',
+                      topPrintCarreras.length > 0
+                        ? <ResponsiveContainer width="100%" height={CH}>
+                            <BarChart data={topPrintCarreras} layout="vertical" margin={{top:4,right:4,left:0,bottom:0}}>
+                              <CartesianGrid strokeDasharray="3 3" stroke={t.cardBorder} horizontal={false}/>
+                              <XAxis type="number" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false}/>
+                              <YAxis dataKey="carrera" type="category" tick={{fontSize:9,fill:t.textDim}} axisLine={false} tickLine={false} width={90}/>
+                              <Tooltip content={<CTooltip t={t}/>}/>
+                              <Bar dataKey="total" name="Trabajos" fill={t.blue} radius={[0,4,4,0]}/>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        : <div style={{textAlign:'center',padding:40,color:t.textDim,fontSize:12}}>Sin datos por carrera aún</div>
+                    )}
+                  </div>
+                  {cc('Trabajos recientes',`Últimos ${recientes.length} trabajos`,
+                    recientes.length === 0
+                      ? <div style={{textAlign:'center',padding:32,color:t.textDim}}>
+                          <div style={{fontSize:32,marginBottom:8,opacity:.3}}>🖨️</div>
+                          <div style={{fontSize:12}}>Sin trabajos de impresión aún</div>
+                        </div>
+                      : <div style={{overflowX:'auto'}}>
+                          <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                            <thead><tr>{['Matrícula','Archivo','Págs.','Color','Estado','Fecha'].map(h=>(
+                              <th key={h} style={{textAlign:'left',padding:'6px 10px',color:t.textDim,fontWeight:600,borderBottom:`1px solid ${t.cardBorder}`}}>{h}</th>
+                            ))}</tr></thead>
+                            <tbody>{recientes.map((j,i)=>(
+                              <tr key={j.id||i} style={{borderBottom:`1px solid ${t.cardBorder}`}}>
+                                <td style={{padding:'7px 10px',color:t.text,fontFamily:"'Space Mono',monospace"}}>{j.matricula||'—'}</td>
+                                <td style={{padding:'7px 10px',color:t.text,maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{j.nombre_archivo||j.filename||'—'}</td>
+                                <td style={{padding:'7px 10px',color:t.text,fontFamily:"'Space Mono',monospace"}}>{j.paginas||'—'}</td>
+                                <td style={{padding:'7px 10px',color:j.color?t.blue:t.textDim}}>{j.color?'Color':'B&N'}</td>
+                                <td style={{padding:'7px 10px'}}>
+                                  <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20,background:`${estadoColors[j.estado]||t.textDim}22`,color:estadoColors[j.estado]||t.textDim}}>
+                                    {estadoLabels[j.estado]||j.estado||'—'}
+                                  </span>
+                                </td>
+                                <td style={{padding:'7px 10px',color:t.textDim}}>{j.created_at?new Date(j.created_at).toLocaleString('es-MX',{dateStyle:'short',timeStyle:'short'}):'—'}</td>
+                              </tr>
+                            ))}</tbody>
+                          </table>
+                        </div>
+                  )}
+                </div>
+              );
+            }
 
             return (
               <div style={{padding:isMob?'16px 12px':'24px 28px'}}>
@@ -1843,7 +1974,7 @@ export default function BiblioAnalytics360() {
                     {/* Fila 1: Servicio + fechas */}
                     <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',padding:'10px 16px'}}>
                       <span style={lbl}>Servicio:</span>
-                      {[{id:'cubiculos',label:'Cubículos',Ic:Layers},{id:'computadoras',label:'Computadoras',Ic:Monitor}].map(({id,label,Ic})=>(
+                      {[{id:'cubiculos',label:'Cubículos',Ic:Layers},{id:'computadoras',label:'Computadoras',Ic:Monitor},{id:'impresion',label:'Impresión',Ic:Printer}].map(({id,label,Ic})=>(
                         <button key={id} onClick={()=>setSvcService(id)} style={{...pill(svcService===id),display:'flex',alignItems:'center',gap:5}}>
                           <Ic size={12}/>{label}
                         </button>
@@ -2092,7 +2223,7 @@ export default function BiblioAnalytics360() {
               {/* — Empty state — */}
               {total === 0 && (
                 <div style={{textAlign:'center',padding:'48px 20px',color:t.textDim}}>
-                  <div style={{fontSize:32,marginBottom:12,opacity:.3}}>{svcService==='cubiculos'?'🗂️':'💻'}</div>
+                  <div style={{fontSize:32,marginBottom:12,opacity:.3}}>{svcService==='cubiculos'?'🗂️':svcService==='impresion'?'🖨️':'💻'}</div>
                   <div style={{fontSize:14,fontWeight:600,marginBottom:6}}>Sin registros en este periodo</div>
                   <div style={{fontSize:12}}>Las reservas completadas aparecerán aquí automáticamente</div>
                 </div>
@@ -3081,6 +3212,7 @@ export default function BiblioAnalytics360() {
                 {[
                   { id: "cubiculos",    icon: Layers,   label: "Cubículos" },
                   { id: "computadoras", icon: Monitor,  label: "Computadoras" },
+                  { id: "impresion",    icon: Printer,  label: "Impresión" },
                   { id: "qr",           icon: QrCode,   label: "Códigos QR" },
                 ].map(tab => (
                   <button key={tab.id} onClick={() => setHerrTool(tab.id)}
@@ -4056,6 +4188,198 @@ export default function BiblioAnalytics360() {
               </>)}
 
               {/* ===== QR CODES ===== */}
+              {herrTool === "impresion" && (() => {
+                const estadoCol = { pendiente:t.amber, imprimiendo:t.blue, completado:t.green, error:t.rose, cancelado:t.textDim };
+                const estadoLbl = { pendiente:'Pendiente', imprimiendo:'Imprimiendo', completado:'Completado', error:'Error', cancelado:'Cancelado' };
+                const pendJobs  = printJobs.filter(j => j.estado === 'pendiente' || j.estado === 'imprimiendo');
+                const doneJobs  = printJobs.filter(j => j.estado === 'completado' || j.estado === 'error' || j.estado === 'cancelado').slice(0, 20);
+                return (
+                  <div>
+                    {/* Printers */}
+                    <div style={{background:t.card,borderRadius:16,padding:22,border:`1px solid ${t.cardBorder}`,marginBottom:20}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:700,color:t.text}}>Impresoras registradas</div>
+                          <div style={{fontSize:10,color:t.textDim,marginTop:2}}>Estado reportado por el agente de impresión</div>
+                        </div>
+                        <button onClick={()=>setPrintNewPrinter({nombre:'',ip:'',modelo:'',ubicacion:''})}
+                          style={{display:'flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:10,border:'none',background:`linear-gradient(135deg,${t.teal},${t.blue})`,color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                          <Plus size={13}/> Agregar
+                        </button>
+                      </div>
+                      {printers.length === 0 && !printNewPrinter
+                        ? <div style={{textAlign:'center',padding:32,color:t.textDim}}>
+                            <div style={{fontSize:28,marginBottom:8,opacity:.3}}>🖨️</div>
+                            <div style={{fontSize:12}}>No hay impresoras registradas. Agrega una para empezar.</div>
+                          </div>
+                        : <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:12}}>
+                            {printers.map(p => (
+                              <div key={p.id} style={{background:t.bg,borderRadius:12,padding:16,border:`1px solid ${p.online!==false?t.teal:t.cardBorder}`}}>
+                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+                                  <div>
+                                    <div style={{fontSize:12,fontWeight:700,color:t.text}}>{p.nombre}</div>
+                                    <div style={{fontSize:10,color:t.textDim,marginTop:2}}>{p.modelo||'—'} · {p.ubicacion||'—'}</div>
+                                  </div>
+                                  <div style={{display:'flex',alignItems:'center',gap:4,fontSize:10,fontWeight:700,color:p.online!==false?t.green:t.rose}}>
+                                    <div style={{width:7,height:7,borderRadius:'50%',background:p.online!==false?t.green:t.rose}}/>
+                                    {p.online!==false?'En línea':'Sin conexión'}
+                                  </div>
+                                </div>
+                                <div style={{fontSize:10,color:t.textDim,fontFamily:"'Space Mono',monospace",marginBottom:10}}>{p.ip||'—'}</div>
+                                {p.last_seen && <div style={{fontSize:9,color:t.textDim}}>Último contacto: {new Date(p.last_seen).toLocaleString('es-MX',{dateStyle:'short',timeStyle:'short'})}</div>}
+                                <button onClick={async()=>{ await dbDeletePrinter(p.id); dbLoadPrinters().then(d=>{if(d)setPrinters(d);}); addNotification('Impresora eliminada','info'); }}
+                                  style={{marginTop:10,width:'100%',padding:'6px',borderRadius:8,border:`1px solid ${t.rose}`,background:'transparent',color:t.rose,fontSize:10,fontWeight:600,cursor:'pointer'}}>
+                                  Eliminar
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                      }
+                      {printNewPrinter && (
+                        <div style={{marginTop:16,background:t.bg,borderRadius:12,padding:16,border:`1px solid ${t.teal}`}}>
+                          <div style={{fontSize:12,fontWeight:700,color:t.text,marginBottom:12}}>Nueva impresora</div>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                            {[['nombre','Nombre'],['ip','IP / Hostname'],['modelo','Modelo'],['ubicacion','Ubicación']].map(([k,lbl])=>(
+                              <div key={k}>
+                                <div style={{fontSize:10,color:t.textDim,marginBottom:4,fontWeight:600}}>{lbl}</div>
+                                <input value={printNewPrinter[k]} onChange={e=>setPrintNewPrinter(p=>({...p,[k]:e.target.value}))}
+                                  style={{width:'100%',background:t.inputBg,border:`1px solid ${t.cardBorder}`,borderRadius:8,padding:'7px 10px',fontSize:12,color:t.text,boxSizing:'border-box'}}/>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{display:'flex',gap:8}}>
+                            <button onClick={async()=>{
+                              if(!printNewPrinter.nombre.trim()) return;
+                              const p = {...printNewPrinter,id:Date.now().toString(),online:false,created_at:new Date().toISOString()};
+                              await dbSavePrinter(p); dbLoadPrinters().then(d=>{if(d)setPrinters(d);}); setPrintNewPrinter(null);
+                              addNotification(`Impresora "${p.nombre}" registrada`,'success');
+                            }} style={{flex:1,padding:'8px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${t.teal},${t.blue})`,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                              Guardar
+                            </button>
+                            <button onClick={()=>setPrintNewPrinter(null)}
+                              style={{padding:'8px 16px',borderRadius:8,border:`1px solid ${t.cardBorder}`,background:'transparent',color:t.textDim,fontSize:12,cursor:'pointer'}}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Job queue */}
+                    <div style={{background:t.card,borderRadius:16,padding:22,border:`1px solid ${t.cardBorder}`,marginBottom:20}}>
+                      <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:4}}>Cola de trabajos activos</div>
+                      <div style={{fontSize:10,color:t.textDim,marginBottom:14}}>{pendJobs.length} trabajo{pendJobs.length!==1?'s':''} en cola</div>
+                      {pendJobs.length === 0
+                        ? <div style={{textAlign:'center',padding:24,color:t.textDim,fontSize:12}}>Cola vacía — sin trabajos pendientes</div>
+                        : <div style={{overflowX:'auto'}}>
+                            <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                              <thead><tr>{['Matrícula','Archivo','Págs.','Impresora','Estado','Hora','Acción'].map(h=>(
+                                <th key={h} style={{textAlign:'left',padding:'6px 10px',color:t.textDim,fontWeight:600,borderBottom:`1px solid ${t.cardBorder}`}}>{h}</th>
+                              ))}</tr></thead>
+                              <tbody>{pendJobs.map((j,i)=>(
+                                <tr key={j.id||i} style={{borderBottom:`1px solid ${t.cardBorder}`}}>
+                                  <td style={{padding:'7px 10px',fontFamily:"'Space Mono',monospace",color:t.text}}>{j.matricula||'—'}</td>
+                                  <td style={{padding:'7px 10px',color:t.text,maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{j.nombre_archivo||j.filename||'—'}</td>
+                                  <td style={{padding:'7px 10px',fontFamily:"'Space Mono',monospace",color:t.text}}>{j.paginas||'—'}</td>
+                                  <td style={{padding:'7px 10px',color:t.textDim}}>{j.printer_id||'—'}</td>
+                                  <td style={{padding:'7px 10px'}}>
+                                    <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20,background:`${estadoCol[j.estado]||t.textDim}22`,color:estadoCol[j.estado]||t.textDim}}>
+                                      {estadoLbl[j.estado]||j.estado||'—'}
+                                    </span>
+                                  </td>
+                                  <td style={{padding:'7px 10px',color:t.textDim}}>{j.created_at?new Date(j.created_at).toLocaleString('es-MX',{timeStyle:'short'}):'—'}</td>
+                                  <td style={{padding:'7px 10px'}}>
+                                    <button onClick={async()=>{
+                                      await dbUpdatePrintJob(j.id,{estado:'cancelado',cancelado_at:new Date().toISOString()});
+                                      dbLoadPrintJobs().then(d=>{if(d)setPrintJobs(d);}); addNotification('Trabajo cancelado','info');
+                                    }} style={{padding:'3px 10px',borderRadius:6,border:`1px solid ${t.rose}`,background:'transparent',color:t.rose,fontSize:10,fontWeight:600,cursor:'pointer'}}>
+                                      Cancelar
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}</tbody>
+                            </table>
+                          </div>
+                      }
+                    </div>
+
+                    {/* Recent completed */}
+                    <div style={{background:t.card,borderRadius:16,padding:22,border:`1px solid ${t.cardBorder}`,marginBottom:20}}>
+                      <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:4}}>Historial reciente</div>
+                      <div style={{fontSize:10,color:t.textDim,marginBottom:14}}>Últimos {doneJobs.length} trabajos completados / con error</div>
+                      {doneJobs.length === 0
+                        ? <div style={{textAlign:'center',padding:24,color:t.textDim,fontSize:12}}>Sin historial aún</div>
+                        : <div style={{overflowX:'auto'}}>
+                            <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                              <thead><tr>{['Matrícula','Archivo','Págs.','Color','Estado','Fecha','Reembolso'].map(h=>(
+                                <th key={h} style={{textAlign:'left',padding:'6px 10px',color:t.textDim,fontWeight:600,borderBottom:`1px solid ${t.cardBorder}`}}>{h}</th>
+                              ))}</tr></thead>
+                              <tbody>{doneJobs.map((j,i)=>(
+                                <tr key={j.id||i} style={{borderBottom:`1px solid ${t.cardBorder}`}}>
+                                  <td style={{padding:'7px 10px',fontFamily:"'Space Mono',monospace",color:t.text}}>{j.matricula||'—'}</td>
+                                  <td style={{padding:'7px 10px',color:t.text,maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{j.nombre_archivo||j.filename||'—'}</td>
+                                  <td style={{padding:'7px 10px',fontFamily:"'Space Mono',monospace",color:t.text}}>{j.paginas||'—'}</td>
+                                  <td style={{padding:'7px 10px',color:j.color?t.blue:t.textDim}}>{j.color?'Color':'B&N'}</td>
+                                  <td style={{padding:'7px 10px'}}>
+                                    <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20,background:`${estadoCol[j.estado]||t.textDim}22`,color:estadoCol[j.estado]||t.textDim}}>
+                                      {estadoLbl[j.estado]||j.estado||'—'}
+                                    </span>
+                                  </td>
+                                  <td style={{padding:'7px 10px',color:t.textDim}}>{j.created_at?new Date(j.created_at).toLocaleString('es-MX',{dateStyle:'short',timeStyle:'short'}):'—'}</td>
+                                  <td style={{padding:'7px 10px'}}>
+                                    {j.estado==='error'&&!j.reembolsado
+                                      ? <button onClick={async()=>{
+                                          await dbReembolsarPrintJob(j); dbLoadPrintJobs().then(d=>{if(d)setPrintJobs(d);});
+                                          addNotification(`Reembolso de ${j.paginas_cobradas||0} páginas aplicado`,'success');
+                                        }} style={{padding:'3px 10px',borderRadius:6,border:`1px solid ${t.teal}`,background:'transparent',color:t.teal,fontSize:10,fontWeight:600,cursor:'pointer'}}>
+                                          Reembolsar
+                                        </button>
+                                      : j.reembolsado
+                                        ? <span style={{fontSize:10,color:t.green}}>✓ Reembolsado</span>
+                                        : <span style={{fontSize:10,color:t.textDim}}>—</span>
+                                    }
+                                  </td>
+                                </tr>
+                              ))}</tbody>
+                            </table>
+                          </div>
+                      }
+                    </div>
+
+                    {/* Saldo recharge */}
+                    <div style={{background:t.card,borderRadius:16,padding:22,border:`1px solid ${t.cardBorder}`}}>
+                      <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:4}}>Recargar saldo de páginas</div>
+                      <div style={{fontSize:10,color:t.textDim,marginBottom:16}}>Añade páginas al saldo de un alumno para que pueda imprimir</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:12,alignItems:'flex-end'}}>
+                        <div>
+                          <div style={{fontSize:10,color:t.textDim,marginBottom:4,fontWeight:600}}>Matrícula</div>
+                          <input value={printSaldoForm.matricula}
+                            onChange={e=>setPrintSaldoForm(f=>({...f,matricula:e.target.value}))}
+                            placeholder="Ej. A123456"
+                            style={{width:'100%',background:t.inputBg,border:`1px solid ${t.cardBorder}`,borderRadius:8,padding:'8px 12px',fontSize:12,color:t.text,boxSizing:'border-box'}}/>
+                        </div>
+                        <div>
+                          <div style={{fontSize:10,color:t.textDim,marginBottom:4,fontWeight:600}}>Páginas a agregar</div>
+                          <input type="number" min={1} max={500} value={printSaldoForm.paginas}
+                            onChange={e=>setPrintSaldoForm(f=>({...f,paginas:Number(e.target.value)}))}
+                            style={{width:'100%',background:t.inputBg,border:`1px solid ${t.cardBorder}`,borderRadius:8,padding:'8px 12px',fontSize:12,color:t.text,boxSizing:'border-box'}}/>
+                        </div>
+                        <button disabled={printSaldoForm.loading||!printSaldoForm.matricula.trim()}
+                          onClick={async()=>{
+                            setPrintSaldoForm(f=>({...f,loading:true}));
+                            const ok = await dbRecargarSaldo(printSaldoForm.matricula.trim(), printSaldoForm.paginas, userProfile.name||'admin');
+                            setPrintSaldoForm(f=>({...f,loading:false,matricula:'',paginas:50}));
+                            addNotification(ok?`+${printSaldoForm.paginas} páginas recargadas a ${printSaldoForm.matricula}`:'Matrícula no encontrada', ok?'success':'error');
+                          }}
+                          style={{padding:'9px 20px',borderRadius:8,border:'none',background:printSaldoForm.loading||!printSaldoForm.matricula.trim()?t.cardBorder:`linear-gradient(135deg,${t.teal},${t.blue})`,color:'#fff',fontSize:12,fontWeight:700,cursor:printSaldoForm.loading?'wait':'pointer',whiteSpace:'nowrap'}}>
+                          {printSaldoForm.loading?'Recargando…':'Recargar'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {herrTool === "qr" && (() => {
                 const baseUrl = window.location.origin;
                 const qrUrl = (c) => `${baseUrl}/cubiculo/${encodeURIComponent(c.nombre)}`;

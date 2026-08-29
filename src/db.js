@@ -234,3 +234,96 @@ export async function dbGetPushSubscription(matricula) {
   const subs = await dbGetPushSubscriptions(matricula);
   return subs[0] ?? null;
 }
+
+// ── Impresión — Print Jobs ───────────────────────────────────────────────────
+export async function dbLoadPrintJobs(limit = 300) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('print_jobs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) { console.error('[db] print_jobs load:', error.message); return []; }
+  return data ?? [];
+}
+
+export async function dbUpdatePrintJob(id, updates) {
+  if (!supabase) return;
+  const { error } = await supabase.from('print_jobs').update(updates).eq('id', id);
+  if (error) console.error('[db] print_jobs update:', error.message);
+}
+
+export function subscribePrintJobs(onChange) {
+  if (!supabase) return () => {};
+  const ch = supabase.channel('rt-print-jobs')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'print_jobs' }, () => onChange())
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}
+
+// ── Impresión — Printers ─────────────────────────────────────────────────────
+export async function dbLoadPrinters() {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('printers').select('*').order('nombre');
+  if (error) { console.error('[db] printers load:', error.message); return []; }
+  return data ?? [];
+}
+
+export async function dbSavePrinter(printer) {
+  if (!supabase) return;
+  const { error } = await supabase.from('printers').upsert(printer, { onConflict: 'id' });
+  if (error) console.error('[db] printers save:', error.message);
+}
+
+export async function dbDeletePrinter(id) {
+  if (!supabase) return;
+  const { error } = await supabase.from('printers').delete().eq('id', id);
+  if (error) console.error('[db] printers delete:', error.message);
+}
+
+export function subscribePrinters(onChange) {
+  if (!supabase) return () => {};
+  const ch = supabase.channel('rt-printers')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'printers' }, () => onChange())
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}
+
+// ── Impresión — Ledger ───────────────────────────────────────────────────────
+export async function dbInsertPrintLedger(entry) {
+  if (!supabase) return;
+  const { error } = await supabase.from('print_ledger').insert(entry);
+  if (error) console.error('[db] print_ledger insert:', error.message);
+}
+
+// ── Impresión — Saldo ────────────────────────────────────────────────────────
+export async function dbRecargarSaldo(matricula, paginas, operador) {
+  if (!supabase) return false;
+  const { data: alumno, error: fe } = await supabase
+    .from('alumnos').select('saldo_paginas').eq('matricula', matricula).single();
+  if (fe) { console.error('[db] recargar saldo:', fe.message); return false; }
+  const nuevo = (alumno?.saldo_paginas ?? 0) + paginas;
+  const { error: ue } = await supabase
+    .from('alumnos').update({ saldo_paginas: nuevo }).eq('matricula', matricula);
+  if (ue) { console.error('[db] recargar saldo update:', ue.message); return false; }
+  await dbInsertPrintLedger({ matricula, tipo: 'recarga', paginas, motivo: 'Recarga manual', operador: operador ?? 'admin', created_at: new Date().toISOString() });
+  return true;
+}
+
+export async function dbReembolsarPrintJob(job) {
+  if (!supabase || !job) return false;
+  await dbUpdatePrintJob(job.id, { reembolsado: true });
+  if (job.matricula && job.paginas_cobradas) {
+    const { data: alumno } = await supabase
+      .from('alumnos').select('saldo_paginas').eq('matricula', job.matricula).single();
+    const nuevo = (alumno?.saldo_paginas ?? 0) + (job.paginas_cobradas ?? 0);
+    await supabase.from('alumnos').update({ saldo_paginas: nuevo }).eq('matricula', job.matricula);
+    await dbInsertPrintLedger({
+      matricula: job.matricula, job_id: job.id,
+      tipo: 'reembolso', paginas: job.paginas_cobradas,
+      motivo: 'Reembolso manual admin', operador: 'admin',
+      created_at: new Date().toISOString(),
+    });
+  }
+  return true;
+}
