@@ -1,14 +1,14 @@
 /**
- * CubiQRView — Sistema de reservas por QR
+ * CubiQRView â Sistema de reservas por QR
  *
- * /cubiculo        → flujo general: registro → selección → espera 5 min
- * /cubiculo/:id    → cubículo específico: confirmar check-in o check-out
+ * /cubiculo        â flujo general: registro â selecciÃ³n â espera 5 min
+ * /cubiculo/:id    â cubÃ­culo especÃ­fico: confirmar check-in o check-out
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { dbFindAlumno, dbSaveAlumno, dbLoadCubiculos, dbSaveCubiculo, dbSaveHistorialReserva, subscribeCubiculos } from "./db";
 import { serverNow } from "./serverTime";
 
-// ── icons ──────────────────────────────────────────────────────────────────
+// ââ icons ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const LibraryIcon = ({ size = 64 }) => (
   <svg width={size} height={size} viewBox="0 0 512 512" fill="none">
     <defs><linearGradient id="lbg" x1="56" y1="200" x2="456" y2="460" gradientUnits="userSpaceOnUse"><stop stopColor="#e0f2fe"/><stop offset="1" stopColor="#bae6fd"/></linearGradient></defs>
@@ -37,7 +37,7 @@ const CubiIcon = ({ size = 40, color = "#0d9488" }) => (
   </svg>
 );
 
-// ── helpers ────────────────────────────────────────────────────────────────
+// ââ helpers ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function calcTurno(d) {
   const h = d.getHours();
   return h >= 7 && h < 14 ? 'Matutino' : h >= 14 && h < 20 ? 'Vespertino' : 'Nocturno';
@@ -61,7 +61,7 @@ function useMs(targetMs) {
   return left;
 }
 
-// ── estilos ────────────────────────────────────────────────────────────────
+// ââ estilos ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const bg  = 'linear-gradient(160deg,#0e1629 0%,#1a2744 100%)';
 const P   = { minHeight:'100vh', background:bg, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'24px 16px 40px', fontFamily:"'Inter',sans-serif", color:'#fff', boxSizing:'border-box' };
 const CRD = { background:'rgba(255,255,255,0.06)', backdropFilter:'blur(14px)', borderRadius:20, border:'1px solid rgba(255,255,255,0.11)', padding:'24px 22px', width:'100%', maxWidth:390 };
@@ -77,7 +77,7 @@ const stCol  = e => e==='libre'?'#22c55e':e==='ocupado'?'#e11d48':'#f59e0b';
 const stLbl  = e => e==='libre'?'Libre':e==='ocupado'?'Ocupado':'Reservado';
 const FIVE_MIN = 5 * 60 * 1000;
 
-// ── Header fijo ────────────────────────────────────────────────────────────
+// ââ Header fijo ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function Header({ subtitle }) {
   return (
     <div style={HDR}>
@@ -88,7 +88,7 @@ function Header({ subtitle }) {
   );
 }
 
-// ── Pantalla de éxito ──────────────────────────────────────────────────────
+// ââ Pantalla de Ã©xito ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function SuccessScreen({ icon, color, title, sub, children }) {
   return (
     <div style={{...CRD, textAlign:'center'}}>
@@ -100,7 +100,7 @@ function SuccessScreen({ icon, color, title, sub, children }) {
   );
 }
 
-// ── Auto-redirect success screen ───────────────────────────────────────────
+// ââ Auto-redirect success screen âââââââââââââââââââââââââââââââââââââââââââ
 function SuccessRedirect({ icon, color, title, sub, seconds, dest, children }) {
   const [left, setLeft] = useState(seconds);
   useEffect(() => {
@@ -119,18 +119,18 @@ function SuccessRedirect({ icon, color, title, sub, seconds, dest, children }) {
         <div style={{fontSize:13,color:'rgba(255,255,255,0.55)',marginBottom:16,lineHeight:1.5}}>{sub}</div>
         {children}
         <div style={{fontSize:12,color:'rgba(255,255,255,0.3)',marginTop:8}}>
-          Volviendo al inicio en <strong style={{color:'rgba(255,255,255,0.6)'}}>{left}s</strong>…
+          Volviendo al inicio en <strong style={{color:'rgba(255,255,255,0.6)'}}>{left}s</strong>â¦
         </div>
       </div>
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 export default function CubiQRView({ cubiId }) {
   const isGeneral = !cubiId;
 
-  // ── state ────────────────────────────────────────────────────────────────
+  // ââ state ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
   const [cubiculos,   setCubiculos]   = useState([]);
   const [screen,      setScreen]      = useState(isGeneral ? 'login' : 'loading');
   const [loading,     setLoading]     = useState(false);
@@ -144,7 +144,7 @@ export default function CubiQRView({ cubiId }) {
   const [duracion,    setDuracion]    = useState(2);
   const [pending,     setPending]     = useState(null); // { cubiculo, expiresAt }
 
-  // Flujo específico
+  // Flujo especÃ­fico
   const [cubiculo,    setCubiculo]    = useState(null);
   const [checkExpe,   setCheckExpe]   = useState('');
 
@@ -152,7 +152,7 @@ export default function CubiQRView({ cubiId }) {
   const expiresAt = pending?.expiresAt ?? 0;
   const msLeft    = useMs(expiresAt);
 
-  // ── carga y suscripción ──────────────────────────────────────────────────
+  // ââ carga y suscripciÃ³n ââââââââââââââââââââââââââââââââââââââââââââââââââ
   useEffect(() => {
     dbLoadCubiculos().then(list => {
       setCubiculos(list);
@@ -190,7 +190,7 @@ export default function CubiQRView({ cubiId }) {
       .then(() => setScreen('timeout'));
   }, [pending, msLeft]);
 
-  // ── handlers: flujo general ──────────────────────────────────────────────
+  // ââ handlers: flujo general ââââââââââââââââââââââââââââââââââââââââââââââ
   async function handleLogin() {
     if (!matricula.trim()) return;
     setLoading(true); setErrorMsg('');
@@ -229,16 +229,11 @@ export default function CubiQRView({ cubiId }) {
     setLoading(false);
   }
 
-  // ── handlers: flujo específico ───────────────────────────────────────────
+  // ââ handlers: flujo especÃ­fico âââââââââââââââââââââââââââââââââââââââââââ
   async function handleCheckin() {
-    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu PIN.'); return; }
+    // PIN deshabilitado temporalmente para pruebas
     setLoading(true); setErrorMsg('');
     const res = cubiculo.reserva;
-    const alumno = await dbFindAlumno(res?.matricula);
-    if (!alumno || String(alumno.pin) !== checkExpe.trim()) {
-      setErrorMsg('PIN incorrecto. Intenta de nuevo.');
-      setLoading(false); return;
-    }
     try {
       const inicio = new Date(serverNow());
       await dbSaveCubiculo({ ...cubiculo, estado:'ocupado', reserva:{ ...res, inicio, pendingCheckin:false } });
@@ -251,14 +246,9 @@ export default function CubiQRView({ cubiId }) {
   }
 
   async function handleCheckout() {
-    if (!checkExpe.trim()) { setErrorMsg('Ingresa tu PIN para confirmar.'); return; }
+    // PIN deshabilitado temporalmente para pruebas
     setLoading(true); setErrorMsg('');
     const res = cubiculo.reserva;
-    const alumno = await dbFindAlumno(res?.matricula);
-    if (!alumno || String(alumno.pin) !== checkExpe.trim()) {
-      setErrorMsg('PIN incorrecto. Solo quien hizo la reserva puede hacer Check-Out.');
-      setLoading(false); return;
-    }
     try {
       const finNow = new Date(serverNow());
       const inicioDate = res.inicio instanceof Date ? res.inicio : (res.inicio ? new Date(res.inicio) : null);
@@ -280,7 +270,7 @@ export default function CubiQRView({ cubiId }) {
     }
   }
 
-  // ── renders ───────────────────────────────────────────────────────────────
+  // ââ renders âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
   if (screen === 'loading') return (
     <div style={P}>
       <div style={{width:40,height:40,border:'3px solid rgba(255,255,255,0.12)',borderTopColor:'#0d9488',borderRadius:'50%',animation:'spin 1s linear infinite'}}/>
@@ -288,20 +278,20 @@ export default function CubiQRView({ cubiId }) {
     </div>
   );
 
-  // ── FLUJO GENERAL ─────────────────────────────────────────────────────────
+  // ââ FLUJO GENERAL âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
   if (screen === 'login') return (
     <div style={P}>
-      <Header subtitle="Reserva un cubículo de estudio"/>
+      <Header subtitle="Reserva un cubÃ­culo de estudio"/>
       <div style={CRD}>
-        <label style={LBL}>Número de matrícula</label>
+        <label style={LBL}>NÃºmero de matrÃ­cula</label>
         <input style={INP} placeholder="Ej. 190123" value={matricula}
           onChange={e=>{setMatricula(e.target.value);setErrorMsg('');}}
           onKeyDown={e=>e.key==='Enter'&&!loading&&handleLogin()}/>
         {errorMsg && <div style={ERR}>{errorMsg}</div>}
         <div style={{marginTop:16}}/>
         <button style={BTN('#0d9488', loading || !matricula.trim())} onClick={handleLogin} disabled={loading||!matricula.trim()}>
-          {loading ? 'Buscando…' : 'Continuar →'}
+          {loading ? 'Buscandoâ¦' : 'Continuar â'}
         </button>
       </div>
     </div>
@@ -312,7 +302,7 @@ export default function CubiQRView({ cubiId }) {
       <Header subtitle="Crear cuenta"/>
       <div style={CRD}>
         <div style={{background:'rgba(13,148,136,0.12)',border:'1px solid rgba(13,148,136,0.3)',borderRadius:12,padding:'10px 14px',marginBottom:18,fontSize:12,color:'rgba(255,255,255,0.7)'}}>
-          No encontramos la matrícula <strong style={{color:'#5eead4',fontFamily:"'Space Mono',monospace"}}>{matricula}</strong>. Regístrate para continuar.
+          No encontramos la matrÃ­cula <strong style={{color:'#5eead4',fontFamily:"'Space Mono',monospace"}}>{matricula}</strong>. RegÃ­strate para continuar.
         </div>
         <label style={LBL}>Nombre completo</label>
         <input style={{...INP,marginBottom:14,fontFamily:'inherit'}} placeholder="Tu nombre" value={draft.nombre}
@@ -324,10 +314,10 @@ export default function CubiQRView({ cubiId }) {
         <div style={{marginTop:16}}/>
         <button style={BTN('#0d9488', loading||!draft.nombre.trim()||!draft.carrera.trim())} onClick={handleRegister}
           disabled={loading||!draft.nombre.trim()||!draft.carrera.trim()}>
-          {loading ? 'Registrando…' : 'Crear cuenta y continuar →'}
+          {loading ? 'Registrandoâ¦' : 'Crear cuenta y continuar â'}
         </button>
         <div style={{marginTop:10}}/>
-        <button style={SEC} onClick={()=>{setMatricula('');setScreen('login');}}>← Cambiar matrícula</button>
+        <button style={SEC} onClick={()=>{setMatricula('');setScreen('login');}}>â Cambiar matrÃ­cula</button>
       </div>
     </div>
   );
@@ -341,7 +331,7 @@ export default function CubiQRView({ cubiId }) {
         </div>
         <div style={DIV}/>
 
-        <label style={LBL}>¿Cuántas personas?</label>
+        <label style={LBL}>Â¿CuÃ¡ntas personas?</label>
         <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6,marginBottom:20}}>
           {[1,2,3,4,5,6].map(n=>(
             <button key={n} onClick={()=>setPersonas(n)} style={{
@@ -354,7 +344,7 @@ export default function CubiQRView({ cubiId }) {
           ))}
         </div>
 
-        <label style={LBL}>Duración de la sesión</label>
+        <label style={LBL}>DuraciÃ³n de la sesiÃ³n</label>
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:8}}>
           {[1,2,3].map(d=>(
             <button key={d} onClick={()=>setDuracion(d)} style={{
@@ -367,10 +357,10 @@ export default function CubiQRView({ cubiId }) {
           ))}
         </div>
         <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginBottom:20,textAlign:'center'}}>
-          Al cumplir el tiempo el cubículo se libera automáticamente
+          Al cumplir el tiempo el cubÃ­culo se libera automÃ¡ticamente
         </div>
 
-        <button style={BTN()} onClick={()=>setScreen('select')}>Ver cubículos disponibles →</button>
+        <button style={BTN()} onClick={()=>setScreen('select')}>Ver cubÃ­culos disponibles â</button>
       </div>
     </div>
   );
@@ -379,11 +369,11 @@ export default function CubiQRView({ cubiId }) {
     const libres = cubiculos.filter(c => c.estado === 'libre');
     return (
       <div style={P}>
-        <Header subtitle="Elige un cubículo"/>
+        <Header subtitle="Elige un cubÃ­culo"/>
         <div style={CRD}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
             <div style={{fontSize:12,color:'rgba(255,255,255,0.5)'}}><strong style={{color:'#22c55e'}}>{libres.length}</strong> disponibles de {cubiculos.length}</div>
-            <div style={{fontSize:11,color:'rgba(255,255,255,0.35)'}}>{personas} pers. · {duracion}h</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.35)'}}>{personas} pers. Â· {duracion}h</div>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
             {cubiculos.map(c=>{
@@ -409,11 +399,11 @@ export default function CubiQRView({ cubiId }) {
           </div>
           {libres.length === 0 && (
             <div style={{textAlign:'center',padding:'20px 0',color:'rgba(255,255,255,0.4)',fontSize:13}}>
-              No hay cubículos disponibles en este momento.<br/>
-              <span style={{fontSize:11}}>Intenta más tarde.</span>
+              No hay cubÃ­culos disponibles en este momento.<br/>
+              <span style={{fontSize:11}}>Intenta mÃ¡s tarde.</span>
             </div>
           )}
-          <button style={SEC} onClick={()=>setScreen('personas')}>← Atrás</button>
+          <button style={SEC} onClick={()=>setScreen('personas')}>â AtrÃ¡s</button>
         </div>
       </div>
     );
@@ -425,7 +415,7 @@ export default function CubiQRView({ cubiId }) {
     const urgent = msLeft < 60000;
     return (
       <div style={P}>
-        <Header subtitle="Dirígete al cubículo"/>
+        <Header subtitle="DirÃ­gete al cubÃ­culo"/>
         <div style={{...CRD, textAlign:'center'}}>
           <CubiIcon size={52} color="#0d9488"/>
           <div style={{fontSize:22,fontWeight:800,marginTop:12}}>{c?.nombre}</div>
@@ -442,13 +432,13 @@ export default function CubiQRView({ cubiId }) {
           </div>
 
           <div style={{background:'rgba(255,255,255,0.05)',borderRadius:12,padding:'14px',marginBottom:20,fontSize:12,color:'rgba(255,255,255,0.6)',lineHeight:1.6}}>
-            Ve al cubículo <strong style={{color:'#fff'}}>{c?.nombre}</strong> y escanea el código QR pegado en él para confirmar tu Check-In.
+            Ve al cubÃ­culo <strong style={{color:'#fff'}}>{c?.nombre}</strong> y escanea el cÃ³digo QR pegado en Ã©l para confirmar tu Check-In.
           </div>
 
           <div style={{display:'flex',flexDirection:'column',gap:8,fontSize:11,color:'rgba(255,255,255,0.4)',textAlign:'left'}}>
-            <div>👤 <strong style={{color:'rgba(255,255,255,0.7)'}}>{alumno?.nombre}</strong></div>
-            <div>🏫 {alumno?.carrera}</div>
-            <div>👥 {personas} persona{personas>1?'s':''} · ⏱ {duracion}h</div>
+            <div>ð¤ <strong style={{color:'rgba(255,255,255,0.7)'}}>{alumno?.nombre}</strong></div>
+            <div>ð« {alumno?.carrera}</div>
+            <div>ð¥ {personas} persona{personas>1?'s':''} Â· â± {duracion}h</div>
           </div>
         </div>
       </div>
@@ -458,8 +448,8 @@ export default function CubiQRView({ cubiId }) {
   if (screen === 'timeout') return (
     <div style={P}>
       <Header/>
-      <SuccessScreen icon="⏰" color="#f59e0b" title="Tiempo expirado"
-        sub="No se realizó el Check-In en 5 minutos. El cubículo quedó liberado.">
+      <SuccessScreen icon="â°" color="#f59e0b" title="Tiempo expirado"
+        sub="No se realizÃ³ el Check-In en 5 minutos. El cubÃ­culo quedÃ³ liberado.">
         <button style={BTN()} onClick={()=>{setScreen('login');setMatricula('');setAlumno(null);setPending(null);}}>
           Intentar de nuevo
         </button>
@@ -467,15 +457,15 @@ export default function CubiQRView({ cubiId }) {
     </div>
   );
 
-  // ── FLUJO ESPECÍFICO POR QR ───────────────────────────────────────────────
+  // ââ FLUJO ESPECÃFICO POR QR âââââââââââââââââââââââââââââââââââââââââââââââ
 
   if (screen === 'not-found') return (
     <div style={P}>
       <Header/>
       <div style={{...CRD, textAlign:'center'}}>
-        <div style={{fontSize:40,marginBottom:12}}>🔍</div>
-        <div style={{fontSize:17,fontWeight:700,marginBottom:8}}>Cubículo no encontrado</div>
-        <div style={{fontSize:12,color:'rgba(255,255,255,0.45)'}}>El código QR puede estar desactualizado. Comunícate con el personal.</div>
+        <div style={{fontSize:40,marginBottom:12}}>ð</div>
+        <div style={{fontSize:17,fontWeight:700,marginBottom:8}}>CubÃ­culo no encontrado</div>
+        <div style={{fontSize:12,color:'rgba(255,255,255,0.45)'}}>El cÃ³digo QR puede estar desactualizado. ComunÃ­cate con el personal.</div>
       </div>
     </div>
   );
@@ -485,13 +475,13 @@ export default function CubiQRView({ cubiId }) {
       <Header subtitle={cubiculo?.nombre}/>
       <div style={{...CRD, textAlign:'center'}}>
         <div style={{display:'inline-flex',alignItems:'center',gap:7,padding:'5px 14px',borderRadius:20,background:'rgba(34,197,94,0.15)',border:'1px solid rgba(34,197,94,0.4)',fontSize:12,fontWeight:700,color:'#22c55e',marginBottom:20}}>
-          <span>●</span> Disponible
+          <span>â</span> Disponible
         </div>
         <div style={{fontSize:13,color:'rgba(255,255,255,0.5)',lineHeight:1.7,marginBottom:20}}>
-          Este cubículo está libre.<br/>
+          Este cubÃ­culo estÃ¡ libre.<br/>
           Acude al Panel de Servicios de la biblioteca para hacer una reserva.
         </div>
-        <button style={BTN()} onClick={()=>window.location.href='/kiosco'}>Ir al Panel de Servicios →</button>
+        <button style={BTN()} onClick={()=>window.location.href='/kiosco'}>Ir al Panel de Servicios â</button>
       </div>
     </div>
   );
@@ -513,19 +503,14 @@ export default function CubiQRView({ cubiId }) {
 
           <div style={{background:'rgba(255,255,255,0.05)',borderRadius:12,padding:'12px 14px',marginBottom:16,fontSize:12,color:'rgba(255,255,255,0.6)',lineHeight:1.7}}>
             Reservado para <strong style={{color:'#fff'}}>{res?.nombre}</strong><br/>
-            {res?.personas} persona{res?.personas>1?'s':''} · {res?.duracion}h · {res?.carrera}
+            {res?.personas} persona{res?.personas>1?'s':''} Â· {res?.duracion}h Â· {res?.carrera}
           </div>
           <div style={DIV}/>
 
-          <label style={LBL}>Confirma con tu PIN</label>
-          <input style={INP} placeholder="••••" type="password" inputMode="numeric"
-            value={checkExpe} onChange={e=>{setCheckExpe(e.target.value);setErrorMsg('');}}
-            onKeyDown={e=>e.key==='Enter'&&!loading&&handleCheckin()}/>
           {errorMsg && <div style={ERR}>{errorMsg}</div>}
           <div style={{marginTop:16}}/>
-          <button style={BTN('#22c55e', loading||!checkExpe.trim())} onClick={handleCheckin}
-            disabled={loading||!checkExpe.trim()}>
-            {loading?'Verificando…':'✓ Confirmar Check-In'}
+          <button style={BTN('#22c55e', loading)} onClick={handleCheckin} disabled={loading}>
+            {loading?'Verificandoâ¦':'â Confirmar Check-In'}
           </button>
         </div>
       </div>
@@ -551,22 +536,17 @@ export default function CubiQRView({ cubiId }) {
 
           {res && (
             <div style={{background:'rgba(255,255,255,0.05)',borderRadius:12,padding:'12px 14px',marginBottom:16,fontSize:12,lineHeight:1.7}}>
-              <div style={{color:'rgba(255,255,255,0.6)'}}>Matrícula: <strong style={{color:'#fff',fontFamily:"'Space Mono',monospace"}}>{res.matricula}</strong> · <span style={{color:'rgba(255,255,255,0.5)'}}>{res.carrera}</span></div>
+              <div style={{color:'rgba(255,255,255,0.6)'}}>MatrÃ­cula: <strong style={{color:'#fff',fontFamily:"'Space Mono',monospace"}}>{res.matricula}</strong> Â· <span style={{color:'rgba(255,255,255,0.5)'}}>{res.carrera}</span></div>
               {finExp && <div style={{color:'rgba(255,255,255,0.45)'}}>Reservado hasta <strong style={{color:'#5eead4'}}>{fmtHM(finExp)}</strong> (auto-libera al vencer)</div>}
               <div style={{color:'rgba(255,255,255,0.35)',fontSize:11,marginTop:4}}>Check-Out voluntario libera el espacio antes de tiempo</div>
             </div>
           )}
           <div style={DIV}/>
 
-          <label style={LBL}>Confirma con tu PIN</label>
-          <input style={INP} placeholder="••••" type="password" inputMode="numeric"
-            value={checkExpe} onChange={e=>{setCheckExpe(e.target.value);setErrorMsg('');}}
-            onKeyDown={e=>e.key==='Enter'&&!loading&&handleCheckout()}/>
           {errorMsg && <div style={ERR}>{errorMsg}</div>}
           <div style={{marginTop:16}}/>
-          <button style={BTN('#e11d48',loading||!checkExpe.trim())} onClick={handleCheckout}
-            disabled={loading||!checkExpe.trim()}>
-            {loading?'Verificando…':'↑ Confirmar Check-Out'}
+          <button style={BTN('#e11d48', loading)} onClick={handleCheckout} disabled={loading}>
+            {loading?'Verificandoâ¦':'â Confirmar Check-Out'}
           </button>
           <div style={{marginTop:10}}/>
           <button style={SEC} onClick={()=>window.history.back()}>Cancelar</button>
@@ -577,12 +557,12 @@ export default function CubiQRView({ cubiId }) {
 
   if (screen === 'success-in') return (
     <SuccessRedirect
-      icon="✓" color="#22c55e" title="¡Check-In exitoso!"
-      sub={`Cubículo ${cubiculo?.nombre} registrado. El espacio se liberará automáticamente al vencer el tiempo.`}
+      icon="â" color="#22c55e" title="Â¡Check-In exitoso!"
+      sub={`CubÃ­culo ${cubiculo?.nombre} registrado. El espacio se liberarÃ¡ automÃ¡ticamente al vencer el tiempo.`}
       seconds={5} dest="/kiosco"
     >
       <div style={{background:'rgba(255,255,255,0.05)',borderRadius:12,padding:'12px 14px',fontSize:12,color:'rgba(255,255,255,0.5)',textAlign:'left',lineHeight:1.6,marginBottom:16}}>
-        Al terminar antes del tiempo: escanea nuevamente el QR de este cubículo para hacer <strong style={{color:'#fff'}}>Check-Out</strong> voluntario y liberar el espacio.
+        Al terminar antes del tiempo: escanea nuevamente el QR de este cubÃ­culo para hacer <strong style={{color:'#fff'}}>Check-Out</strong> voluntario y liberar el espacio.
       </div>
     </SuccessRedirect>
   );
@@ -590,10 +570,10 @@ export default function CubiQRView({ cubiId }) {
   if (screen === 'success-out') return (
     <div style={P}>
       <Header/>
-      <SuccessScreen icon="✓" color="#0d9488" title="¡Check-Out exitoso!"
-        sub={`Cubículo ${cubiculo?.nombre} liberado. Gracias por registrar tu salida.`}>
+      <SuccessScreen icon="â" color="#0d9488" title="Â¡Check-Out exitoso!"
+        sub={`CubÃ­culo ${cubiculo?.nombre} liberado. Gracias por registrar tu salida.`}>
         <div style={{display:'inline-flex',alignItems:'center',gap:7,padding:'6px 16px',borderRadius:20,background:'rgba(34,197,94,0.15)',border:'1px solid rgba(34,197,94,0.4)',fontSize:12,fontWeight:700,color:'#22c55e'}}>
-          <span>●</span> Cubículo libre
+          <span>â</span> CubÃ­culo libre
         </div>
       </SuccessScreen>
     </div>
