@@ -143,7 +143,7 @@ export function generateExcel({ circulacion, svcMes, svcCarrera, comments, impac
   // ── Descargar ──
   const campusSlug = campus === "todos" ? "todos" : campus;
   const periodoSlug = periodos[0] ?? "periodo";
-  XLSX.writeFile(wb, `biblioanalytics_${campusSlug}_${periodoSlug}.xlsx`);
+  XLSX.writeFile(wb, `biblioanalytics_${campusSlug}_${periodoSlug}.xlsx`, { bookType: 'xlsx', compression: true });
 }
 
 // ─── PDF ────────────────────────────────────────────────────────────────────
@@ -184,12 +184,12 @@ function sectionBand(doc, y, color, title, subtitle) {
   setFill(doc, color);
   doc.rect(0, y, 210, 14, "F");
   doc.setFontSize(13);
-  doc.setFont(undefined, "bold");
+  doc.setFont('helvetica', "bold");
   setTxt(doc, C.white);
   doc.text(title, 14, y + 9.5);
   if (subtitle) {
     doc.setFontSize(8);
-    doc.setFont(undefined, "normal");
+    doc.setFont('helvetica', "normal");
     doc.text(subtitle, 210 - 14, y + 9.5, { align: "right" });
   }
 }
@@ -200,7 +200,7 @@ function addNarrativeBox(doc, y, text, findings, accentColor) {
 
   // Fijar font ANTES de splitTextToSize para que las medidas coincidan con el render
   doc.setFontSize(9);
-  doc.setFont(undefined, "normal");
+  doc.setFont('helvetica', "normal");
 
   const lines = doc.splitTextToSize(text, W - 8);
   const linesH = lines.length * LH + 4;
@@ -220,11 +220,11 @@ function addNarrativeBox(doc, y, text, findings, accentColor) {
   if (findings) {
     let fy = y + linesH + 8;
     doc.setFontSize(9);
-    doc.setFont(undefined, "bold");
+    doc.setFont('helvetica', "bold");
     setTxt(doc, accentColor);
     doc.text("Hallazgos clave:", X + 4, fy);
     fy += 6;
-    doc.setFont(undefined, "normal");
+    doc.setFont('helvetica', "normal");
     setTxt(doc, C.grayD);
     findings.forEach((f) => {
       doc.text(`• ${f}`, X + 6, fy);
@@ -240,11 +240,11 @@ function kpiBox(doc, x, y, w, h, value, label, color) {
   doc.setLineWidth(0.8);
   doc.roundedRect(x, y, w, h, 3, 3, "FD");
   doc.setFontSize(18);
-  doc.setFont(undefined, "bold");
+  doc.setFont('helvetica', "bold");
   setTxt(doc, color);
   doc.text(String(value), x + w / 2, y + h / 2 - 1, { align: "center" });
   doc.setFontSize(8);
-  doc.setFont(undefined, "normal");
+  doc.setFont('helvetica', "normal");
   setTxt(doc, C.grayD);
   doc.text(label, x + w / 2, y + h / 2 + 7, { align: "center" });
 }
@@ -254,7 +254,8 @@ export async function generatePDF(chartImages, data, filters, meta) {
   const { campus, periodos, servicios, secciones } = filters;
   const { institution, predModel, predHorizon } = meta;
 
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", putOnlyUsedFonts: true });
+  doc.setFont('helvetica', 'normal');
   const W = 210, H = 297;
 
   // ── Pre-calculations ──
@@ -287,13 +288,13 @@ export async function generatePDF(chartImages, data, filters, meta) {
   setFill(doc, C.teal);
   doc.rect(0, 0, W, 22, "F");
   doc.setFontSize(9);
-  doc.setFont(undefined, "bold");
+  doc.setFont('helvetica', "bold");
   setTxt(doc, C.white);
   doc.text("REPORTE DE ANALÍTICA BIBLIOTECARIA", W / 2, 13, { align: "center" });
 
   // Título principal
   doc.setFontSize(32);
-  doc.setFont(undefined, "bold");
+  doc.setFont('helvetica', "bold");
   setTxt(doc, C.white);
   doc.text("BiblioAnalytics 360", W / 2, 80, { align: "center" });
 
@@ -304,7 +305,7 @@ export async function generatePDF(chartImages, data, filters, meta) {
 
   // Institución
   doc.setFontSize(16);
-  doc.setFont(undefined, "normal");
+  doc.setFont('helvetica', "normal");
   setTxt(doc, C.white);
   doc.text(institution, W / 2, 100, { align: "center" });
 
@@ -318,10 +319,10 @@ export async function generatePDF(chartImages, data, filters, meta) {
   let my = 125;
   metaItems.forEach(({ label, value }) => {
     doc.setFontSize(10);
-    doc.setFont(undefined, "bold");
+    doc.setFont('helvetica', "bold");
     setTxt(doc, C.gray);
     doc.text(label, W / 2 - 5, my, { align: "right" });
-    doc.setFont(undefined, "normal");
+    doc.setFont('helvetica', "normal");
     setTxt(doc, C.tealL);
     doc.text(value, W / 2 + 5, my);
     my += 10;
@@ -366,7 +367,7 @@ export async function generatePDF(chartImages, data, filters, meta) {
   const introText = `Este reporte presenta un análisis integral del desempeño de los servicios bibliotecarios de ${institution} correspondiente al periodo ${periodoStr}, para ${campusLabel(campus).toLowerCase()}. Durante el periodo analizado se registraron ${totalPrest.toLocaleString()} préstamos totales, con un promedio mensual de ${avgPrest.toLocaleString()} préstamos. El análisis abarca circulación de colecciones, estadísticas de servicios, modelado predictivo, análisis de sentimiento y correlación con impacto académico.`;
   const introLines = doc.splitTextToSize(introText, 182);
   doc.setFontSize(9.5);
-  doc.setFont(undefined, "normal");
+  doc.setFont('helvetica', "normal");
   setTxt(doc, C.grayD);
   doc.text(introLines, 14, 24);
 
@@ -393,10 +394,10 @@ export async function generatePDF(chartImages, data, filters, meta) {
   doc.setLineWidth(0.4);
   doc.roundedRect(14, fy2, 182, 18, 3, 3, "FD");
   doc.setFontSize(8);
-  doc.setFont(undefined, "bold");
+  doc.setFont('helvetica', "bold");
   setTxt(doc, C.grayD);
   doc.text("Filtros aplicados:", 18, fy2 + 6.5);
-  doc.setFont(undefined, "normal");
+  doc.setFont('helvetica', "normal");
   setTxt(doc, C.teal);
   doc.text(`Periodo: ${periodoStr}  ·  Campus: ${campusLabel(campus)}  ·  Servicios: ${servicios.map((s) => servicioLabel[s] ?? s).join(", ")}`, 18, fy2 + 13);
 
@@ -533,7 +534,7 @@ export async function generatePDF(chartImages, data, filters, meta) {
 
   // Tabla Circulación
   doc.setFontSize(9);
-  doc.setFont(undefined, "bold");
+  doc.setFont('helvetica', "bold");
   setTxt(doc, C.grayD);
   doc.text("Circulación de Colecciones", 14, tableY + 6);
   tableY += 8;
@@ -542,8 +543,8 @@ export async function generatePDF(chartImages, data, filters, meta) {
     head: [["Mes", "Préstamos", "Devoluciones", "Predicción ML"]],
     body: circulacion.map((c) => [c.mes, c.prestamos ?? "—", c.devoluciones ?? "—", c.prediccion ?? "—"]),
     theme: "striped",
-    headStyles: { fillColor: C.teal, textColor: C.white, fontStyle: "bold", fontSize: 8 },
-    bodyStyles: { fontSize: 8, textColor: C.grayD },
+    headStyles: { fillColor: C.teal, textColor: C.white, fontStyle: "bold", fontSize: 8, font: 'helvetica' },
+    bodyStyles: { fontSize: 8, textColor: C.grayD, font: 'helvetica' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     margin: { left: 14, right: 14 },
     tableWidth: 182,
@@ -553,7 +554,7 @@ export async function generatePDF(chartImages, data, filters, meta) {
   // Tabla Impacto
   if (tableY < H - 60) {
     doc.setFontSize(9);
-    doc.setFont(undefined, "bold");
+    doc.setFont('helvetica', "bold");
     setTxt(doc, C.grayD);
     doc.text("Impacto Académico por Rango de Préstamos", 14, tableY + 6);
     tableY += 8;
@@ -562,8 +563,8 @@ export async function generatePDF(chartImages, data, filters, meta) {
       head: [["Rango de Préstamos", "Promedio Académico", "N Estudiantes"]],
       body: impactoBase.map((r) => [r.rango, r.promedio.toFixed(1), r.n.toLocaleString()]),
       theme: "striped",
-      headStyles: { fillColor: C.purple, textColor: C.white, fontStyle: "bold", fontSize: 8 },
-      bodyStyles: { fontSize: 8, textColor: C.grayD },
+      headStyles: { fillColor: C.purple, textColor: C.white, fontStyle: "bold", fontSize: 8, font: 'helvetica' },
+      bodyStyles: { fontSize: 8, textColor: C.grayD, font: 'helvetica' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       margin: { left: 14, right: 14 },
       tableWidth: 182,
@@ -574,7 +575,7 @@ export async function generatePDF(chartImages, data, filters, meta) {
   // Tabla Sentimiento (primeros 15)
   if (tableY < H - 50) {
     doc.setFontSize(9);
-    doc.setFont(undefined, "bold");
+    doc.setFont('helvetica', "bold");
     setTxt(doc, C.grayD);
     doc.text("Comentarios Analizados (muestra)", 14, tableY + 6);
     tableY += 8;
@@ -585,11 +586,11 @@ export async function generatePDF(chartImages, data, filters, meta) {
         c.sentimiento,
         `${Math.round(c.score * 100)}%`,
         c.fuente,
-        c.texto.slice(0, 55) + (c.texto.length > 55 ? "…" : ""),
+        c.texto.slice(0, 55) + (c.texto.length > 55 ? "..." : ""),
       ]),
       theme: "striped",
-      headStyles: { fillColor: C.green, textColor: C.white, fontStyle: "bold", fontSize: 7.5 },
-      bodyStyles: { fontSize: 7.5, textColor: C.grayD },
+      headStyles: { fillColor: C.green, textColor: C.white, fontStyle: "bold", fontSize: 7.5, font: 'helvetica' },
+      bodyStyles: { fontSize: 7.5, textColor: C.grayD, font: 'helvetica' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: { 3: { cellWidth: 80 } },
       margin: { left: 14, right: 14 },
@@ -718,7 +719,7 @@ export function generateServiceExcel(historial, serviceType, periodLabel, meta) 
   autoWidth(wsPiso, pisoData.length ? pisoData : [{ [pisoLabel]: "", Reservas: "" }]);
   XLSX.utils.book_append_sheet(wb, wsPiso, `Por ${pisoLabel}`);
 
-  XLSX.writeFile(wb, `reporte_${serviceType}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  XLSX.writeFile(wb, `reporte_${serviceType}_${new Date().toISOString().slice(0, 10)}.xlsx`, { bookType: 'xlsx', compression: true });
 }
 
 // ─── SERVICE-SPECIFIC PDF ────────────────────────────────────────────────────
@@ -728,7 +729,8 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
   const serviceName  = serviceType === "cubiculos" ? "Cubículos" : "Computadoras";
   const serviceColor = serviceType === "cubiculos" ? C.teal : C.blue;
 
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", putOnlyUsedFonts: true });
+  doc.setFont('helvetica', 'normal');
   const W = 210, H = 297;
 
   const groupBy = (arr, keyFn) =>
@@ -761,12 +763,12 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
   setFill(doc, serviceColor);
   doc.rect(0, 0, W, 22, "F");
   doc.setFontSize(9);
-  doc.setFont(undefined, "bold");
+  doc.setFont('helvetica', "bold");
   setTxt(doc, C.white);
   doc.text(`REPORTE DE ${serviceName.toUpperCase()}`, W / 2, 13, { align: "center" });
 
   doc.setFontSize(32);
-  doc.setFont(undefined, "bold");
+  doc.setFont('helvetica', "bold");
   setTxt(doc, C.white);
   doc.text("BiblioAnalytics 360", W / 2, 80, { align: "center" });
 
@@ -775,7 +777,7 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
   doc.line(50, 88, W - 50, 88);
 
   doc.setFontSize(16);
-  doc.setFont(undefined, "normal");
+  doc.setFont('helvetica', "normal");
   setTxt(doc, C.white);
   doc.text(institution, W / 2, 100, { align: "center" });
 
@@ -788,10 +790,10 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
   let my = 125;
   portadaMeta.forEach(({ label, value }) => {
     doc.setFontSize(10);
-    doc.setFont(undefined, "bold");
+    doc.setFont('helvetica', "bold");
     setTxt(doc, C.gray);
     doc.text(label, W / 2 - 5, my, { align: "right" });
-    doc.setFont(undefined, "normal");
+    doc.setFont('helvetica', "normal");
     setTxt(doc, C.tealL);
     doc.text(value, W / 2 + 5, my);
     my += 10;
@@ -812,7 +814,7 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
   const introText = `Este reporte presenta el análisis operativo del servicio de ${serviceName} de ${institution} para el periodo ${periodLabel}. Se registraron ${total} reservas en total, con una duración promedio de ${avgDur} horas por sesión. La carrera con mayor demanda fue ${topCarrera[0]} con ${topCarrera[1]} reservas, y el turno de mayor actividad fue ${topTurno[0]} con ${topTurno[1]} usos. Se identificaron ${uniqueAlum} estudiantes únicos que utilizaron el servicio durante el periodo analizado.`;
   const introLines = doc.splitTextToSize(introText, 182);
   doc.setFontSize(9.5);
-  doc.setFont(undefined, "normal");
+  doc.setFont('helvetica', "normal");
   setTxt(doc, C.grayD);
   doc.text(introLines, 14, 24);
 
@@ -874,7 +876,7 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
 
   // Por Carrera
   doc.setFontSize(9);
-  doc.setFont(undefined, "bold");
+  doc.setFont('helvetica', "bold");
   setTxt(doc, C.grayD);
   doc.text("Reservas por Carrera", 14, tableY + 6);
   tableY += 8;
@@ -885,8 +887,8 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
       .sort((a, b) => b[1] - a[1])
       .map(([car, n]) => [car, n, pct(n)]),
     theme: "striped",
-    headStyles: { fillColor: serviceColor, textColor: C.white, fontStyle: "bold", fontSize: 8 },
-    bodyStyles: { fontSize: 8, textColor: C.grayD },
+    headStyles: { fillColor: serviceColor, textColor: C.white, fontStyle: "bold", fontSize: 8, font: 'helvetica' },
+    bodyStyles: { fontSize: 8, textColor: C.grayD, font: 'helvetica' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     margin: { left: 14, right: 14 },
     tableWidth: 182,
@@ -896,7 +898,7 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
   // Por Turno
   if (tableY < H - 50) {
     doc.setFontSize(9);
-    doc.setFont(undefined, "bold");
+    doc.setFont('helvetica', "bold");
     setTxt(doc, C.grayD);
     doc.text("Reservas por Turno", 14, tableY + 6);
     tableY += 8;
@@ -907,8 +909,8 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
         .sort((a, b) => b[1] - a[1])
         .map(([t, n]) => [t, n, total ? `${Math.round(n / total * 100)}%` : "0%"]),
       theme: "striped",
-      headStyles: { fillColor: C.amber, textColor: C.white, fontStyle: "bold", fontSize: 8 },
-      bodyStyles: { fontSize: 8, textColor: C.grayD },
+      headStyles: { fillColor: C.amber, textColor: C.white, fontStyle: "bold", fontSize: 8, font: 'helvetica' },
+      bodyStyles: { fontSize: 8, textColor: C.grayD, font: 'helvetica' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       margin: { left: 14, right: 14 },
       tableWidth: 182,
@@ -919,7 +921,7 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
   // Detalle de reservas (todos, con nueva página si es necesario)
   if (tableY < H - 40) {
     doc.setFontSize(9);
-    doc.setFont(undefined, "bold");
+    doc.setFont('helvetica', "bold");
     setTxt(doc, C.grayD);
     const label = `Detalle de Reservas (${historial.length} registros)`;
     doc.text(label, 14, tableY + 6);
@@ -944,8 +946,8 @@ export async function generateServicePDF(chartImage, historial, serviceType, per
         ];
       }),
       theme: "striped",
-      headStyles: { fillColor: serviceColor, textColor: C.white, fontStyle: "bold", fontSize: 7 },
-      bodyStyles: { fontSize: 7, textColor: C.grayD },
+      headStyles: { fillColor: serviceColor, textColor: C.white, fontStyle: "bold", fontSize: 7, font: 'helvetica' },
+      bodyStyles: { fontSize: 7, textColor: C.grayD, font: 'helvetica' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 22 }, 2: { cellWidth: 32 }, 3: { cellWidth: 10 }, 4: { cellWidth: 10 }, 5: { cellWidth: 18 }, 6: { cellWidth: 34 }, 7: { cellWidth: 34 } },
       margin: { left: 14, right: 14 },
