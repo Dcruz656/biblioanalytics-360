@@ -10,6 +10,7 @@ export default defineConfig({
     terserOptions: {
       compress: { passes: 2 },
       mangle: true,
+      output: { ascii_only: true },
     },
     rollupOptions: {
       output: {
