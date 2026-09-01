@@ -75,7 +75,7 @@ const DIV = { height:1, background:'rgba(255,255,255,0.08)', margin:'18px 0' };
 
 const stCol  = e => e==='libre'?'#22c55e':e==='ocupado'?'#e11d48':'#f59e0b';
 const stLbl  = e => e==='libre'?'Libre':e==='ocupado'?'Ocupado':'Reservado';
-const FIVE_MIN = 5 * 60 * 1000;
+const CHECKIN_WINDOW = 15 * 60 * 1000;
 
 // ââ Header fijo ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function Header({ subtitle }) {
@@ -214,13 +214,13 @@ export default function CubiQRView({ cubiId }) {
 
   async function handleSelectCubi(c) {
     setLoading(true);
-    const expiresAt = serverNow().getTime() + FIVE_MIN;
+    const expiresAt = serverNow() + CHECKIN_WINDOW;
     const updated = {
       ...c, estado: 'reservado',
       reserva: {
         nombre: alumno.nombre, matricula: alumno.matricula, carrera: alumno.carrera,
         personas, duracion, inicio: null, pendingCheckin: true,
-        reservedAt: new Date(expiresAt - FIVE_MIN).toISOString(),
+        reservedAt: new Date(expiresAt - CHECKIN_WINDOW).toISOString(),
       },
     };
     await dbSaveCubiculo(updated);
@@ -411,7 +411,7 @@ export default function CubiQRView({ cubiId }) {
 
   if (screen === 'pending') {
     const c = pending?.cubiculo;
-    const pct = Math.max(0, (msLeft / FIVE_MIN) * 100);
+    const pct = Math.max(0, (msLeft / CHECKIN_WINDOW) * 100);
     const urgent = msLeft < 60000;
     return (
       <div style={P}>
@@ -449,7 +449,7 @@ export default function CubiQRView({ cubiId }) {
     <div style={P}>
       <Header/>
       <SuccessScreen icon="â°" color="#f59e0b" title="Tiempo expirado"
-        sub="No se realizÃ³ el Check-In en 5 minutos. El cubÃ­culo quedÃ³ liberado.">
+        sub="No se realizó el Check-In en 15 minutos. El cubículo quedó liberado.">
         <button style={BTN()} onClick={()=>{setScreen('login');setMatricula('');setAlumno(null);setPending(null);}}>
           Intentar de nuevo
         </button>
