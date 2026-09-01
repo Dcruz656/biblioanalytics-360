@@ -389,10 +389,10 @@ export default function CubiQRView({ cubiId }) {
                   }}>
                   <CubiIcon size={28} color={libre?'#22c55e':stCol(c.estado)}/>
                   <div style={{fontSize:11,fontWeight:700,color:libre?'#fff':'rgba(255,255,255,0.4)',fontFamily:"'Space Mono',monospace"}}>{c.nombre}</div>
-                  <div style={{fontSize:8,fontWeight:600,color:stCol(c.estado),background:`${stCol(c.estado)}20`,padding:'1px 7px',borderRadius:6}}>
+                  <div style={{fontSize:10,fontWeight:600,color:stCol(c.estado),background:`${stCol(c.estado)}20`,padding:'1px 7px',borderRadius:6}}>
                     {stLbl(c.estado)}
                   </div>
-                  {c.piso && <div style={{fontSize:8,color:'rgba(255,255,255,0.3)'}}>Piso {c.piso}</div>}
+                  {c.piso && <div style={{fontSize:10,color:'rgba(255,255,255,0.3)'}}>Piso {c.piso}</div>}
                 </button>
               );
             })}
