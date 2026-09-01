@@ -30,9 +30,12 @@ const ADVANCE_MS = 30 * 60 * 1000; // ventana de 30 min para reserva anticipada
 // Lunes–Viernes 08:00–18:00 · Sábado 10:00–16:00 · Domingo cerrado
 const HORARIO = {
   // [apertura_min, cierre_min]  (minutos desde medianoche)
-  1: [480, 1200], 2: [480, 1200], 3: [480, 1200], 4: [480, 1200], 5: [480, 1200], // L-V 8:00-20:00
-  6: [600, 960],  // Sábado 10:00-16:00
-  0: null,        // Domingo cerrado
+  // MODO PRUEBAS — 24h todos los días
+  0: [0, 1439], 1: [0, 1439], 2: [0, 1439], 3: [0, 1439], 4: [0, 1439], 5: [0, 1439], 6: [0, 1439],
+  // HORARIO REAL (descomentar al terminar pruebas):
+  // 1: [480, 1200], 2: [480, 1200], 3: [480, 1200], 4: [480, 1200], 5: [480, 1200], // L-V 8:00-20:00
+  // 6: [600, 960],  // Sábado 10:00-16:00
+  // 0: null,        // Domingo cerrado
 };
 
 function getOperatingWindow(now = new Date()) {
