@@ -237,6 +237,16 @@ export default function CubiQRView({ cubiId }) {
     try {
       const inicio = new Date(serverNow());
       await dbSaveCubiculo({ ...cubiculo, estado:'ocupado', reserva:{ ...res, inicio, pendingCheckin:false } });
+      // Registro al inicio — fin estimado; se actualiza con el real al hacer checkout
+      dbSaveHistorialReserva({
+        tipo:'cubiculos', cubicule:cubiculo.nombre,
+        nombre:res.nombre, matricula:res.matricula, carrera:res.carrera,
+        duracion:res.duracion,
+        inicio: inicio.toISOString(),
+        fin: new Date(inicio.getTime() + (res.duracion || 1) * 3_600_000).toISOString(),
+        turno: calcTurno(inicio),
+        personas: res.personas || 1, piso: cubiculo.piso,
+      });
       setScreen('success-in');
     } catch(e) {
       setErrorMsg('Error al registrar. Intenta de nuevo.');

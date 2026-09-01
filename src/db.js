@@ -186,8 +186,11 @@ export function broadcastAppConfig() {}
 // ── Historial de reservas ───────────────────────────────────────────────────
 export async function dbSaveHistorialReserva(entry) {
   if (!supabase) return;
-  const { error } = await supabase.from('historial_reservas').insert(entry);
-  if (error) console.error('[db] historial_reservas insert:', error.message);
+  // upsert: si ya existe (inicio+matricula+cubicule) actualiza el fin real
+  const { error } = await supabase
+    .from('historial_reservas')
+    .upsert(entry, { onConflict: 'matricula,cubicule,inicio' });
+  if (error) console.error('[db] historial_reservas upsert:', error.message);
 }
 
 export async function dbLoadHistorialReservas(limit = 1000) {

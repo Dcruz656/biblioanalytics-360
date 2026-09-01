@@ -615,9 +615,19 @@ export default function KioscoView() {
     if (!compu || !account) return;
     const d = new Date(), pad = n => String(n).padStart(2, "0");
     const f = `PC-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${String(Date.now()).slice(-4)}`;
-    const newState = { ...compu, estado: "ocupado", reserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, inicio: new Date(serverNow()) } };
+    const inicioCompu = new Date(serverNow());
+    const newState = { ...compu, estado: "ocupado", reserva: { nombre: account.nombre, matricula: account.matricula, carrera: account.carrera, duracion, inicio: inicioCompu } };
     setComputadoras(prev => prev.map(c => c.id === compuSelectedId ? newState : c));
     dbSaveComputadora(newState);
+    const hCompu = inicioCompu.getHours();
+    dbSaveHistorialReserva({
+      cubicule: compu.nombre, tipo: 'computadoras',
+      nombre: account.nombre, matricula: account.matricula, carrera: account.carrera,
+      duracion, personas: null, piso: null,
+      inicio: inicioCompu.toISOString(),
+      fin: new Date(inicioCompu.getTime() + duracion * 3_600_000).toISOString(),
+      turno: hCompu >= 7 && hCompu < 14 ? 'Matutino' : hCompu >= 14 && hCompu < 20 ? 'Vespertino' : 'Nocturno',
+    });
     dbGetPushSubscriptions(account.matricula).then(subs => {
       subs.forEach(sub => sendPush(sub, '💻 Sesión iniciada', `${compu.nombre} lista por ${duracion}h. Dirígete a la sala de cómputo.`));
     });
