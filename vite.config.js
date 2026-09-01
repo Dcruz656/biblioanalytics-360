@@ -15,11 +15,10 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
-          if (id.includes('recharts') || id.includes('/d3-') || id.includes('d3-shape') || id.includes('d3-scale')) return 'vendor-charts';
+          // These are heavy and only used by the admin dashboard — split them out
+          if (id.includes('recharts') || id.includes('/d3-')) return 'vendor-charts';
           if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('xlsx')) return 'vendor-export';
-          if (id.includes('@supabase')) return 'vendor-supabase';
-          if (id.includes('lucide-react')) return 'vendor-lucide';
-          if (id.includes('react-dom') || id.match(/\/react\//)) return 'vendor-react';
+          // Everything else (react, react-dom, supabase, lucide, scheduler…) stays in one vendor chunk
           return 'vendor';
         },
       },
