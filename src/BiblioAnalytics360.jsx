@@ -908,6 +908,7 @@ export default function BiblioAnalytics360() {
   const cubiSelected  = cubiculos.find(c => c.id === cubiSelectedId) || null;
   const cubiFiltered  = cubiPisoFilter === 0 ? cubiculos : cubiculos.filter(c => c.piso === cubiPisoFilter);
   const cubiActivas   = cubiculos.filter(c => c.reserva !== null);
+  const cubiProximas  = cubiculos.filter(c => !!c.nextReserva);
 
   // Responsive
   const [winW, setWinW] = useState(() => window.innerWidth);
@@ -3338,6 +3339,11 @@ export default function BiblioAnalytics360() {
                               </div>
                             );
                           })()}
+                          {cubi.nextReserva && (
+                            <div style={{ marginTop: 5, padding: "3px 7px", borderRadius: 6, background: `${t.amber}18`, border: `1px solid ${t.amber}40`, fontSize: 9, fontWeight: 700, color: t.amber, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              ⏱ Sig: {cubi.nextReserva.matricula}
+                            </div>
+                          )}
                         </button>
                       );
                     })}
@@ -3547,8 +3553,8 @@ export default function BiblioAnalytics360() {
 
               {/* Reservas activas */}
               <div style={{ background: t.card, borderRadius: 16, padding: 22, border: `1px solid ${t.cardBorder}`, marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Reservas Activas ({cubiActivas.length})</div>
-                {cubiActivas.length === 0 ? (
+                <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>Reservas Activas ({cubiActivas.length + cubiProximas.length})</div>
+                {cubiActivas.length === 0 && cubiProximas.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "24px 0", color: t.textDim, fontSize: 12 }}>No hay reservas activas en este momento</div>
                 ) : (
                   <div style={{ overflowX: "auto" }}>
@@ -3582,6 +3588,23 @@ export default function BiblioAnalytics360() {
                             </tr>
                           );
                         })}
+                        {cubiProximas.map(c => (
+                          <tr key={`next-${c.id}`} style={{ borderBottom: `1px solid ${t.cardBorder}`, opacity: 0.85 }}>
+                            <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: t.teal }}>{c.nombre}</td>
+                            <td style={{ padding: "10px 14px", fontSize: 11, color: t.textDim, fontFamily: "'Space Mono', monospace" }}>{c.nextReserva.matricula}</td>
+                            <td style={{ padding: "10px 14px", fontSize: 11, color: t.textDim }}>{c.nextReserva.carrera}</td>
+                            <td style={{ padding: "10px 14px", fontSize: 11, color: t.text, fontWeight: 600 }}>{c.nextReserva.duracion}h</td>
+                            <td style={{ padding: "10px 14px" }}>
+                              <span style={{ padding: "3px 10px", borderRadius: 20, background: `${t.amber}15`, color: t.amber, fontSize: 10, fontWeight: 700 }}>⏱ Próxima</span>
+                            </td>
+                            <td style={{ padding: "10px 14px" }}>
+                              <button onClick={() => setCubiSelectedId(c.id)}
+                                style={{ padding: "5px 14px", borderRadius: 8, border: `1px solid ${t.cardBorder}`, background: t.inputBg, color: t.text, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                                Ver
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
