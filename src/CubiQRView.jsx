@@ -75,7 +75,7 @@ const DIV = { height:1, background:'rgba(255,255,255,0.08)', margin:'18px 0' };
 
 const stCol  = e => e==='libre'?'#22c55e':e==='ocupado'?'#e11d48':'#f59e0b';
 const stLbl  = e => e==='libre'?'Libre':e==='ocupado'?'Ocupado':'Reservado';
-const CHECKIN_WINDOW = 15 * 60 * 1000;
+const CHECKIN_WINDOW = 5 * 60 * 1000;
 
 // ââ Header fijo ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function Header({ subtitle }) {
@@ -449,7 +449,7 @@ export default function CubiQRView({ cubiId }) {
     <div style={P}>
       <Header/>
       <SuccessScreen icon="â°" color="#f59e0b" title="Tiempo expirado"
-        sub="No se realizó el Check-In en 15 minutos. El cubículo quedó liberado.">
+        sub="No se realizó el Check-In en 5 minutos. El cubículo quedó liberado.">
         <button style={BTN()} onClick={()=>{setScreen('login');setMatricula('');setAlumno(null);setPending(null);}}>
           Intentar de nuevo
         </button>

@@ -167,7 +167,7 @@ function fmtRing(ms) {
 }
 
 function applyAutoRelease(cubiList) {
-  const FIVE_MIN = 15 * 60 * 1000;
+  const FIVE_MIN = 5 * 60 * 1000;
   let changed = false;
   const result = cubiList.map(c => {
     if (c.estado === "reservado" && c.reserva?.pendingCheckin && c.reserva?.reservedAt) {
@@ -594,7 +594,7 @@ export default function KioscoView() {
         if (cubi.estado === "ocupado") {
           subs.forEach(sub => sendPush(sub, '🔔 Reserva anticipada registrada', `Tu lugar en ${cubi.nombre} quedará listo cuando salga el ocupante actual.`));
         } else {
-          subs.forEach(sub => sendPush(sub, '✅ Cubículo reservado', `${cubi.nombre} · ${duracion}h. Tienes 15 min para hacer check-in desde el QR del cubículo.`));
+          subs.forEach(sub => sendPush(sub, '✅ Cubículo reservado', `${cubi.nombre} · ${duracion}h. Tienes 5 min para hacer check-in desde el QR del cubículo.`));
         }
       });
       setFolio(f);
@@ -972,7 +972,7 @@ export default function KioscoView() {
                   <br />para confirmar tu llegada
                 </div>
                 <div style={{ display: "inline-block", background: `${AMBER}20`, border: `2px solid ${AMBER}`, borderRadius: 50, padding: "10px 28px", fontSize: 16, fontWeight: 800, color: AMBER }}>
-                  ⏱ Solo tienes 15 minutos — no pierdas tu lugar
+                  ⏱ Solo tienes 5 minutos — no pierdas tu lugar
                 </div>
               </div>
             ) : (
@@ -1651,7 +1651,7 @@ export default function KioscoView() {
               {selectedCubi?.nombre}
             </div>
             <div style={{ display: "inline-block", background: `${AMBER}25`, border: `1px solid ${AMBER}60`, borderRadius: 50, padding: "8px 24px", fontSize: 16, fontWeight: 700, color: AMBER }}>
-              ⏱ Tienes solo <strong>15 minutos</strong> para hacer Check-In
+              ⏱ Tienes solo <strong>5 minutos</strong> para hacer Check-In
             </div>
           </div>
         )}
